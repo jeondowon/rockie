@@ -1,0 +1,175 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  /* 창이 transparent라 배경을 비워 두고 #popup만 그린다 */
+  background: transparent;
+  font-family: "Galmuri11", "DungGeunMo", monospace;
+  color: #000;
+  overflow: hidden;
+  cursor: default;
+  -webkit-user-select: none;
+}
+
+#popup {
+  width: 220px;
+  background: #ffffff;
+  border: 3px solid #000000;
+  border-radius: 0;
+  box-shadow: 4px 4px 0 #000000; /* 블러 없는 하드 섀도우 */
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  letter-spacing: 1px;
+  border-bottom: 1px dashed #000000;
+}
+
+.menu {
+  list-style: none;
+  padding: 4px 0;
+}
+
+.item {
+  position: relative;
+  padding: 6px 12px 6px 26px; /* 왼쪽은 ▶ 커서 자리 확보 */
+  font-size: 12px;
+}
+
+/* 메뉴 항목 사이를 점선으로 구분 */
+.item + .item {
+  border-top: 1px dashed #000000;
+}
+
+/* hover 시 배경 강조 대신 항목 앞에 ▶ 커서 표시 */
+.item::before {
+  content: "▶";
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 9px;
+  visibility: hidden;
+}
+
+.item:hover {
+  background: #eeeeee;
+}
+
+.item:hover::before {
+  visibility: visible;
+}
+
+.hidden {
+  display: none;
+}
+
+#back {
+  font-family: inherit;
+  font-size: 11px;
+  background: #ffffff;
+  border: 2px solid #000000;
+  border-radius: 0;
+  padding: 2px 6px;
+  cursor: pointer;
+}
+
+#back:active {
+  background: #000000;
+  color: #ffffff;
+}
+
+.setting-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  font-size: 13px;
+}
+
+.toggle {
+  font-family: inherit;
+  font-size: 11px;
+  min-width: 44px;
+  background: #ffffff;
+  border: 2px solid #000000;
+  border-radius: 0;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+
+.toggle.on {
+  background: #000000;
+  color: #ffffff;
+}
+
+.hint {
+  padding: 0 12px 12px;
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+/* ---------- 나의 애완돌 뷰 ---------- */
+.progress {
+  padding: 10px 12px 4px;
+  font-size: 11px;
+}
+
+.petmsg {
+  padding: 14px 12px 4px;
+  font-size: 13px;
+}
+
+.question {
+  padding: 4px 12px 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  border-bottom: 1px dashed #000000;
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 메뉴 .item과 같은 ▶ 커서 스타일을 보기 버튼에도 적용 */
+.option {
+  position: relative;
+  font-family: inherit;
+  font-size: 11px;
+  text-align: left;
+  line-height: 1.4;
+  background: #ffffff;
+  border: none;
+  border-top: 1px dashed #000000;
+  padding: 8px 12px 8px 26px;
+  cursor: pointer;
+}
+
+.option:first-child {
+  border-top: none;
+}
+
+.option::before {
+  content: "▶";
+  position: absolute;
+  left: 10px;
+  top: 9px;
+  font-size: 9px;
+  visibility: hidden;
+}
+
+.option:hover {
+  background: #eeeeee;
+}
+
+.option:hover::before {
+  visibility: visible;
+}

@@ -1,0 +1,16 @@
+{
+  "name": "desktop-pet",
+  "version": "1.0.0",
+  "description": "데스크톱을 돌아다니며 상황별 메시지를 보여주는 데스크톱 펫",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "DEV_RELOAD=1 electron ."
+  },
+  "devDependencies": {
+    "electron": "^31.0.0"
+  },
+  "dependencies": {
+    "active-win": "^8.2.1"
+  }
+}

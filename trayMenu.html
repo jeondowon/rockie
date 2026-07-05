@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <!-- 한글 도트 폰트 (Galmuri). 오프라인이면 monospace로 폴백 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/galmuri/dist/galmuri.css" />
+  <link rel="stylesheet" href="trayMenu.css" />
+</head>
+<body>
+  <div id="popup">
+    <!-- 메인 메뉴 뷰 -->
+    <div id="menu-view">
+      <div class="title">DESK PET</div>
+      <ul class="menu">
+        <li class="item" data-action="status">상태 보기</li>
+        <li class="item" data-action="toggle-pet">펫 보이기 / 숨기기</li>
+        <li class="item" data-action="settings">설정</li>
+        <li class="item" data-action="quit">종료</li>
+      </ul>
+    </div>
+
+    <!-- 나의 애완돌 뷰 (성향 질문 / 확정 결과) -->
+    <div id="pet-view" class="hidden">
+      <div class="title">
+        <button id="pet-back">◀</button>
+        <span>나의 애완돌</span>
+      </div>
+      <div id="pet-body"></div>
+    </div>
+
+    <!-- 설정 뷰 -->
+    <div id="settings-view" class="hidden">
+      <div class="title">
+        <button id="back">◀</button>
+        <span>설정</span>
+      </div>
+      <div class="setting-row">
+        <span>화면 기록 권한</span>
+        <button id="perm-toggle" class="toggle">OFF</button>
+      </div>
+      <p id="perm-hint" class="hint">활성 앱 감지(말풍선)에 필요합니다.</p>
+    </div>
+  </div>
+  <script src="trayMenu.js"></script>
+</body>
+</html>
