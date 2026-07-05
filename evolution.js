@@ -279,7 +279,7 @@ function tryConfirm(data, now) {
 
   data.pet.stoneType = winner;
   data.pet.stoneConfirmedAt = now;
-  data.pet.evolutionStage = 2; // 0(rockie) → 2(돌 확정). 1단계는 사용하지 않음
+  data.pet.evolutionStage = 1; // 0(rockie) → 1(돌 확정)
   return winner;
 }
 
