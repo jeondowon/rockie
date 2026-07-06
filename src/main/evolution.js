@@ -201,6 +201,42 @@ const TIEBREAKERS = [
 
 const TB_BY_ID = Object.fromEntries(TIEBREAKERS.map((t) => [t.id, t]));
 
+// ---------- 노출 주기 / 스킵 상수 (evolve.md 6장) ----------
+// PET_FAST_EVO=1이면 "하루=5초"로 압축해 알림 흐름을 빠르게 검증할 수 있다.
+const DAY_MS = process.env.PET_FAST_EVO === "1" ? 5000 : 24 * 60 * 60 * 1000;
+const EARLY_COUNT = 4; // 초반 4문항은 하루 간격
+const MAX_SKIPS = 3; // 3회 연속 패스 시 후보 풀에서 제외
+
+// 답변 수에 따른 다음 노출 간격(ms). 초반 4문항은 하루, 이후 2~3일 (evolve.md 6.1)
+function questionInterval(answeredCount) {
+  if (answeredCount < EARLY_COUNT) return DAY_MS;
+  return 2 * DAY_MS + Math.random() * DAY_MS; // 2~3일 사이
+}
+
+// 다음 질문 노출 예정 시각 갱신. immediate면 다음 게이트에서 바로 노출
+// (타이브레이커는 정기 주기를 기다리지 않고 즉시 편입, evolve.md 6.6)
+function scheduleNext(data, nowIso, immediate) {
+  const ms = immediate
+    ? Date.parse(nowIso)
+    : Date.parse(nowIso) + questionInterval(data.questions.mainQuestionProgress);
+  data.questions.nextQuestionDueAt = new Date(ms).toISOString();
+}
+
+// 답변/패스 후 다음 노출 시각을 다시 잡는다 (확정됐으면 잡지 않음)
+function rescheduleAfter(data, nowIso, confirmed) {
+  if (confirmed) return;
+  const nq = nextQuestion(data);
+  scheduleNext(data, nowIso, !!(nq && nq.id.startsWith("tb_")));
+}
+
+// 지금 노출할 질문이 시간 조건상 준비됐는지. 활성/시간대/앱 조건은 호출부(main)에서 판단.
+function isQuestionDue(data, nowMs) {
+  if (data.pet.stoneType) return false;
+  if (!nextQuestion(data)) return false;
+  const due = data.questions.nextQuestionDueAt;
+  return !due || nowMs >= Date.parse(due);
+}
+
 // 두 돌의 타이브레이커 쌍 키 (STONE_ORDER 순서로 정규화)
 function pairKey(a, b) {
   return [a, b].sort((x, y) => STONE_ORDER.indexOf(x) - STONE_ORDER.indexOf(y)).join("_");
@@ -252,6 +288,7 @@ function getState(data) {
     progress: data.questions.mainQuestionProgress,
     total: MAIN_QUESTIONS.length,
     question: serialize(nextQuestion(data)),
+    hasBadge: data.notifications.hasUnreadBadge,
   };
 }
 
@@ -306,9 +343,31 @@ function answer(data, { questionId, stone }) {
   } else {
     data.questions.mainQuestionProgress += 1;
   }
+  delete data.questions.skippedQuestions[questionId]; // 답했으면 연속 패스 기록 초기화
+  data.questions.pendingQuestionId = null; // 응답 완료 → 다음 질문 재노출 가능
 
   const confirmed = tryConfirm(data, now);
+  rescheduleAfter(data, now, confirmed);
   return { confirmed, state: getState(data) };
 }
 
-module.exports = { getState, answer, STONE_ORDER };
+// "지금은 패스" 처리. 연속 패스를 세고, 본 질문이 3회에 도달하면 풀에서 제외한다
+// (evolve.md 6.5). 타이브레이커는 제외 없이 다음 기회로 미루기만 한다.
+function skip(data, questionId) {
+  if (data.pet.stoneType) return { confirmed: null, state: getState(data) };
+  const now = new Date().toISOString();
+  const skipped = data.questions.skippedQuestions;
+  skipped[questionId] = (skipped[questionId] || 0) + 1;
+
+  const isTb = questionId.startsWith("tb_");
+  if (!isTb && skipped[questionId] >= MAX_SKIPS) {
+    data.questions.mainQuestionProgress += 1; // 3회 연속 패스 → 후보 풀에서 제외
+  }
+  data.questions.pendingQuestionId = null; // 다음 기회에 재노출 가능
+
+  const confirmed = tryConfirm(data, now); // 제외로 본 질문이 소진됐을 수 있음
+  rescheduleAfter(data, now, confirmed);
+  return { confirmed, state: getState(data) };
+}
+
+module.exports = { getState, answer, skip, isQuestionDue, STONE_ORDER };

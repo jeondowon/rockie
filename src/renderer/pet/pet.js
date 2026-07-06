@@ -1,5 +1,6 @@
 const character = document.getElementById("character");
 const bubble = document.getElementById("bubble");
+const qcard = document.getElementById("qcard");
 
 // ---------- 1. 캐릭터 위치 및 마우스 추적 로직 ----------
 
@@ -22,6 +23,7 @@ const SPRITE_MARGIN = 36;
 
 let paused = false;
 let pauseTimer = null;
+let cardOpen = false; // 질문 카드가 열려 있으면 걷기를 멈추고 카드를 펫 옆에 고정
 
 // ---------- Dock 회피 ----------
 // 메인 프로세스가 알려주는 Dock 상태. Dock이 보이고 캐릭터(보이는 그림 기준)가
@@ -78,7 +80,7 @@ function setFacing(dir) {
 }
 
 function spriteUrl(name) {
-  return `gif/${stonePrefix}_${name}.gif`;
+  return `../../../assets/gif/${stonePrefix}_${name}.gif`;
 }
 
 // 지친 상태(배터리 부족)면 단계별 표정 gif, 아니면 바라보는 방향의 걷기 gif를 표시.
@@ -90,7 +92,7 @@ function applySprite() {
 }
 
 function followStep() {
-  if (!paused) {
+  if (!paused && !cardOpen) {
     // 마우스가 캐릭터 중심의 어느 쪽에 있는지에 따라 "설 위치"(목표)를 정한다.
     // 캐릭터는 마우스 반대편에 서서 경계가 마우스에 붙도록 한다.
     const center = posX + CHAR_SIZE / 2;
@@ -122,6 +124,7 @@ function followStep() {
   verticalStep();
   placeCharacter();
   positionBubble();
+  if (cardOpen) positionCard();
   requestAnimationFrame(followStep);
 }
 
@@ -177,6 +180,11 @@ const clickReactions = [
 ];
 
 character.addEventListener("click", () => {
+  // 물어볼 질문이 예고된 상태면 클릭 시 질문 카드를 연다 (evolve.md 6.4 2단계)
+  if (hasPendingQuestion && qcard.classList.contains("hidden")) {
+    openQuestionCard();
+    return;
+  }
   const msg = clickReactions[Math.floor(Math.random() * clickReactions.length)];
   showBubble(msg);
   pauseWalking(1500);
@@ -457,6 +465,109 @@ async function initStone() {
     // 상태를 못 읽으면 기본(rockie) 유지
   }
 }
+
+// ---------- 8. 성향 질문 알림 (예고 말풍선 → 클릭 시 카드) ----------
+
+let hasPendingQuestion = false;
+let currentQuestion = null;
+
+// 게이트가 "물어볼 질문이 준비됨"을 알리면 예고 말풍선만 띄운다 (강제 팝업 없음)
+window.petAPI.onQuestionAvailable(() => {
+  hasPendingQuestion = true;
+  showBubble("물어보고 싶은 게 있어요. 저를 눌러주세요!", 6000);
+});
+
+function positionCard() {
+  // 캐릭터 그림 중심 기준으로 카드를 위쪽에 띄우고 화면 안으로 클램프
+  const centerX = posX + CHAR_SIZE / 2;
+  const w = qcard.offsetWidth;
+  const h = qcard.offsetHeight;
+  let left = Math.max(8, Math.min(window.innerWidth - w - 8, centerX - w / 2));
+  let top = posY - h - 12;
+  if (top < 8) top = 8;
+  qcard.style.left = left + "px";
+  qcard.style.top = top + "px";
+}
+
+function hideQuestionCard() {
+  cardOpen = false;
+  qcard.classList.add("hidden");
+  qcard.innerHTML = "";
+}
+
+async function openQuestionCard() {
+  let state;
+  try {
+    state = await window.petAPI.getEvolutionState();
+  } catch (_err) {
+    return;
+  }
+  // 이미 확정됐거나 지금 물을 게 없으면 예고 상태만 정리
+  if (!state.question) {
+    hasPendingQuestion = false;
+    return;
+  }
+  currentQuestion = state.question;
+  window.petAPI.markQuestionRead(); // 열었으면 "읽음" → 트레이 배지 해제
+  renderCard(state);
+  cardOpen = true;
+  qcard.classList.remove("hidden");
+  positionCard();
+}
+
+function cardEl(tag, cls, text) {
+  const node = document.createElement(tag);
+  if (cls) node.className = cls;
+  if (text != null) node.textContent = text;
+  return node;
+}
+
+function renderCard(state) {
+  qcard.innerHTML = "";
+  const q = state.question;
+
+  if (q.kind === "tiebreaker") {
+    qcard.appendChild(cardEl("p", "q-hint", "마지막으로 하나만 더 골라주세요!"));
+  } else {
+    qcard.appendChild(cardEl("p", "q-hint", `질문 ${state.progress} / ${state.total}`));
+  }
+  qcard.appendChild(cardEl("p", "q-text", q.text));
+
+  const options = cardEl("div", "q-options");
+  q.options.forEach((opt) => {
+    const btn = cardEl("button", "q-opt", opt.label);
+    btn.addEventListener("click", () => answerQuestion(q.id, opt.stone));
+    options.appendChild(btn);
+  });
+  qcard.appendChild(options);
+
+  const pass = cardEl("button", "q-pass", "지금은 패스");
+  pass.addEventListener("click", () => passQuestion(q.id));
+  qcard.appendChild(pass);
+}
+
+async function answerQuestion(questionId, stone) {
+  const result = await window.petAPI.answerQuestion({ questionId, stone });
+  hideQuestionCard();
+  hasPendingQuestion = false;
+  // 확정되면 onStoneConfirmed가 진화 말풍선을 띄우므로 여기선 조용히 둔다
+  if (!result.confirmed) showBubble("고마워요! 잘 기억해둘게요.", 3000);
+}
+
+async function passQuestion(questionId) {
+  await window.petAPI.skipQuestion({ questionId });
+  hideQuestionCard();
+  hasPendingQuestion = false;
+  showBubble("알겠어요, 다음에 또 물어볼게요.", 3000);
+}
+
+// 카드 위에 마우스가 있을 때만 클릭을 받도록(캐릭터와 동일 패턴)
+qcard.addEventListener("mouseenter", () => {
+  window.petAPI.setIgnoreMouseEvents(false);
+});
+qcard.addEventListener("mouseleave", () => {
+  window.petAPI.setIgnoreMouseEvents(true, { forward: true });
+});
 
 // ---------- 7. 초기화 ----------
 

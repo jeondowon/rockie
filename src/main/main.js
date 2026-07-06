@@ -24,6 +24,12 @@ let watcherInterval;
 let cursorInterval;
 let dockInterval;
 let dockPrefsInterval;
+let questionGateInterval;
+
+// 질문 알림 게이트용 상태 (evolve.md 6장)
+let lastCursorPoint = null;
+let lastCursorMoveAt = 0;
+let lastActiveWin = null; // { appName, title, bounds }
 
 function createWindow() {
   const primaryDisplay = screen.getPrimaryDisplay();
@@ -46,7 +52,7 @@ function createWindow() {
     hasShadow: false,
     focusable: true,
     webPreferences: {
-      preload: path.join(__dirname, "preload.js"),
+      preload: path.join(__dirname, "../preload/pet.js"),
       contextIsolation: true,
       nodeIntegration: false,
     },
@@ -57,18 +63,23 @@ function createWindow() {
   mainWindow.setAlwaysOnTop(true, "screen-saver");
   mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
-  mainWindow.loadFile("index.html");
+  mainWindow.loadFile(path.join(__dirname, "../renderer/pet/index.html"));
 
   startActiveWindowWatcher();
   startCursorTracker();
   startDockTracker();
+  startQuestionGate();
 
   if (isDev) startDevReload();
 }
 
 // 렌더러 관련 파일을 감시해서 저장 시 창을 자동 새로고침 (개발 전용)
 function startDevReload() {
-  const watchFiles = ["index.html", "renderer.js", "style.css"];
+  const watchFiles = [
+    "../renderer/pet/index.html",
+    "../renderer/pet/pet.js",
+    "../renderer/pet/style.css",
+  ];
   let reloadTimer = null;
 
   const triggerReload = () => {
@@ -98,6 +109,11 @@ function startCursorTracker() {
   cursorInterval = setInterval(() => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
     const point = screen.getCursorScreenPoint();
+    // 커서가 실제로 움직였으면 활성 시각을 갱신 (질문 알림 게이트에서 사용)
+    if (!lastCursorPoint || point.x !== lastCursorPoint.x || point.y !== lastCursorPoint.y) {
+      lastCursorMoveAt = Date.now();
+      lastCursorPoint = point;
+    }
     const bounds = mainWindow.getBounds();
     // 창 기준 좌표로 변환해서 전달
     mainWindow.webContents.send("cursor-position", {
@@ -266,7 +282,7 @@ const TRAY_ICON_PT = 15;
 
 // 맥 메뉴바 / 윈도우 시스템 트레이에 아이콘을 띄운다 (Tray API는 양쪽 공용)
 function createTray() {
-  let src = nativeImage.createFromPath(path.join(__dirname, "template.png"));
+  let src = nativeImage.createFromPath(path.join(__dirname, "../../assets/template.png"));
   src = trimTransparent(src); // 투명 여백 제거 → 그림이 꽉 참
 
   // Retina(2x) 대응: 표시 크기는 TRAY_ICON_PT(pt)로 유지하되,
@@ -312,7 +328,7 @@ function createTrayPopup() {
     hasShadow: false, // CSS 하드 섀도우를 쓰므로 시스템 그림자는 끔
     fullscreenable: false,
     webPreferences: {
-      preload: path.join(__dirname, "trayPreload.js"),
+      preload: path.join(__dirname, "../preload/tray.js"),
       contextIsolation: true,
       nodeIntegration: false,
     },
@@ -320,7 +336,7 @@ function createTrayPopup() {
 
   trayPopup.setAlwaysOnTop(true, "pop-up-menu");
   trayPopup.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-  trayPopup.loadFile("trayMenu.html");
+  trayPopup.loadFile(path.join(__dirname, "../renderer/tray/tray.html"));
 
   // 팝업 바깥 클릭 등으로 포커스를 잃으면 자동으로 닫는다
   trayPopup.on("blur", () => {
@@ -365,14 +381,14 @@ function positionTrayPopup() {
 ipcMain.on("tray-menu-action", (_event, action) => {
   switch (action) {
     case "status":
-      // "나의 애완돌" 뷰 전환은 렌더러(trayMenu.js)에서 처리하므로 여기선 안 닫는다
+      // "나의 애완돌" 뷰 전환은 렌더러(tray.js)에서 처리하므로 여기선 안 닫는다
       break;
     case "toggle-pet":
       togglePet();
       if (trayPopup && !trayPopup.isDestroyed()) trayPopup.hide();
       break;
     case "settings":
-      // 뷰 전환은 렌더러(trayMenu.js)에서 처리
+      // 뷰 전환은 렌더러(tray.js)에서 처리
       console.log("[tray-menu] 설정 열림");
       break;
     case "quit":
@@ -381,17 +397,84 @@ ipcMain.on("tray-menu-action", (_event, action) => {
   }
 });
 
+// ---------- 애완돌 질문 알림 게이트 (evolve.md 6장) ----------
+// 시간 조건(다음 노출 예정 시각)이 충족되고, 사용자가 활성 상태이며, 심야가 아니고,
+// 회의/전체화면 앱이 아닐 때만 예고 말풍선을 띄운다. 조건이 안 맞으면 다음 틱에 재시도(큐잉).
+const GATE_INTERVAL = process.env.PET_FAST_EVO === "1" ? 2000 : 30000;
+const ACTIVE_WINDOW_MS = 60 * 1000; // 최근 커서 움직임을 "활성"으로 인정하는 범위
+
+function isUserActive() {
+  return Date.now() - lastCursorMoveAt < ACTIVE_WINDOW_MS;
+}
+
+function isDaytime() {
+  const h = new Date().getHours();
+  return h >= 8 && h < 23; // 심야(23~08시) 제외
+}
+
+// 회의(Zoom/Meet/Webex) 중이거나 전체화면 앱 실행 중이면 보류
+function isBlockingApp() {
+  if (!lastActiveWin) return false;
+  const ctx = `${lastActiveWin.appName} ${lastActiveWin.title}`.toLowerCase();
+  if (/zoom|google meet|meet\.google|webex/.test(ctx)) return true;
+  const b = lastActiveWin.bounds;
+  if (b) {
+    const { bounds } = screen.getPrimaryDisplay();
+    // 활성 창이 화면을 거의 꽉 채우면 전체화면으로 간주
+    if (b.width >= bounds.width - 4 && b.height >= bounds.height - 4) return true;
+  }
+  return false;
+}
+
+function startQuestionGate() {
+  questionGateInterval = setInterval(() => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    const data = store.get();
+    if (data.pet.stoneType) return; // 이미 종류 확정됨
+    if (!data.notifications.notificationsEnabled) return;
+    if (!evolution.isQuestionDue(data, Date.now())) return; // 시간 조건 미충족
+    if (!isDaytime() || isBlockingApp() || !isUserActive()) return; // 큐잉 후 다음 활성 시점 재시도
+
+    const q = evolution.getState(data).question;
+    if (!q) return;
+    if (data.questions.pendingQuestionId === q.id) return; // 이미 예고함 → 반복 알림 없음(3단계)
+
+    data.questions.pendingQuestionId = q.id; // 예고 기록
+    data.notifications.hasUnreadBadge = true; // 무시하면 트레이 배지로만 남음
+    store.save();
+    mainWindow.webContents.send("evolution:question-available");
+  }, GATE_INTERVAL);
+}
+
 // ---------- 애완돌 성향 판정 / 진화 ----------
 ipcMain.handle("evolution:get-state", () => evolution.getState(store.get()));
 ipcMain.handle("evolution:get-stone", () => store.get().pet.stoneType);
 ipcMain.handle("evolution:answer", (_event, payload) => {
   const result = evolution.answer(store.get(), payload);
+  store.get().notifications.hasUnreadBadge = false; // 응답했으면 배지 해제
   store.save();
   // 확정되면 오버레이 캐릭터를 해당 돌 GIF로 전환하도록 알린다
   if (result.confirmed && mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send("evolution:stone-confirmed", result.confirmed);
   }
   return result;
+});
+ipcMain.handle("evolution:skip", (_event, payload) => {
+  const result = evolution.skip(store.get(), payload.questionId);
+  store.get().notifications.hasUnreadBadge = false; // 패스도 상호작용이므로 배지 해제
+  store.save();
+  if (result.confirmed && mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("evolution:stone-confirmed", result.confirmed);
+  }
+  return result;
+});
+// 질문 카드를 열어 "읽음" 처리 → 트레이 배지 해제
+ipcMain.on("evolution:mark-read", () => {
+  const data = store.get();
+  if (data.notifications.hasUnreadBadge) {
+    data.notifications.hasUnreadBadge = false;
+    store.save();
+  }
 });
 
 ipcMain.handle("get-screen-permission", () => {
@@ -442,11 +525,19 @@ function startActiveWindowWatcher() {
       const activeWin = activeWinModule.default;
       const result = await activeWin();
       loggedError = false; // 성공하면(권한 허용 후) 다음 실패를 다시 로그할 수 있게 초기화
-      if (result && mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send("active-window-info", {
+      if (result) {
+        // 게이트(회의/전체화면 보류 판정)에서 참조하도록 최신 활성 창 정보를 보관
+        lastActiveWin = {
           appName: result.owner ? result.owner.name : "",
           title: result.title || "",
-        });
+          bounds: result.bounds || null,
+        };
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send("active-window-info", {
+            appName: lastActiveWin.appName,
+            title: lastActiveWin.title,
+          });
+        }
       }
     } catch (err) {
       // macOS에서 화면 기록 권한이 없으면 여기로 떨어진다.
@@ -469,6 +560,7 @@ app.on("window-all-closed", () => {
   if (cursorInterval) clearInterval(cursorInterval);
   if (dockInterval) clearInterval(dockInterval);
   if (dockPrefsInterval) clearInterval(dockPrefsInterval);
+  if (questionGateInterval) clearInterval(questionGateInterval);
   if (process.platform !== "darwin") app.quit();
 });
 

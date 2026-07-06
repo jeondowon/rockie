@@ -173,3 +173,33 @@ body {
 .option:hover::before {
   visibility: visible;
 }
+
+/* 안 읽은 질문 배지 (상태 보기 항목 우측 점) */
+.item.has-badge::after {
+  content: "";
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #e23b3b;
+}
+
+/* "지금은 패스" 버튼 */
+.pass {
+  width: 100%;
+  font-family: inherit;
+  font-size: 11px;
+  background: #000000;
+  color: #ffffff;
+  border: none;
+  border-top: 1px dashed #000000;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.pass:hover {
+  background: #333333;
+}

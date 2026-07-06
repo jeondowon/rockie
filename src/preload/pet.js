@@ -20,4 +20,11 @@ contextBridge.exposeInMainWorld('petAPI', {
   onStoneConfirmed: (callback) => {
     ipcRenderer.on('evolution:stone-confirmed', (_event, stoneType) => callback(stoneType));
   },
+  getEvolutionState: () => ipcRenderer.invoke('evolution:get-state'),
+  answerQuestion: (payload) => ipcRenderer.invoke('evolution:answer', payload),
+  skipQuestion: (payload) => ipcRenderer.invoke('evolution:skip', payload),
+  onQuestionAvailable: (callback) => {
+    ipcRenderer.on('evolution:question-available', () => callback());
+  },
+  markQuestionRead: () => ipcRenderer.send('evolution:mark-read'),
 });

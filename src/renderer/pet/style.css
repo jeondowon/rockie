@@ -1,0 +1,146 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  user-select: none;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+}
+
+.character {
+  position: absolute;
+  width: 128px;
+  height: 128px;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+  z-index: 2;
+  -webkit-user-drag: none;
+}
+
+.character:active {
+  transform: scale(0.9);
+}
+
+.bubble {
+  position: absolute;
+  max-width: 220px;
+  padding: 10px 14px;
+  background: #ffffff;
+  color: #222222;
+  font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  font-size: 13px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  z-index: 3;
+  opacity: 1;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.bubble.hidden {
+  opacity: 0;
+}
+
+.bubble::after {
+  content: "";
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 8px 8px 0 8px;
+  border-style: solid;
+  border-color: #ffffff transparent transparent transparent;
+}
+
+/* ---------- 질문 카드 (펫 옆 오버레이) ---------- */
+/* 트레이 팝업과 같은 흑백 도트 톤으로 "애완돌" UI 일관성 유지 */
+.qcard {
+  position: absolute;
+  width: 220px;
+  background: #ffffff;
+  border: 3px solid #000000;
+  box-shadow: 4px 4px 0 #000000;
+  color: #000000;
+  font-family: "Galmuri11", "DungGeunMo", monospace;
+  z-index: 4;
+}
+
+.qcard.hidden {
+  display: none;
+}
+
+.qcard .q-hint {
+  padding: 8px 12px 0;
+  font-size: 10px;
+  line-height: 1.5;
+  color: #555555;
+}
+
+.qcard .q-text {
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  border-bottom: 1px dashed #000000;
+}
+
+.qcard .q-options {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 트레이 .option과 동일한 ▶ 커서 스타일 */
+.qcard .q-opt {
+  position: relative;
+  font-family: inherit;
+  font-size: 11px;
+  text-align: left;
+  line-height: 1.4;
+  background: #ffffff;
+  border: none;
+  border-top: 1px dashed #000000;
+  padding: 8px 12px 8px 26px;
+  cursor: pointer;
+}
+
+.qcard .q-opt:first-child {
+  border-top: none;
+}
+
+.qcard .q-opt::before {
+  content: "▶";
+  position: absolute;
+  left: 10px;
+  top: 9px;
+  font-size: 9px;
+  visibility: hidden;
+}
+
+.qcard .q-opt:hover {
+  background: #eeeeee;
+}
+
+.qcard .q-opt:hover::before {
+  visibility: visible;
+}
+
+.qcard .q-pass {
+  width: 100%;
+  font-family: inherit;
+  font-size: 11px;
+  background: #000000;
+  color: #ffffff;
+  border: none;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.qcard .q-pass:hover {
+  background: #333333;
+}

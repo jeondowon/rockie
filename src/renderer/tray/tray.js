@@ -32,9 +32,13 @@ function showSettings() {
   refreshPermToggle();
 }
 
+const statusItem = document.querySelector('.item[data-action="status"]');
+
 async function showPet() {
   hideAllViews();
   petView.classList.remove("hidden");
+  window.trayAPI.markQuestionRead(); // 카드를 열었으니 "읽음" 처리
+  statusItem.classList.remove("has-badge");
   renderPet(await window.trayAPI.getEvolutionState());
 }
 
@@ -75,10 +79,19 @@ function renderPet(state) {
     options.appendChild(btn);
   });
   petBody.appendChild(options);
+
+  const pass = el("button", "pass", "지금은 패스");
+  pass.addEventListener("click", () => passQuestion(q.id));
+  petBody.appendChild(pass);
 }
 
 async function answerQuestion(questionId, stone) {
   const result = await window.trayAPI.answerQuestion({ questionId, stone });
+  renderPet(result.state);
+}
+
+async function passQuestion(questionId) {
+  const result = await window.trayAPI.skipQuestion({ questionId });
   renderPet(result.state);
 }
 
@@ -126,8 +139,19 @@ permToggle.addEventListener("click", async () => {
   }
 });
 
-// 팝업이 열릴 때마다 메뉴 뷰로 초기화하고 권한 상태를 갱신
+// 안 읽은 질문이 있으면 "상태 보기" 항목에 배지를 표시 (evolve.md 6.4 3단계)
+async function refreshBadge() {
+  try {
+    const state = await window.trayAPI.getEvolutionState();
+    statusItem.classList.toggle("has-badge", !!state.hasBadge);
+  } catch (_err) {
+    // 상태를 못 읽으면 배지 없이 둔다
+  }
+}
+
+// 팝업이 열릴 때마다 메뉴 뷰로 초기화하고 권한 상태·배지를 갱신
 window.trayAPI.onWillShow(() => {
   showMenu();
   refreshPermToggle();
+  refreshBadge();
 });
