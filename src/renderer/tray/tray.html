@@ -8,37 +8,408 @@
 </head>
 <body>
   <div id="popup">
-    <!-- 메인 메뉴 뷰 -->
-    <div id="menu-view">
-      <div class="title">DESK PET</div>
-      <ul class="menu">
-        <li class="item" data-action="status">상태 보기</li>
-        <li class="item" data-action="toggle-pet">펫 보이기 / 숨기기</li>
-        <li class="item" data-action="settings">설정</li>
-        <li class="item" data-action="quit">종료</li>
-      </ul>
+    <!-- 타이틀바 -->
+    <div class="titlebar">
+      <div class="brand">ROCKIE</div>
+      <div class="titlebar-meta">
+        <span id="pet-name">몽돌</span>
+        <span class="pips">
+          <span class="pip on"></span>
+          <span class="pip on"></span>
+          <span class="pip on"></span>
+          <span class="pip"></span>
+          <span class="pip"></span>
+        </span>
+      </div>
     </div>
 
-    <!-- 나의 애완돌 뷰 (성향 질문 / 확정 결과) -->
-    <div id="pet-view" class="hidden">
-      <div class="title">
-        <button id="pet-back">◀</button>
-        <span>나의 애완돌</span>
-      </div>
-      <div id="pet-body"></div>
-    </div>
+    <!-- 뒤로가기 바 (메뉴 외 화면에서만 표시) -->
+    <button id="back-bar" class="back-bar hidden">
+      <span class="back-arrow">◀</span>
+      <span>메뉴로</span>
+      <span id="screen-title" class="back-title"></span>
+    </button>
 
-    <!-- 설정 뷰 -->
-    <div id="settings-view" class="hidden">
-      <div class="title">
-        <button id="back">◀</button>
-        <span>설정</span>
+    <!-- ============ 본문 (내부 스크롤) ============ -->
+    <div class="body">
+
+      <!-- ############ MENU ############ -->
+      <div id="menu-view" class="screen">
+        <div class="menu-head">
+          <span class="menu-head-label">MENU</span>
+          <span class="menu-head-sub">CPU 34%&nbsp;&nbsp;·&nbsp;&nbsp;RAM 61%&nbsp;&nbsp;·&nbsp;&nbsp;보통</span>
+        </div>
+        <div class="menu-list">
+          <button class="mrow" data-action="status">
+            <span class="mrow-arrow">▶</span>
+            <span class="mrow-label">나의 애완돌</span>
+            <span class="mrow-badge" id="status-badge"></span>
+          </button>
+          <button class="mrow" data-action="system">
+            <span class="mrow-arrow">▶</span>
+            <span class="mrow-label">시스템 모니터</span>
+          </button>
+          <button class="mrow" data-action="toggle-pet">
+            <span class="mrow-arrow">▶</span>
+            <span class="mrow-label">펫 숨기기 / 보이기</span>
+          </button>
+          <button class="mrow" data-action="settings">
+            <span class="mrow-arrow">▶</span>
+            <span class="mrow-label">설정</span>
+          </button>
+          <button class="mrow danger" data-action="quit">
+            <span class="mrow-arrow">▶</span>
+            <span class="mrow-label">종료</span>
+          </button>
+        </div>
       </div>
-      <div class="setting-row">
-        <span>화면 기록 권한</span>
-        <button id="perm-toggle" class="toggle">OFF</button>
+
+      <!-- ############ PET ############ -->
+      <div id="pet-view" class="screen hidden">
+        <!-- HERO -->
+        <div class="hero">
+          <div class="hero-grid"></div>
+          <div class="hero-stage">
+            <img id="hero-img" class="hero-img" src="../../../assets/gif/rockie_smile.gif" alt="애완돌" />
+          </div>
+          <div class="hero-status">
+            <span class="hero-status-dot"></span>
+            <span id="pet-status-label">조약돌 · 무던함</span>
+          </div>
+          <div class="hero-mood">기분 · 잠잠</div>
+        </div>
+
+        <!-- 새 질문 콜아웃 -->
+        <div id="pet-callout" class="callout hidden">
+          <span class="callout-icon">?</span>
+          <div class="callout-text">
+            <div class="callout-title">새 질문이 도착했어요</div>
+            <div class="callout-sub">펫이 가끔 질문을 건네요. 그때 옆에서 답해 주세요! ▶</div>
+          </div>
+        </div>
+
+        <!-- 이름 (스타일만) -->
+        <section class="panel">
+          <div class="panel-label">이름</div>
+          <div class="name-fields">
+            <label class="name-field">
+              <span class="name-key">사용자 이름</span>
+              <input class="name-input" value="지민" />
+            </label>
+            <label class="name-field">
+              <span class="name-key">애완돌 이름</span>
+              <input class="name-input" value="몽돌" />
+            </label>
+          </div>
+          <div class="panel-note">✎ 이름을 지어주면 애완돌이 기뻐해요 (호감도 +)</div>
+        </section>
+
+        <!-- 성향 요약 -->
+        <section class="panel">
+          <div class="panel-label">성향 요약</div>
+          <div id="pet-personality" class="personality-text">아직 알아가는 중이에요</div>
+          <div id="pet-personality-tags" class="tags hidden">
+            <span class="tag">내향적</span>
+            <span class="tag">관찰형</span>
+            <span class="tag">서늘함 선호</span>
+          </div>
+        </section>
+
+        <!-- 질문 진행도 -->
+        <section class="panel">
+          <div class="panel-row">
+            <span class="panel-label">질문 진행도</span>
+            <span id="pet-progress-label" class="panel-value">0 / 0</span>
+          </div>
+          <div class="gauge">
+            <div id="pet-progress-fill" class="gauge-fill green" style="width:0%"></div>
+            <div class="gauge-ticks"></div>
+          </div>
+          <div class="panel-note">🜨 요즘 부쩍 단단해지고 있어요. 다음 진화까지 조금만 더.</div>
+        </section>
+
+        <!-- 호감도 (스타일만) -->
+        <section class="panel">
+          <div class="panel-row">
+            <span class="panel-label">호감도</span>
+            <span class="panel-value">친근 · 58</span>
+          </div>
+          <div class="gauge">
+            <div class="gauge-fill rust" style="width:58%"></div>
+            <div class="gauge-ticks"></div>
+          </div>
+          <div class="hearts">
+            <span class="heart on"></span>
+            <span class="heart on"></span>
+            <span class="heart on"></span>
+            <span class="heart"></span>
+            <span class="heart"></span>
+          </div>
+        </section>
+
+        <!-- 인벤토리 (스타일만) -->
+        <section class="panel">
+          <div class="panel-label">인벤토리 <span class="panel-label-sub">· 눌러서 장착/해제</span></div>
+          <div class="inv-grid">
+            <div class="inv-cell">
+              <div class="inv-box worn">⌂<span class="inv-worn">착용</span></div>
+              <div class="inv-name">차양모자</div>
+            </div>
+            <div class="inv-cell">
+              <div class="inv-box">▭</div>
+              <div class="inv-name">뿔테안경</div>
+            </div>
+            <div class="inv-cell">
+              <div class="inv-box">✕</div>
+              <div class="inv-name">리본</div>
+            </div>
+            <div class="inv-cell">
+              <div class="inv-box locked">♔<span class="inv-lock">잠김</span></div>
+              <div class="inv-name">왕관</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 스킨 (스타일만) -->
+        <section class="panel">
+          <div class="panel-label">스킨 <span class="panel-label-sub">· 표시용, 진행엔 영향 없음</span></div>
+          <div class="panel-note-tight">진화 단계마다 새 스킨이 열려요. 원하는 모습을 골라 입혀보세요.</div>
+          <div class="skin-grid">
+            <div class="skin-cell">
+              <div class="skin-box current">
+                <img class="skin-img" src="../../../assets/gif/rockie_smile.gif" alt="조약돌" />
+                <span class="skin-current">착용중</span>
+              </div>
+              <div class="skin-name">조약돌</div>
+              <div class="skin-sub">기본</div>
+            </div>
+            <div class="skin-cell">
+              <div class="skin-box">
+                <img class="skin-img" src="../../../assets/gif/basalt_smile.gif" alt="이끼돌" />
+              </div>
+              <div class="skin-name">이끼돌</div>
+              <div class="skin-sub">1단계</div>
+            </div>
+            <div class="skin-cell">
+              <div class="skin-box">
+                <img class="skin-img" src="../../../assets/gif/granite_smile.gif" alt="화강암" />
+              </div>
+              <div class="skin-name">화강암</div>
+              <div class="skin-sub">2단계</div>
+            </div>
+            <div class="skin-cell">
+              <div class="skin-box">
+                <img class="skin-img locked" src="../../../assets/gif/marble_smile.gif" alt="수정" />
+                <span class="skin-lock">🔒 잠김</span>
+              </div>
+              <div class="skin-name">수정</div>
+              <div class="skin-sub">3단계</div>
+            </div>
+            <div class="skin-cell">
+              <div class="skin-box">
+                <img class="skin-img locked" src="../../../assets/gif/gneiss_smile.gif" alt="운석" />
+                <span class="skin-lock">🔒 잠김</span>
+              </div>
+              <div class="skin-name">운석</div>
+              <div class="skin-sub">4단계</div>
+            </div>
+            <div class="skin-cell">
+              <div class="skin-box">
+                <img class="skin-img locked" src="../../../assets/gif/rockie_love.gif" alt="보석돌" />
+                <span class="skin-lock">🔒 잠김</span>
+              </div>
+              <div class="skin-name">보석돌</div>
+              <div class="skin-sub">5단계</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 답변 히스토리 (스타일만) -->
+        <section class="panel panel-last">
+          <div class="panel-label">답변 히스토리</div>
+          <div class="history">
+            <div class="history-item">
+              <div class="history-head">
+                <span class="history-q">Q. 낯선 소리가 들리면?</span>
+                <span class="history-when">07.02</span>
+              </div>
+              <div class="history-a">→ 가만히 숨죽인다</div>
+            </div>
+            <div class="history-item">
+              <div class="history-head">
+                <span class="history-q">Q. 좋아하는 온도는?</span>
+                <span class="history-when">07.01</span>
+              </div>
+              <div class="history-a">→ 서늘한 그늘</div>
+            </div>
+            <div class="history-item">
+              <div class="history-head">
+                <span class="history-q">Q. 가장 편한 자세는?</span>
+                <span class="history-when">06.29</span>
+              </div>
+              <div class="history-a">→ 웅크리기</div>
+            </div>
+          </div>
+        </section>
       </div>
-      <p id="perm-hint" class="hint">활성 앱 감지(말풍선)에 필요합니다.</p>
+
+      <!-- ############ SYSTEM (스타일만) ############ -->
+      <div id="system-view" class="screen hidden">
+        <div class="sys-head">
+          <div class="sys-title">시스템 모니터</div>
+          <div class="sys-desc">몽돌의 활동량은 컴퓨터 상태에 연결돼요.<br>부하가 높을수록 애완돌이 바쁘게 움직여요.</div>
+        </div>
+
+        <div class="sys-reaction">
+          <img class="sys-pet" src="../../../assets/gif/rockie_smile.gif" alt="애완돌" />
+          <div>
+            <div class="sys-mood">꿈틀꿈틀 · 활동적</div>
+            <div class="sys-mood-desc">적당한 부하. 돌이 살짝 몸을 뒤척여요.</div>
+          </div>
+        </div>
+
+        <div class="sys-rows">
+          <div class="sys-row">
+            <div class="sys-row-head">
+              <span class="sys-glyph green">▤</span>
+              <span class="sys-label">CPU</span>
+              <span class="sys-sub">프로세서</span>
+              <span class="sys-val green">34%</span>
+            </div>
+            <div class="gauge sys-gauge">
+              <div class="gauge-fill green" style="width:34%"></div>
+              <div class="gauge-ticks"></div>
+            </div>
+          </div>
+          <div class="sys-row">
+            <div class="sys-row-head">
+              <span class="sys-glyph green">▦</span>
+              <span class="sys-label">RAM</span>
+              <span class="sys-sub">메모리 12.8/16GB</span>
+              <span class="sys-val green">61%</span>
+            </div>
+            <div class="gauge sys-gauge">
+              <div class="gauge-fill green" style="width:61%"></div>
+              <div class="gauge-ticks"></div>
+            </div>
+          </div>
+          <div class="sys-row">
+            <div class="sys-row-head">
+              <span class="sys-glyph gold">▣</span>
+              <span class="sys-label">저장</span>
+              <span class="sys-sub">SSD 358/512GB</span>
+              <span class="sys-val gold">72%</span>
+            </div>
+            <div class="gauge sys-gauge">
+              <div class="gauge-fill gold" style="width:72%"></div>
+              <div class="gauge-ticks"></div>
+            </div>
+          </div>
+          <div class="sys-row">
+            <div class="sys-row-head">
+              <span class="sys-glyph green">▮</span>
+              <span class="sys-label">배터리</span>
+              <span class="sys-sub">충전 안 함</span>
+              <span class="sys-val green">86%</span>
+            </div>
+            <div class="gauge sys-gauge">
+              <div class="gauge-fill green" style="width:86%"></div>
+              <div class="gauge-ticks"></div>
+            </div>
+          </div>
+          <div class="sys-row">
+            <div class="sys-row-head">
+              <span class="sys-glyph green">≋</span>
+              <span class="sys-label">네트워크</span>
+              <span class="sys-sub">22 Mbps</span>
+              <span class="sys-val green">22%</span>
+            </div>
+            <div class="gauge sys-gauge">
+              <div class="gauge-fill green" style="width:22%"></div>
+              <div class="gauge-ticks"></div>
+            </div>
+          </div>
+        </div>
+        <div class="sys-legend">■ 초록 = 여유 · <span class="gold">■</span> 노랑 = 주의 · <span class="rust">■</span> 빨강 = 높음<br>값은 실시간으로 갱신됩니다.</div>
+      </div>
+
+      <!-- ############ SETTINGS ############ -->
+      <div id="settings-view" class="screen hidden">
+        <!-- 일반 (스타일만) -->
+        <section class="panel">
+          <div class="panel-label">일반</div>
+          <div class="set-list">
+            <div class="set-row">
+              <span class="set-box on">[✓]</span>
+              <div class="set-text">
+                <div class="set-title">로그인 시 자동 실행</div>
+                <div class="set-desc">컴퓨터를 켜면 몽돌이 함께 깨어나요</div>
+              </div>
+            </div>
+            <div class="set-row">
+              <span class="set-box on">[✓]</span>
+              <div class="set-text">
+                <div class="set-title">항상 맨 위</div>
+                <div class="set-desc">다른 창 위에 애완돌을 유지</div>
+              </div>
+            </div>
+            <div class="set-row">
+              <span class="set-box on">[✓]</span>
+              <div class="set-text">
+                <div class="set-title">질문 알림</div>
+                <div class="set-desc">새 질문이 오면 트레이에 배지 표시</div>
+              </div>
+            </div>
+            <div class="set-row">
+              <span class="set-box">[&nbsp;&nbsp;]</span>
+              <div class="set-text">
+                <div class="set-title">효과음</div>
+                <div class="set-desc">상호작용 시 작은 소리 재생</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 권한 (실제 동작) -->
+        <section class="panel">
+          <div class="panel-label">권한</div>
+          <button id="perm-row" class="set-row set-row-btn">
+            <span id="perm-box" class="set-box">[&nbsp;&nbsp;]</span>
+            <div class="set-text">
+              <div class="set-title">화면 기록 권한</div>
+              <div id="perm-hint" class="set-desc">활성 앱 감지(말풍선)에 필요합니다.</div>
+            </div>
+          </button>
+        </section>
+
+        <!-- 화면 위치 (스타일만) -->
+        <section class="panel">
+          <div class="panel-label">화면 위치</div>
+          <div class="grid-4">
+            <button class="chip">좌하단</button>
+            <button class="chip on">우하단</button>
+            <button class="chip">좌상단</button>
+            <button class="chip">우상단</button>
+          </div>
+        </section>
+
+        <!-- 애완돌 크기 (스타일만) -->
+        <section class="panel">
+          <div class="panel-label">애완돌 크기</div>
+          <div class="grid-3">
+            <button class="chip">작게</button>
+            <button class="chip on">보통</button>
+            <button class="chip">크게</button>
+          </div>
+        </section>
+
+        <!-- 초기화 + 정보 (스타일만) -->
+        <section class="panel panel-last">
+          <button class="reset-btn">↻ 처음부터 다시 키우기</button>
+          <div class="app-info">DESK PET v1.0 · 나의 애완돌<br>© 2026 · 작고 단단한 친구</div>
+        </section>
+      </div>
+
     </div>
   </div>
   <script src="tray.js"></script>

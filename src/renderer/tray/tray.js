@@ -1,11 +1,18 @@
-const menuView = document.getElementById("menu-view");
-const petView = document.getElementById("pet-view");
-const petBody = document.getElementById("pet-body");
-const settingsView = document.getElementById("settings-view");
-const permToggle = document.getElementById("perm-toggle");
-const permHint = document.getElementById("perm-hint");
+const backBar = document.getElementById("back-bar");
+const screenTitle = document.getElementById("screen-title");
 
-const DEFAULT_HINT = "활성 앱 감지(말풍선)에 필요합니다.";
+const screens = {
+  menu: document.getElementById("menu-view"),
+  pet: document.getElementById("pet-view"),
+  system: document.getElementById("system-view"),
+  settings: document.getElementById("settings-view"),
+};
+
+const SCREEN_TITLES = {
+  pet: "나의 애완돌",
+  system: "시스템 모니터",
+  settings: "설정",
+};
 
 const STONE_NAMES = {
   granite: "화강암",
@@ -14,113 +21,104 @@ const STONE_NAMES = {
   gneiss: "편마암",
 };
 
-function hideAllViews() {
-  menuView.classList.add("hidden");
-  petView.classList.add("hidden");
-  settingsView.classList.add("hidden");
+// 설정 · 화면 기록 권한
+const permRow = document.getElementById("perm-row");
+const permBox = document.getElementById("perm-box");
+const permHint = document.getElementById("perm-hint");
+const DEFAULT_HINT = "활성 앱 감지(말풍선)에 필요합니다.";
+
+// 메뉴 · "나의 애완돌" 항목 (배지 표시용)
+const statusItem = document.querySelector('.mrow[data-action="status"]');
+
+// 나의 애완돌 화면의 동적 요소
+const heroImg = document.getElementById("hero-img");
+const petStatusLabel = document.getElementById("pet-status-label");
+const petPersonality = document.getElementById("pet-personality");
+const petPersonalityTags = document.getElementById("pet-personality-tags");
+const petProgressLabel = document.getElementById("pet-progress-label");
+const petProgressFill = document.getElementById("pet-progress-fill");
+const petCallout = document.getElementById("pet-callout");
+
+function stoneGif(stoneType) {
+  return `../../../assets/gif/${stoneType || "rockie"}_smile.gif`;
 }
 
-function showMenu() {
-  hideAllViews();
-  menuView.classList.remove("hidden");
+// 메뉴 화면에 딱 맞는 창 높이(px) 계산. 항목 수/높이가 바뀌어도 자동으로 맞춰진다.
+function menuWindowHeight() {
+  return (
+    document.querySelector(".titlebar").offsetHeight +
+    document.querySelector(".menu-head").offsetHeight +
+    document.querySelector(".menu-list").offsetHeight +
+    6 + // #popup 상하 테두리(3px×2)
+    10 // 창 = #popup + 10px (하드 섀도우 여백)
+  );
 }
 
-function showSettings() {
-  hideAllViews();
-  settingsView.classList.remove("hidden");
-  permHint.textContent = DEFAULT_HINT;
-  refreshPermToggle();
+// ---------- 화면 전환 ----------
+function showScreen(name) {
+  for (const [key, node] of Object.entries(screens)) {
+    node.classList.toggle("hidden", key !== name);
+  }
+  if (name === "menu") {
+    backBar.classList.add("hidden");
+  } else {
+    backBar.classList.remove("hidden");
+    screenTitle.textContent = SCREEN_TITLES[name] || "";
+  }
+  // 메뉴는 항목 높이에 맞춰 짧게, 하위 화면은 기존 높이(0 = full)로 창 리사이즈
+  window.trayAPI.resizePopup(name === "menu" ? menuWindowHeight() : 0);
 }
 
-const statusItem = document.querySelector('.item[data-action="status"]');
-
+// ---------- 나의 애완돌 ----------
 async function showPet() {
-  hideAllViews();
-  petView.classList.remove("hidden");
-  window.trayAPI.markQuestionRead(); // 카드를 열었으니 "읽음" 처리
-  statusItem.classList.remove("has-badge");
+  showScreen("pet");
+  // 여기선 진행 상태만 보여줄 뿐 질문에 답하는 게 아니므로 "읽음"으로 처리하지 않는다.
+  // (배지는 캐릭터 옆 카드를 실제로 열었을 때만 해제된다)
   renderPet(await window.trayAPI.getEvolutionState());
 }
 
-function el(tag, cls, text) {
-  const node = document.createElement(tag);
-  if (cls) node.className = cls;
-  if (text != null) node.textContent = text;
-  return node;
-}
-
 function renderPet(state) {
-  petBody.innerHTML = "";
+  heroImg.src = stoneGif(state.stoneType);
 
-  // 이미 돌 종류가 확정됨 → 결과 표시
+  // 진행도
+  const total = state.total || 0;
+  const progress = state.progress || 0;
+  petProgressLabel.textContent = `${progress} / ${total}`;
+  petProgressFill.style.width = total ? `${Math.round((progress / total) * 100)}%` : "0%";
+
+  // 돌 종류가 확정됐으면 결과 + 태그, 아니면 진행 중 안내
   if (state.stoneType) {
-    petBody.appendChild(el("p", "petmsg", `${STONE_NAMES[state.stoneType]}(으)로 진화했어요!`));
-    petBody.appendChild(el("p", "hint", "다음 진화 단계는 준비 중이에요."));
-    return;
+    petStatusLabel.textContent = `${STONE_NAMES[state.stoneType]} · 변성 진행형`;
+    petPersonality.textContent = `${STONE_NAMES[state.stoneType]}(으)로 진화했어요!`;
+    petPersonalityTags.classList.remove("hidden");
+  } else {
+    petStatusLabel.textContent = "조약돌 · 무던함";
+    petPersonality.textContent = "아직 알아가는 중이에요";
+    petPersonalityTags.classList.add("hidden");
   }
 
-  // 아직 판정 중 → 진행도 + 다음 질문 카드
-  petBody.appendChild(el("p", "progress", `질문 ${state.progress} / ${state.total}`));
-
-  const q = state.question;
-  if (!q) {
-    petBody.appendChild(el("p", "hint", "지금은 답할 질문이 없어요."));
-    return;
-  }
-  if (q.kind === "tiebreaker") {
-    petBody.appendChild(el("p", "hint", "마지막으로 하나만 더 골라주세요!"));
-  }
-  petBody.appendChild(el("p", "question", q.text));
-
-  const options = el("div", "options");
-  q.options.forEach((opt) => {
-    const btn = el("button", "option", opt.label);
-    btn.addEventListener("click", () => answerQuestion(q.id, opt.stone));
-    options.appendChild(btn);
-  });
-  petBody.appendChild(options);
-
-  const pass = el("button", "pass", "지금은 패스");
-  pass.addEventListener("click", () => passQuestion(q.id));
-  petBody.appendChild(pass);
+  // 안 읽은 질문이 있으면 콜아웃 노출
+  petCallout.classList.toggle("hidden", !state.hasBadge);
 }
 
-async function answerQuestion(questionId, stone) {
-  const result = await window.trayAPI.answerQuestion({ questionId, stone });
-  renderPet(result.state);
-}
-
-async function passQuestion(questionId) {
-  const result = await window.trayAPI.skipQuestion({ questionId });
-  renderPet(result.state);
-}
-
-function setToggle(granted) {
-  permToggle.classList.toggle("on", granted);
-  permToggle.textContent = granted ? "ON" : "OFF";
+// ---------- 설정 · 화면 기록 권한 ----------
+function setPermBox(granted) {
+  permBox.classList.toggle("on", granted);
+  permBox.textContent = granted ? "[✓]" : "[  ]";
 }
 
 async function refreshPermToggle() {
   const status = await window.trayAPI.getScreenPermission();
-  setToggle(status === "granted");
+  setPermBox(status === "granted");
 }
 
-document.querySelectorAll(".item").forEach((item) => {
-  item.addEventListener("click", () => {
-    const action = item.dataset.action;
-    if (action === "status") {
-      showPet(); // 메인에 보낼 동작은 없고 뷰만 전환한다
-      return;
-    }
-    window.trayAPI.sendAction(action);
-    if (action === "settings") showSettings();
-  });
-});
+async function showSettings() {
+  showScreen("settings");
+  permHint.textContent = DEFAULT_HINT;
+  refreshPermToggle();
+}
 
-document.getElementById("back").addEventListener("click", showMenu);
-document.getElementById("pet-back").addEventListener("click", showMenu);
-
-permToggle.addEventListener("click", async () => {
+permRow.addEventListener("click", async () => {
   const status = await window.trayAPI.getScreenPermission();
 
   if (status === "granted") {
@@ -132,14 +130,39 @@ permToggle.addEventListener("click", async () => {
 
   // 시스템 권한 팝업 유도 (이미 거부된 상태면 macOS가 다시 띄우지 않음)
   const after = await window.trayAPI.requestScreenPermission();
-  setToggle(after === "granted");
+  setPermBox(after === "granted");
   if (after !== "granted") {
     permHint.textContent =
       "권한 요청이 거부된 상태입니다. 시스템 설정 > 화면 기록에서 직접 허용해 주세요.";
   }
 });
 
-// 안 읽은 질문이 있으면 "상태 보기" 항목에 배지를 표시 (evolve.md 6.4 3단계)
+// ---------- 메뉴 항목 클릭 ----------
+document.querySelectorAll(".mrow").forEach((item) => {
+  item.addEventListener("click", () => {
+    const action = item.dataset.action;
+    switch (action) {
+      case "status":
+        showPet(); // 뷰만 전환 (메인에 보낼 동작 없음)
+        break;
+      case "system":
+        showScreen("system"); // 스타일만, 동작은 추후 구현
+        break;
+      case "settings":
+        window.trayAPI.sendAction(action);
+        showSettings();
+        break;
+      case "toggle-pet":
+      case "quit":
+        window.trayAPI.sendAction(action);
+        break;
+    }
+  });
+});
+
+backBar.addEventListener("click", () => showScreen("menu"));
+
+// 안 읽은 질문이 있으면 "나의 애완돌" 항목에 배지를 표시
 async function refreshBadge() {
   try {
     const state = await window.trayAPI.getEvolutionState();
@@ -149,9 +172,9 @@ async function refreshBadge() {
   }
 }
 
-// 팝업이 열릴 때마다 메뉴 뷰로 초기화하고 권한 상태·배지를 갱신
+// 팝업이 열릴 때마다 메뉴로 초기화하고 권한 상태·배지를 갱신
 window.trayAPI.onWillShow(() => {
-  showMenu();
+  showScreen("menu");
   refreshPermToggle();
   refreshBadge();
 });

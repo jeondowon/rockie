@@ -309,10 +309,13 @@ function createTray() {
 }
 
 // ---------- 트레이 팝업 (커스텀 픽셀아트 메뉴) ----------
-const TRAY_POPUP_WIDTH = 228;
-const TRAY_POPUP_HEIGHT = 420; // 질문 카드(본문 + 보기 4개)까지 담기게 여유를 둔다
+const TRAY_POPUP_WIDTH = 360;
+const TRAY_POPUP_HEIGHT = 540; // 하위 화면(나의 애완돌/시스템/설정)용 높이. 본문은 내부 스크롤
 
 let trayPopupHiddenAt = 0; // blur로 닫힌 시각 (트레이 재클릭 토글 판정용)
+// 메뉴 화면 창 높이. 메뉴는 항목 높이에 딱 맞춰 짧게 연다.
+// 렌더러가 실제 측정값을 보고하면 갱신되며, 첫 표시 전 기본값으로 아래 값을 쓴다.
+let lastMenuHeight = 324;
 
 function createTrayPopup() {
   trayPopup = new BrowserWindow({
@@ -374,8 +377,18 @@ function positionTrayPopup() {
   x = Math.max(x, workArea.x + 8);
   const y = Math.round(trayBounds.y + trayBounds.height + 4);
 
-  trayPopup.setPosition(x, y, false);
+  // 팝업은 항상 메뉴 화면으로 열리므로 메뉴 높이로 맞춰 연다 (짧게)
+  trayPopup.setBounds({ x, y, width: TRAY_POPUP_WIDTH, height: lastMenuHeight }, false);
 }
+
+// 화면에 따라 팝업 창 높이 조절. 메뉴는 항목 높이만큼 짧게(측정값), 하위 화면은 기존 높이(height=0)
+ipcMain.on("tray-popup-resize", (_event, height) => {
+  if (!trayPopup || trayPopup.isDestroyed()) return;
+  if (height > 0) lastMenuHeight = height;
+  const h = height > 0 ? height : TRAY_POPUP_HEIGHT;
+  const [x, y] = trayPopup.getPosition(); // 좌상단 고정 → 아래로만 늘고 준다
+  trayPopup.setBounds({ x, y, width: TRAY_POPUP_WIDTH, height: h }, false);
+});
 
 // 팝업 메뉴 항목 클릭 처리
 ipcMain.on("tray-menu-action", (_event, action) => {

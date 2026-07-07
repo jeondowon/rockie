@@ -477,6 +477,20 @@ window.petAPI.onQuestionAvailable(() => {
   showBubble("물어보고 싶은 게 있어요. 저를 눌러주세요!", 6000);
 });
 
+// 앱을 껐다 켠 뒤에도 아직 답하지 않은 예고된 질문이 있으면 다시 클릭으로 열 수 있게 한다.
+// (트레이에서 답하던 경로가 사라졌으므로, 이 복원이 없으면 예고된 질문이 갇힌다)
+async function initPendingQuestion() {
+  try {
+    const state = await window.petAPI.getEvolutionState();
+    if (state.hasBadge && state.question) {
+      hasPendingQuestion = true;
+      showBubble("물어보고 싶은 게 있어요. 저를 눌러주세요!", 6000);
+    }
+  } catch (_err) {
+    // 상태를 못 읽으면 조용히 넘어간다
+  }
+}
+
 function positionCard() {
   // 캐릭터 그림 중심 기준으로 카드를 위쪽에 띄우고 화면 안으로 클램프
   const centerX = posX + CHAR_SIZE / 2;
@@ -575,3 +589,4 @@ placeCharacter();
 requestAnimationFrame(followStep);
 initBatteryWatcher();
 initStone();
+initPendingQuestion();

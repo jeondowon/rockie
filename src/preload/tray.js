@@ -9,8 +9,6 @@ contextBridge.exposeInMainWorld('trayAPI', {
   onWillShow: (callback) => {
     ipcRenderer.on('tray-popup-will-show', () => callback());
   },
+  resizePopup: (height) => ipcRenderer.send('tray-popup-resize', height),
   getEvolutionState: () => ipcRenderer.invoke('evolution:get-state'),
-  answerQuestion: (payload) => ipcRenderer.invoke('evolution:answer', payload),
-  skipQuestion: (payload) => ipcRenderer.invoke('evolution:skip', payload),
-  markQuestionRead: () => ipcRenderer.send('evolution:mark-read'),
 });
