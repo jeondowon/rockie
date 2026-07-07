@@ -11,4 +11,7 @@ contextBridge.exposeInMainWorld('trayAPI', {
   },
   resizePopup: (height) => ipcRenderer.send('tray-popup-resize', height),
   getEvolutionState: () => ipcRenderer.invoke('evolution:get-state'),
+  getSettings: () => ipcRenderer.invoke('settings:get'),
+  setSetting: (key, value) => ipcRenderer.send('settings:set', { key, value }),
+  resetPet: () => ipcRenderer.invoke('settings:reset'),
 });

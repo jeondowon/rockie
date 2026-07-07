@@ -27,4 +27,8 @@ contextBridge.exposeInMainWorld('petAPI', {
     ipcRenderer.on('evolution:question-available', () => callback());
   },
   markQuestionRead: () => ipcRenderer.send('evolution:mark-read'),
+  getSettings: () => ipcRenderer.invoke('settings:get'),
+  onPetSettings: (callback) => {
+    ipcRenderer.on('pet-settings', (_event, data) => callback(data));
+  },
 });

@@ -7,6 +7,8 @@ const {
   nativeImage,
   systemPreferences,
   desktopCapturer,
+  dialog,
+  Notification,
 } = require("electron");
 const path = require("path");
 const fs = require("fs");
@@ -439,12 +441,36 @@ function isBlockingApp() {
   return false;
 }
 
+// 새 질문 예고 시 OS 배너 알림을 띄운다 (설정 '질문 알림'이 켜져 있을 때만).
+// 트레이 배지/예고 말풍선과 별개의, 앱 밖에서도 보이는 알림 경로.
+function showQuestionBanner() {
+  if (!Notification.isSupported()) return;
+  const petName = store.get().pet.petName || "애완돌";
+  const banner = new Notification({
+    title: "물어보고 싶은 게 있어요",
+    body: `${petName}이(가) 새 질문을 준비했어요. 눌러서 답해 주세요!`,
+  });
+  banner.on("click", () => {
+    // 숨겨져 있으면 다시 보여줘 사용자가 펫을 눌러 답할 수 있게 한다 (강제 카드 열기는 안 함)
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.show();
+  });
+  banner.show();
+}
+
+// 설정에서 '질문 알림'을 켠 순간, 실제 배너가 어떻게 보이는지 미리보기로 한 번 띄운다.
+function showBannerPreview() {
+  if (!Notification.isSupported()) return;
+  new Notification({
+    title: "물어보고 싶은 게 있어요",
+    body: "이렇게 표시됩니다",
+  }).show();
+}
+
 function startQuestionGate() {
   questionGateInterval = setInterval(() => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
     const data = store.get();
     if (data.pet.stoneType) return; // 이미 종류 확정됨
-    if (!data.notifications.notificationsEnabled) return;
     if (!evolution.isQuestionDue(data, Date.now())) return; // 시간 조건 미충족
     if (!isDaytime() || isBlockingApp() || !isUserActive()) return; // 큐잉 후 다음 활성 시점 재시도
 
@@ -453,9 +479,10 @@ function startQuestionGate() {
     if (data.questions.pendingQuestionId === q.id) return; // 이미 예고함 → 반복 알림 없음(3단계)
 
     data.questions.pendingQuestionId = q.id; // 예고 기록
-    data.notifications.hasUnreadBadge = true; // 무시하면 트레이 배지로만 남음
+    data.notifications.hasUnreadBadge = true; // 트레이 배지는 항상 표시(기본 동작)
     store.save();
-    mainWindow.webContents.send("evolution:question-available");
+    mainWindow.webContents.send("evolution:question-available"); // 예고 말풍선
+    if (data.notifications.notificationsEnabled) showQuestionBanner(); // 배너는 설정에 따라
   }, GATE_INTERVAL);
 }
 
@@ -488,6 +515,79 @@ ipcMain.on("evolution:mark-read", () => {
     data.notifications.hasUnreadBadge = false;
     store.save();
   }
+});
+
+// ---------- 설정 (트레이 "설정" 화면) ----------
+// 펫 렌더러에 위치/크기 변경을 알린다.
+function sendPetSettings() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  const s = store.get().settings;
+  mainWindow.webContents.send("pet-settings", {
+    placement: s.petPlacement,
+    size: s.petSize,
+  });
+}
+
+// 앱 시작 시 저장된 설정을 실제 OS 상태에 반영한다.
+// (창의 '항상 맨 위'는 설정이 아니라 항상 켜진 기본 동작이라 여기서 다루지 않음)
+function applyStartupSettings() {
+  const s = store.get().settings;
+  app.setLoginItemSettings({ openAtLogin: !!s.autoLaunch });
+}
+
+// 토글/칩 초기 상태 표시용. 질문 알림은 notifications 섹션에 있으므로 합쳐서 반환.
+ipcMain.handle("settings:get", () => {
+  const data = store.get();
+  return { ...data.settings, notifications: data.notifications.notificationsEnabled };
+});
+
+// 설정 변경 → 즉시 부수효과 적용 + 저장.
+ipcMain.on("settings:set", (_event, { key, value }) => {
+  const data = store.get();
+  switch (key) {
+    case "autoLaunch":
+      data.settings.autoLaunch = value;
+      app.setLoginItemSettings({ openAtLogin: value });
+      break;
+    case "notifications":
+      data.notifications.notificationsEnabled = value; // 새 질문 배너 알림 on/off
+      if (value) showBannerPreview(); // 켠 순간 실제 배너 모습을 미리보기로 표시
+      break;
+    case "soundEnabled":
+      data.settings.soundEnabled = value; // 사운드 시스템 도입 전이라 값만 보관
+      break;
+    case "petPlacement":
+      data.settings.petPlacement = value;
+      sendPetSettings();
+      break;
+    case "petSize":
+      data.settings.petSize = value;
+      sendPetSettings();
+      break;
+    default:
+      return; // 모르는 키는 무시 (저장 안 함)
+  }
+  store.save();
+});
+
+// "처음부터 다시 키우기" — 확인 후 전체 상태 리셋 + 펫 렌더러 재초기화.
+ipcMain.handle("settings:reset", async () => {
+  // 부모 창(트레이 팝업)은 포커스를 잃으면 blur 핸들러로 숨겨지므로,
+  // 부모 없이 앱 모달로 띄운다.
+  const { response } = await dialog.showMessageBox({
+    type: "warning",
+    buttons: ["취소", "초기화"],
+    defaultId: 0,
+    cancelId: 0,
+    message: "처음부터 다시 키우기",
+    detail: "모든 진행도·성향·호감도·설정이 지워지고 조약돌로 돌아갑니다. 되돌릴 수 없어요.",
+  });
+  if (response !== 1) return false;
+
+  store.reset();
+  applyStartupSettings(); // 자동 실행/맨 위를 기본값으로 되돌림
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.reload(); // 조약돌로 복원
+  return true;
 });
 
 ipcMain.handle("get-screen-permission", () => {
@@ -566,6 +666,7 @@ app.whenReady().then(() => {
   store.load();
   createWindow();
   createTray();
+  applyStartupSettings();
 });
 
 app.on("window-all-closed", () => {

@@ -694,11 +694,11 @@ body {
 }
 
 .sys-rows {
-  padding: 4px 16px 0;
+  padding: 4px 0 0;
 }
 
 .sys-row {
-  padding: 13px 0;
+  padding: 13px 16px;
   border-bottom: 2px dashed #cbc4b1;
 }
 
@@ -761,13 +761,18 @@ body {
 .set-list {
   display: flex;
   flex-direction: column;
+  /* panel 좌우 padding(16px)을 상쇄해 점선 구분선이 창 끝까지 이어지도록 */
+  margin: 0 -16px;
 }
 
 .set-row {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 2px;
+  padding: 10px 16px;
   border-bottom: 2px dashed #ded7c6;
 }
 
@@ -775,14 +780,9 @@ body {
   border-bottom: none;
 }
 
+/* set-list 밖(패널에 단독)으로 놓인 행(권한)은 직접 창 끝까지 뺀다 */
 .set-row-btn {
-  all: unset;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 10px 2px;
+  margin: 0 -16px;
 }
 
 .set-box {
@@ -839,6 +839,7 @@ body {
 
 .reset-btn {
   all: unset;
+  box-sizing: border-box;
   cursor: pointer;
   display: block;
   width: 100%;

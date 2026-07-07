@@ -116,7 +116,64 @@ async function showSettings() {
   showScreen("settings");
   permHint.textContent = DEFAULT_HINT;
   refreshPermToggle();
+  refreshSettings();
 }
+
+// ---------- 설정 · 일반 토글 / 위치 / 크기 ----------
+const settingToggles = document.querySelectorAll(".set-row[data-setting]");
+const placeChips = document.querySelectorAll(".chip[data-place]");
+const sizeChips = document.querySelectorAll(".chip[data-size]");
+const resetBtn = document.getElementById("reset-btn");
+
+function setToggleBox(btn, on) {
+  const box = btn.querySelector(".set-box");
+  box.classList.toggle("on", on);
+  box.textContent = on ? "[✓]" : "[  ]";
+}
+
+// 저장된 설정값을 읽어 토글/칩의 표시 상태를 맞춘다.
+async function refreshSettings() {
+  let s;
+  try {
+    s = await window.trayAPI.getSettings();
+  } catch (_err) {
+    return;
+  }
+  settingToggles.forEach((btn) => setToggleBox(btn, !!s[btn.dataset.setting]));
+  placeChips.forEach((chip) =>
+    chip.classList.toggle("on", chip.dataset.place === s.petPlacement)
+  );
+  sizeChips.forEach((chip) =>
+    chip.classList.toggle("on", chip.dataset.size === s.petSize)
+  );
+}
+
+settingToggles.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const on = !btn.querySelector(".set-box").classList.contains("on");
+    setToggleBox(btn, on);
+    window.trayAPI.setSetting(btn.dataset.setting, on);
+  });
+});
+
+placeChips.forEach((chip) => {
+  chip.addEventListener("click", () => {
+    placeChips.forEach((c) => c.classList.toggle("on", c === chip));
+    window.trayAPI.setSetting("petPlacement", chip.dataset.place);
+  });
+});
+
+sizeChips.forEach((chip) => {
+  chip.addEventListener("click", () => {
+    sizeChips.forEach((c) => c.classList.toggle("on", c === chip));
+    window.trayAPI.setSetting("petSize", chip.dataset.size);
+  });
+});
+
+resetBtn.addEventListener("click", async () => {
+  const done = await window.trayAPI.resetPet();
+  if (done) refreshSettings(); // 기본값으로 되돌아간 상태를 다시 반영
+});
 
 permRow.addEventListener("click", async () => {
   const status = await window.trayAPI.getScreenPermission();

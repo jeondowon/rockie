@@ -45,6 +45,12 @@ function defaultData() {
     items: { unlockedItems: [], equippedItem: null },
     notifications: { hasUnreadBadge: false, notificationsEnabled: true },
     chat: { recentChatContext: [], chatSummary: null, turnsSinceLastSummary: 0 },
+    settings: {
+      autoLaunch: false,
+      soundEnabled: false,
+      petPlacement: "follow", // "follow" | "bottom-left" | "bottom-right"
+      petSize: "medium", // "small" | "medium" | "large"
+    },
   };
 }
 
@@ -53,6 +59,11 @@ let data = null;
 function load() {
   try {
     data = JSON.parse(fs.readFileSync(FILE, "utf-8"));
+    // 예전 파일에 없던 최상위 섹션(예: settings)은 기본값으로 보강한다.
+    const defaults = defaultData();
+    for (const key of Object.keys(defaults)) {
+      if (data[key] === undefined) data[key] = defaults[key];
+    }
   } catch (_err) {
     // 파일이 없거나 깨졌으면 기본값으로 새로 만든다
     data = defaultData();
@@ -69,4 +80,11 @@ function save() {
   fs.writeFileSync(FILE, JSON.stringify(data, null, 2));
 }
 
-module.exports = { load, get, save, FILE };
+// "처음부터 다시 키우기" — 전체 상태를 기본값으로 되돌리고 저장한다.
+function reset() {
+  data = defaultData();
+  save();
+  return data;
+}
+
+module.exports = { load, get, save, reset, FILE };

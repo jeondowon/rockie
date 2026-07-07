@@ -42,7 +42,10 @@ const MAIN_QUESTIONS = [
     options: [
       { stone: "granite", label: "이유를 이해하면 바로 따른다" },
       { stone: "basalt", label: "일단 해보고 나서 판단한다" },
-      { stone: "marble", label: "이 변화가 사람들에게 어떤 영향을 줄지 생각한다" },
+      {
+        stone: "marble",
+        label: "이 변화가 사람들에게 어떤 영향을 줄지 생각한다",
+      },
       { stone: "gneiss", label: "이 변화가 논리적으로 타당한지 검토한다" },
     ],
   },
@@ -218,7 +221,8 @@ function questionInterval(answeredCount) {
 function scheduleNext(data, nowIso, immediate) {
   const ms = immediate
     ? Date.parse(nowIso)
-    : Date.parse(nowIso) + questionInterval(data.questions.mainQuestionProgress);
+    : Date.parse(nowIso) +
+      questionInterval(data.questions.mainQuestionProgress);
   data.questions.nextQuestionDueAt = new Date(ms).toISOString();
 }
 
@@ -239,7 +243,9 @@ function isQuestionDue(data, nowMs) {
 
 // 두 돌의 타이브레이커 쌍 키 (STONE_ORDER 순서로 정규화)
 function pairKey(a, b) {
-  return [a, b].sort((x, y) => STONE_ORDER.indexOf(x) - STONE_ORDER.indexOf(y)).join("_");
+  return [a, b]
+    .sort((x, y) => STONE_ORDER.indexOf(x) - STONE_ORDER.indexOf(y))
+    .join("_");
 }
 
 // 현재 최고점과 동점인 돌들 (STONE_ORDER 순서)
@@ -329,7 +335,9 @@ function answer(data, { questionId, stone }) {
   incrementScore(data, stone);
   data.questions.answeredQuestions.push({
     questionId,
-    category: isTb ? "타이브레이커" : MAIN_QUESTIONS[data.questions.mainQuestionProgress]?.category ?? null,
+    category: isTb
+      ? "타이브레이커"
+      : (MAIN_QUESTIONS[data.questions.mainQuestionProgress]?.category ?? null),
     selectedOption: stone,
     answeredAt: now,
   });
