@@ -77,31 +77,50 @@ function createWindow() {
 }
 
 // 렌더러 관련 파일을 감시해서 저장 시 창을 자동 새로고침 (개발 전용)
+// 파일 그룹별로 대상 창만 새로고침해 다른 창의 상태가 초기화되지 않게 한다.
 function startDevReload() {
-  const watchFiles = [
-    "../renderer/pet/index.html",
-    "../renderer/pet/pet.js",
-    "../renderer/pet/style.css",
+  const watchGroups = [
+    {
+      label: "pet",
+      getWindow: () => mainWindow,
+      files: [
+        "../renderer/pet/index.html",
+        "../renderer/pet/pet.js",
+        "../renderer/pet/style.css",
+      ],
+    },
+    {
+      label: "tray",
+      getWindow: () => trayPopup,
+      files: [
+        "../renderer/tray/tray.html",
+        "../renderer/tray/tray.js",
+        "../renderer/tray/tray.css",
+      ],
+    },
   ];
-  let reloadTimer = null;
 
-  const triggerReload = () => {
-    if (!mainWindow || mainWindow.isDestroyed()) return;
-    // 여러 이벤트가 몰려 들어오므로 디바운스
-    clearTimeout(reloadTimer);
-    reloadTimer = setTimeout(() => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.reloadIgnoringCache();
-        console.log("[dev-reload] 렌더러 새로고침됨");
+  for (const group of watchGroups) {
+    let reloadTimer = null;
+
+    const triggerReload = () => {
+      // 여러 이벤트가 몰려 들어오므로 디바운스
+      clearTimeout(reloadTimer);
+      reloadTimer = setTimeout(() => {
+        const win = group.getWindow();
+        if (win && !win.isDestroyed()) {
+          win.webContents.reloadIgnoringCache();
+          console.log(`[dev-reload] ${group.label} 렌더러 새로고침됨`);
+        }
+      }, 100);
+    };
+
+    for (const file of group.files) {
+      try {
+        fs.watch(path.join(__dirname, file), triggerReload);
+      } catch (err) {
+        // 파일이 없으면 무시
       }
-    }, 100);
-  };
-
-  for (const file of watchFiles) {
-    try {
-      fs.watch(path.join(__dirname, file), triggerReload);
-    } catch (err) {
-      // 파일이 없으면 무시
     }
   }
 }
@@ -113,7 +132,11 @@ function startCursorTracker() {
     if (!mainWindow || mainWindow.isDestroyed()) return;
     const point = screen.getCursorScreenPoint();
     // 커서가 실제로 움직였으면 활성 시각을 갱신 (질문 알림 게이트에서 사용)
-    if (!lastCursorPoint || point.x !== lastCursorPoint.x || point.y !== lastCursorPoint.y) {
+    if (
+      !lastCursorPoint ||
+      point.x !== lastCursorPoint.x ||
+      point.y !== lastCursorPoint.y
+    ) {
       lastCursorMoveAt = Date.now();
       lastCursorPoint = point;
     }
@@ -151,9 +174,13 @@ function startDockTracker() {
 
   // Dock 설정은 자주 바뀌지 않으므로 10초에 한 번만 갱신
   const readDockPrefs = () => {
-    execFile("defaults", ["read", "com.apple.dock", "orientation"], (err, out) => {
-      orientation = err ? "bottom" : out.trim();
-    });
+    execFile(
+      "defaults",
+      ["read", "com.apple.dock", "orientation"],
+      (err, out) => {
+        orientation = err ? "bottom" : out.trim();
+      },
+    );
     execFile("defaults", ["read", "com.apple.dock", "autohide"], (err, out) => {
       autohide = !err && out.trim() === "1";
     });
@@ -225,9 +252,10 @@ function startDockTracker() {
       // 아래쪽 끝이 화면 안에 들어와 있어야 "보이는 상태"
       const visible = dockY + dockH <= bounds.y + bounds.height + 2;
 
-      const winBounds = mainWindow && !mainWindow.isDestroyed()
-        ? mainWindow.getBounds()
-        : { x: 0, y: 0 };
+      const winBounds =
+        mainWindow && !mainWindow.isDestroyed()
+          ? mainWindow.getBounds()
+          : { x: 0, y: 0 };
       sendDockState({
         visible,
         x: dockX - winBounds.x, // 창(=렌더러) 기준 좌표로 변환
@@ -247,7 +275,8 @@ ipcMain.on("set-ignore-mouse-events", (_event, ignore, options) => {
 // 캐릭터 창 표시/숨김 토글
 function togglePet() {
   if (!mainWindow || mainWindow.isDestroyed()) return;
-  mainWindow.isVisible() ? mainWindow.hide() : mainWindow.show();
+  // showInactive: 펫을 띄울 때 포커스를 뺏지 않아야 트레이 팝업이 blur로 닫히지 않는다
+  mainWindow.isVisible() ? mainWindow.hide() : mainWindow.showInactive();
 }
 
 // 이미지 주위의 투명 여백을 잘라내 실제 그림이 프레임에 꽉 차게 만든다.
@@ -288,7 +317,9 @@ const TRAY_ICON_PT = 15;
 // Retina(2x) 대응: 표시 크기는 TRAY_ICON_PT(pt)로 유지하되 1x/2x를 함께 담아 고밀도에서 안 흐리게.
 // 맥: 템플릿 이미지는 다크/라이트 메뉴바에 맞춰 자동 반전(단색). 컬러 배지 아이콘은 비-템플릿이어야 한다.
 function makeTrayIcon(fileName, isTemplate) {
-  let src = nativeImage.createFromPath(path.join(__dirname, "../../assets", fileName));
+  let src = nativeImage.createFromPath(
+    path.join(__dirname, "../../assets", fileName),
+  );
   src = trimTransparent(src); // 투명 여백 제거 → 그림이 꽉 참
   const icon = nativeImage.createEmpty();
   icon.addRepresentation({
@@ -312,7 +343,9 @@ function refreshTrayIcon() {
     tray.setImage(makeTrayIcon("template.png", true));
     return;
   }
-  const badge = nativeTheme.shouldUseDarkColors ? "new_dark.png" : "new_light.png";
+  const badge = nativeTheme.shouldUseDarkColors
+    ? "new_dark.png"
+    : "new_light.png";
   tray.setImage(makeTrayIcon(badge, false));
 }
 
@@ -391,13 +424,18 @@ function positionTrayPopup() {
     y: trayBounds.y,
   });
 
-  let x = Math.round(trayBounds.x + trayBounds.width / 2 - TRAY_POPUP_WIDTH / 2);
+  let x = Math.round(
+    trayBounds.x + trayBounds.width / 2 - TRAY_POPUP_WIDTH / 2,
+  );
   x = Math.min(x, workArea.x + workArea.width - TRAY_POPUP_WIDTH - 8);
   x = Math.max(x, workArea.x + 8);
   const y = Math.round(trayBounds.y + trayBounds.height + 4);
 
   // 팝업은 항상 메뉴 화면으로 열리므로 메뉴 높이로 맞춰 연다 (짧게)
-  trayPopup.setBounds({ x, y, width: TRAY_POPUP_WIDTH, height: lastMenuHeight }, false);
+  trayPopup.setBounds(
+    { x, y, width: TRAY_POPUP_WIDTH, height: lastMenuHeight },
+    false,
+  );
 }
 
 // 화면에 따라 팝업 창 높이 조절. 메뉴는 항목 높이만큼 짧게(측정값), 하위 화면은 기존 높이(height=0)
@@ -416,8 +454,7 @@ ipcMain.on("tray-menu-action", (_event, action) => {
       // "나의 애완돌" 뷰 전환은 렌더러(tray.js)에서 처리하므로 여기선 안 닫는다
       break;
     case "toggle-pet":
-      togglePet();
-      if (trayPopup && !trayPopup.isDestroyed()) trayPopup.hide();
+      togglePet(); // 팝업은 닫지 않고 열어 둔다 (연속 토글 가능)
       break;
     case "answer-question":
       // 트레이 "질문에 답하기" → 펫 창을 띄우고 기존 질문 카드를 애완돌 옆에 연다
@@ -461,7 +498,8 @@ function isBlockingApp() {
   if (b) {
     const { bounds } = screen.getPrimaryDisplay();
     // 활성 창이 화면을 거의 꽉 채우면 전체화면으로 간주
-    if (b.width >= bounds.width - 4 && b.height >= bounds.height - 4) return true;
+    if (b.width >= bounds.width - 4 && b.height >= bounds.height - 4)
+      return true;
   }
   return false;
 }
@@ -536,6 +574,41 @@ ipcMain.handle("evolution:skip", (_event, payload) => {
   }
   return result;
 });
+// 호감도 지급(상한 100). 실제로 오른 만큼(상한 반영)을 반환한다.
+function awardAffinity(data, amount) {
+  const before = data.affinity.affinityPoints;
+  data.affinity.affinityPoints = Math.min(100, before + amount);
+  return data.affinity.affinityPoints - before;
+}
+
+// 이름 저장 (사용자/애완돌). 빈 값이면 null, 최초 지정 시각을 한 번만 기록하고
+// 그때 호감도 +5를 지급한다(최초 1회).
+ipcMain.handle("evolution:set-name", (_event, { target, value }) => {
+  const data = store.get();
+  const name = (value || "").trim() || null;
+  if (target === "user") {
+    if (name && !data.user.userNameSetAt) {
+      data.user.userNameSetAt = new Date().toISOString();
+      awardAffinity(data, 5);
+    }
+    data.user.userName = name;
+  } else if (target === "pet") {
+    if (name && !data.pet.petNameSetAt) {
+      data.pet.petNameSetAt = new Date().toISOString();
+      awardAffinity(data, 5);
+    }
+    data.pet.petName = name;
+  } else {
+    return null;
+  }
+  store.save();
+  return {
+    userName: data.user.userName,
+    petName: data.pet.petName,
+    affinityPoints: data.affinity.affinityPoints,
+  };
+});
+
 // 질문 카드를 열어 "읽음" 처리 → 트레이 배지 해제
 ipcMain.on("evolution:mark-read", () => {
   const data = store.get();
@@ -566,7 +639,10 @@ function applyStartupSettings() {
 // 토글/칩 초기 상태 표시용. 질문 알림은 notifications 섹션에 있으므로 합쳐서 반환.
 ipcMain.handle("settings:get", () => {
   const data = store.get();
-  return { ...data.settings, notifications: data.notifications.notificationsEnabled };
+  return {
+    ...data.settings,
+    notifications: data.notifications.notificationsEnabled,
+  };
 });
 
 // 설정 변경 → 즉시 부수효과 적용 + 저장.
@@ -608,7 +684,8 @@ ipcMain.handle("settings:reset", async () => {
     defaultId: 0,
     cancelId: 0,
     message: "처음부터 다시 키우기",
-    detail: "모든 진행도·성향·호감도·설정이 지워지고 조약돌로 돌아갑니다. 되돌릴 수 없어요.",
+    detail:
+      "모든 진행도·성향·호감도·설정이 지워지고 조약돌로 돌아갑니다. 되돌릴 수 없어요.",
   });
   if (response !== 1) return false;
 
@@ -648,7 +725,7 @@ function checkScreenRecordingPermission() {
   console.warn(
     `[active-window] 화면 기록 권한 없음(상태: ${status}). ` +
       "시스템 설정 > 개인정보 보호 및 보안 > 화면 기록에서 이 앱을 허용해야 " +
-      "활성 앱 감지(유튜브 등 말풍선)가 동작합니다."
+      "활성 앱 감지(유튜브 등 말풍선)가 동작합니다.",
   );
   mainWindow.webContents.once("did-finish-load", () => {
     mainWindow.webContents.send("screen-permission-missing");

@@ -139,7 +139,8 @@ function followStep() {
         targetX = -SPRITE_MARGIN + FIXED_EDGE_GAP;
         setFacing("right");
       } else {
-        targetX = window.innerWidth - CHAR_SIZE + SPRITE_MARGIN - FIXED_EDGE_GAP;
+        targetX =
+          window.innerWidth - CHAR_SIZE + SPRITE_MARGIN - FIXED_EDGE_GAP;
         setFacing("left");
       }
     }
@@ -211,7 +212,8 @@ function positionBubble() {
   // (고정 코너에서 overlayLeft의 가장자리 앵커를 쓰면 말풍선이 펫 반대쪽으로 쏠려 멀어 보임)
   const w = bubble.offsetWidth;
   const left = posX + CHAR_SIZE / 2 - w / 2; // 펫 그림 중심 정렬
-  bubble.style.left = Math.max(4, Math.min(window.innerWidth - w - 4, left)) + "px";
+  bubble.style.left =
+    Math.max(4, Math.min(window.innerWidth - w - 4, left)) + "px";
   // 세로는 박스 상단(posY)이 아니라 펫 '머리 상단'(posY + SPRITE_MARGIN) 기준으로 잡아
   // 크기가 커져 투명 여백이 늘어도 말풍선~펫 간격이 일정하게 유지되도록 한다.
   // (offsetHeight + 꼬리 5px + 여유 6px 만큼 위로 = 꼬리 끝이 머리 위 약 6px)
@@ -283,12 +285,20 @@ const WINDOW_RULES = [
     id: "ide",
     pattern:
       /\bcode\b|vscode|intellij|webstorm|pycharm|android studio|xcode|sublime|cursor/,
-    messages: ["집중모드 ON!", "버그는 도망 못 가요.", "오늘도 멋진 코드 기대할게요!"],
+    messages: [
+      "집중모드 ON!",
+      "버그는 도망 못 가요.",
+      "오늘도 멋진 코드 기대할게요!",
+    ],
   },
   {
     id: "terminal",
     pattern: /terminal|iterm|powershell|cmd\.exe/,
-    messages: ["명령어 조심히 치세요..", "rm -rf는 안돼요!", "명령어, 하나도 안 틀리고 잘 치고 계세요."],
+    messages: [
+      "명령어 조심히 치세요..",
+      "rm -rf는 안돼요!",
+      "명령어, 하나도 안 틀리고 잘 치고 계세요.",
+    ],
   },
 
   // --- 엔터테인먼트/휴식 ---
@@ -304,7 +314,8 @@ const WINDOW_RULES = [
   },
   {
     id: "ott",
-    pattern: /netflix|넷플릭스|watcha|왓챠|wavve|웨이브|disney\+|디즈니|tving|티빙/,
+    pattern:
+      /netflix|넷플릭스|watcha|왓챠|wavve|웨이브|disney\+|디즈니|tving|티빙/,
     messages: ["팝콘 챙기셨나요?", "편하게 보세요, 저는 조용히 있을게요."],
   },
   {
@@ -319,8 +330,14 @@ const WINDOW_RULES = [
     pattern: /instagram|인스타그램|twitter|트위터|x\.com/,
     stages: [
       { after: 0, messages: ["잠깐 쉬시는 중?"] },
-      { after: 5 * 60 * 1000, messages: ["슬슬... 하던 일이 부르고 있지 않나요?"] },
-      { after: 15 * 60 * 1000, messages: ["이제 진짜 그만!! 할 일 하셔야죠!!"] },
+      {
+        after: 5 * 60 * 1000,
+        messages: ["슬슬... 하던 일이 부르고 있지 않나요?"],
+      },
+      {
+        after: 15 * 60 * 1000,
+        messages: ["이제 진짜 그만!! 할 일 하셔야죠!!"],
+      },
     ],
   },
   {
@@ -418,7 +435,7 @@ window.petAPI.onActiveWindowInfo(({ appName, title }) => {
 window.petAPI.onScreenPermissionMissing(() => {
   showBubble(
     "어떤 앱을 보고 계신지 알 수 없어요. 메뉴바 펫 아이콘 → '화면 기록 권한 설정 열기'에서 허용해주세요!",
-    8000
+    8000,
   );
 });
 
@@ -429,11 +446,31 @@ window.petAPI.onScreenPermissionMissing(() => {
 // 예) 22% → 30 단계, 8% → 10 단계, 1% → 1 단계
 const BATTERY_TIERS = [
   { level: 1, sprite: "sad", message: "이제 한계예요, 충전해주세요ㅠㅠ" },
-  { level: 5, sprite: "sad", message: "저 곧 쓰러질 것 같아요... 충전 서둘러주세요!!" },
-  { level: 10, sprite: "sleepy", message: "이제 정말 졸려요.. 얼마 못 버틸 것 같아요." },
-  { level: 15, sprite: "sleepy", message: "눈이 슬슬 감겨요... 충전이 필요해요." },
-  { level: 20, sprite: "sleepy", message: "점점 힘이 빠져요... 충전기 챙겨주시면 안 될까요?" },
-  { level: 30, sprite: "sleepy", message: "저..슬슬 피곤한데, 충전 부탁드려요..." },
+  {
+    level: 5,
+    sprite: "sad",
+    message: "저 곧 쓰러질 것 같아요... 충전 서둘러주세요!!",
+  },
+  {
+    level: 10,
+    sprite: "sleepy",
+    message: "이제 정말 졸려요.. 얼마 못 버틸 것 같아요.",
+  },
+  {
+    level: 15,
+    sprite: "sleepy",
+    message: "눈이 슬슬 감겨요... 충전이 필요해요.",
+  },
+  {
+    level: 20,
+    sprite: "sleepy",
+    message: "점점 힘이 빠져요... 충전기 챙겨주시면 안 될까요?",
+  },
+  {
+    level: 30,
+    sprite: "sleepy",
+    message: "저..슬슬 피곤한데, 충전 부탁드려요...",
+  },
 ];
 
 let tiredSprite = null; // 지친 상태 표정 이름("sad"/"sleepy"). null이면 평소 걷기 gif (applySprite에서 참조)
@@ -598,9 +635,13 @@ function renderCard(state) {
   const q = state.question;
 
   if (q.kind === "tiebreaker") {
-    qcard.appendChild(cardEl("p", "q-hint", "마지막으로 하나만 더 골라주세요!"));
+    qcard.appendChild(
+      cardEl("p", "q-hint", "마지막으로 하나만 더 골라주세요!"),
+    );
   } else {
-    qcard.appendChild(cardEl("p", "q-hint", `질문 ${state.progress} / ${state.total}`));
+    qcard.appendChild(
+      cardEl("p", "q-hint", `질문 ${state.progress} / ${state.total}`),
+    );
   }
   qcard.appendChild(cardEl("p", "q-text", q.text));
 

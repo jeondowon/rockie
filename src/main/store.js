@@ -44,7 +44,11 @@ function defaultData() {
     },
     items: { unlockedItems: [], equippedItem: null },
     notifications: { hasUnreadBadge: false, notificationsEnabled: true },
-    chat: { recentChatContext: [], chatSummary: null, turnsSinceLastSummary: 0 },
+    chat: {
+      recentChatContext: [],
+      chatSummary: null,
+      turnsSinceLastSummary: 0,
+    },
     settings: {
       autoLaunch: false,
       soundEnabled: false,

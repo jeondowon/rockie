@@ -38,6 +38,18 @@ const petPersonalityTags = document.getElementById("pet-personality-tags");
 const petProgressLabel = document.getElementById("pet-progress-label");
 const petProgressFill = document.getElementById("pet-progress-fill");
 const petCallout = document.getElementById("pet-callout");
+const petEvoHint = document.getElementById("pet-evo-hint");
+const petHistory = document.getElementById("pet-history");
+const petNameTitle = document.getElementById("pet-name");
+const userNameInput = document.getElementById("user-name-input");
+const petNameInput = document.getElementById("pet-name-input");
+const userNameValue = document.getElementById("user-name-value");
+const petNameValue = document.getElementById("pet-name-value");
+const nameEditBtn = document.getElementById("name-edit-btn");
+const affValue = document.getElementById("aff-value");
+const affFill = document.getElementById("aff-fill");
+const affHearts = document.getElementById("aff-hearts");
+let editingName = false;
 
 function stoneGif(stoneType) {
   return `../../../assets/gif/${stoneType || "rockie"}_smile.gif`;
@@ -80,26 +92,149 @@ async function showPet() {
 function renderPet(state) {
   heroImg.src = stoneGif(state.stoneType);
 
+  // 이름 (표시/입력/타이틀바) — 화면을 다시 그릴 땐 편집 모드를 닫는다
+  applyNames(state.userName, state.petName);
+  exitNameEdit();
+
   // 진행도
   const total = state.total || 0;
   const progress = state.progress || 0;
   petProgressLabel.textContent = `${progress} / ${total}`;
-  petProgressFill.style.width = total ? `${Math.round((progress / total) * 100)}%` : "0%";
+  petProgressFill.style.width = total
+    ? `${Math.round((progress / total) * 100)}%`
+    : "0%";
 
-  // 돌 종류가 확정됐으면 결과 + 태그, 아니면 진행 중 안내
+  // 돌 종류가 확정됐으면 성향 요약 + 태그, 아니면 진행 중 안내
   if (state.stoneType) {
     petStatusLabel.textContent = `${STONE_NAMES[state.stoneType]} · 변성 진행형`;
-    petPersonality.textContent = `${STONE_NAMES[state.stoneType]}(으)로 진화했어요!`;
+    petPersonality.textContent =
+      state.blurb || `${STONE_NAMES[state.stoneType]}(으)로 진화했어요!`;
+    renderTags(state.tags || []);
     petPersonalityTags.classList.remove("hidden");
+    petEvoHint.textContent =
+      "🜨 이제 천천히 변성해가는 중이에요. 다음 단계까지 시간과 교감이 필요해요.";
   } else {
     petStatusLabel.textContent = "조약돌 · 무던함";
-    petPersonality.textContent = "아직 알아가는 중이에요";
+    petPersonality.textContent = `아직 알아가는 중이에요 (${progress}/${total})`;
     petPersonalityTags.classList.add("hidden");
+    petEvoHint.textContent = "🜨 질문에 답할수록 어떤 돌이 될지 뚜렷해져요.";
   }
+
+  renderAffinity(state.affinityPoints);
+
+  renderHistory(state.history || []);
 
   // 지금 답할 수 있는(노출됐거나 패스한) 질문이 있으면 "질문에 답하기" 콜아웃 노출
   petCallout.classList.toggle("hidden", !state.awaitingAnswer);
 }
+
+// 성향 태그 칩을 다시 그린다.
+function renderTags(tags) {
+  petPersonalityTags.replaceChildren(
+    ...tags.map((t) => {
+      const el = document.createElement("span");
+      el.className = "tag";
+      el.textContent = t;
+      return el;
+    }),
+  );
+}
+
+// ISO 시각 → "MM.DD"
+function formatWhen(iso) {
+  const d = new Date(iso);
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${mm}.${dd}`;
+}
+
+// 답변 히스토리를 실제 기록으로 그린다 (없으면 안내 문구).
+function renderHistory(list) {
+  if (!list.length) {
+    const empty = document.createElement("div");
+    empty.className = "history-empty";
+    empty.textContent = "아직 답한 질문이 없어요.";
+    petHistory.replaceChildren(empty);
+    return;
+  }
+  petHistory.replaceChildren(
+    ...list.map((h) => {
+      const item = document.createElement("div");
+      item.className = "history-item";
+
+      const head = document.createElement("div");
+      head.className = "history-head";
+      const q = document.createElement("span");
+      q.className = "history-q";
+      q.textContent = `Q. ${h.text}`;
+      const when = document.createElement("span");
+      when.className = "history-when";
+      when.textContent = formatWhen(h.answeredAt);
+      head.append(q, when);
+
+      const a = document.createElement("div");
+      a.className = "history-a";
+      a.textContent = `→ ${h.label}`;
+
+      item.append(head, a);
+      return item;
+    }),
+  );
+}
+
+// 이름 값을 표시 스팬·입력창·타이틀바에 반영 (미지정 시 기본값 노출)
+function applyNames(userName, petName) {
+  userNameValue.textContent = userName || "—";
+  petNameValue.textContent = petName || "애완돌";
+  userNameInput.value = userName || "";
+  petNameInput.value = petName || "";
+  petNameTitle.textContent = petName || "애완돌";
+}
+
+// 편집 모드 진입: 값 숨기고 입력창 노출, 버튼을 "저장"으로
+function enterNameEdit() {
+  editingName = true;
+  userNameValue.classList.add("hidden");
+  petNameValue.classList.add("hidden");
+  userNameInput.classList.remove("hidden");
+  petNameInput.classList.remove("hidden");
+  nameEditBtn.textContent = "저장";
+  userNameInput.focus();
+}
+
+// 표시 모드로 복귀
+function exitNameEdit() {
+  editingName = false;
+  userNameValue.classList.remove("hidden");
+  petNameValue.classList.remove("hidden");
+  userNameInput.classList.add("hidden");
+  petNameInput.classList.add("hidden");
+  nameEditBtn.textContent = "✎ 이름 수정";
+}
+
+// 호감도 게이지·수치·하트를 실제 포인트(0~100)로 반영
+function renderAffinity(points) {
+  const p = Math.max(0, Math.min(100, points || 0));
+  affValue.textContent = String(p);
+  affFill.style.width = `${p}%`;
+  const filled = Math.round(p / 20); // 하트 5칸 = 100점
+  affHearts
+    .querySelectorAll(".heart")
+    .forEach((h, i) => h.classList.toggle("on", i < filled));
+}
+
+// "이름 수정" ↔ "저장" 토글. 저장 시에만 store에 반영한다.
+nameEditBtn.addEventListener("click", async () => {
+  if (!editingName) {
+    enterNameEdit();
+    return;
+  }
+  await window.trayAPI.setName("user", userNameInput.value);
+  const result = await window.trayAPI.setName("pet", petNameInput.value);
+  applyNames(result.userName, result.petName);
+  renderAffinity(result.affinityPoints); // 최초 지정 보상이 게이지에 바로 반영
+  exitNameEdit();
+});
 
 // "질문에 답하기" → 펫 창의 질문 카드를 연다 (팝업은 메인에서 닫음)
 petCallout.addEventListener("click", () => {
@@ -146,10 +281,10 @@ async function refreshSettings() {
   }
   settingToggles.forEach((btn) => setToggleBox(btn, !!s[btn.dataset.setting]));
   placeChips.forEach((chip) =>
-    chip.classList.toggle("on", chip.dataset.place === s.petPlacement)
+    chip.classList.toggle("on", chip.dataset.place === s.petPlacement),
   );
   sizeChips.forEach((chip) =>
-    chip.classList.toggle("on", chip.dataset.size === s.petSize)
+    chip.classList.toggle("on", chip.dataset.size === s.petSize),
   );
 }
 
@@ -229,6 +364,7 @@ async function refreshBadge() {
   try {
     const state = await window.trayAPI.getEvolutionState();
     statusItem.classList.toggle("has-badge", !!state.awaitingAnswer);
+    petNameTitle.textContent = state.petName || "애완돌"; // 메뉴 화면 타이틀바에도 반영
   } catch (_err) {
     // 상태를 못 읽으면 배지 없이 둔다
   }

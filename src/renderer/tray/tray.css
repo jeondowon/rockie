@@ -19,6 +19,7 @@ body {
   overflow: hidden;
   cursor: default;
   -webkit-user-select: none;
+  user-select: none;
 }
 
 .hidden {
@@ -287,7 +288,11 @@ body {
 .gauge-ticks {
   position: absolute;
   inset: 0;
-  background: repeating-linear-gradient(90deg, transparent 0 12px, #f2ede1 12px 14px);
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0 12px,
+    #f2ede1 12px 14px
+  );
 }
 
 /* ---------- PET: 히어로 ---------- */
@@ -306,8 +311,16 @@ body {
   opacity: 0.5;
   pointer-events: none;
   background-image:
-    repeating-linear-gradient(90deg, transparent 0 13px, rgba(0, 0, 0, 0.05) 13px 14px),
-    repeating-linear-gradient(0deg, transparent 0 13px, rgba(0, 0, 0, 0.05) 13px 14px);
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 13px,
+      rgba(0, 0, 0, 0.05) 13px 14px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 13px,
+      rgba(0, 0, 0, 0.05) 13px 14px
+    );
 }
 
 .hero-stage {
@@ -442,6 +455,33 @@ body {
   color: #1b1b16;
 }
 
+.name-value {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: #1b1b16;
+}
+
+.name-edit-btn {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  display: block;
+  width: 100%;
+  text-align: center;
+  padding: 9px;
+  margin-top: 12px;
+  border: 2px solid #1b1b16;
+  background: #faf7ef;
+  color: #1b1b16;
+  font-size: 11px;
+}
+
+.name-edit-btn:hover {
+  background: #1b1b16;
+  color: #f2ede1;
+}
+
 /* ---------- PET: 성향 요약 ---------- */
 .personality-text {
   font-size: 13px;
@@ -474,7 +514,16 @@ body {
   height: 14px;
   display: block;
   background: #514c3e;
-  clip-path: polygon(50% 100%, 10% 55%, 10% 25%, 32% 12%, 50% 30%, 68% 12%, 90% 25%, 90% 55%);
+  clip-path: polygon(
+    50% 100%,
+    10% 55%,
+    10% 25%,
+    32% 12%,
+    50% 30%,
+    68% 12%,
+    90% 25%,
+    90% 55%
+  );
 }
 
 .heart.on {
@@ -648,6 +697,13 @@ body {
 .history-a {
   font-size: 10px;
   color: #4f7a3f;
+}
+
+.history-empty {
+  padding: 14px 11px;
+  font-size: 10px;
+  color: #6a6452;
+  text-align: center;
 }
 
 /* ---------- SYSTEM ---------- */

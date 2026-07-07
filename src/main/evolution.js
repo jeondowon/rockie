@@ -204,6 +204,48 @@ const TIEBREAKERS = [
 
 const TB_BY_ID = Object.fromEntries(TIEBREAKERS.map((t) => [t.id, t]));
 
+// 답변 히스토리 복원용: id → 질문(본 질문 + 타이브레이커).
+const QUESTION_BY_ID = Object.fromEntries(
+  [...MAIN_QUESTIONS, ...TIEBREAKERS].map((q) => [q.id, q]),
+);
+
+// 돌 종류별 성향 요약 문구·태그 (evolve.md 2장 성향 특성).
+const STONE_TRAIT = {
+  granite: {
+    blurb: "원칙과 안정을 중시하는 단단한 성향이에요",
+    tags: ["원칙주의", "안정 지향", "책임감"],
+  },
+  basalt: {
+    blurb: "즉흥적이고 행동이 앞서는 성향이에요",
+    tags: ["즉흥적", "행동 지향", "현재 중심"],
+  },
+  marble: {
+    blurb: "공감과 감성을 중시하는 따뜻한 성향이에요",
+    tags: ["이상주의", "공감", "감성 중심"],
+  },
+  gneiss: {
+    blurb: "논리와 구조로 파고드는 분석형이에요",
+    tags: ["논리", "전략", "구조적 사고"],
+  },
+};
+
+// 저장된 답변 기록을 트레이 히스토리용으로 복원 (최근 답변이 먼저).
+function buildHistory(data) {
+  return data.questions.answeredQuestions
+    .map((a) => {
+      const q = QUESTION_BY_ID[a.questionId];
+      if (!q) return null;
+      const opt = q.options.find((o) => o.stone === a.selectedOption);
+      return {
+        text: q.text,
+        label: opt ? opt.label : "",
+        answeredAt: a.answeredAt,
+      };
+    })
+    .filter(Boolean)
+    .reverse();
+}
+
 // ---------- 노출 주기 / 스킵 상수 (evolve.md 6장) ----------
 // PET_FAST_EVO=1이면 "하루=5초"로 압축해 알림 흐름을 빠르게 검증할 수 있다.
 const DAY_MS = process.env.PET_FAST_EVO === "1" ? 5000 : 24 * 60 * 60 * 1000;
@@ -305,6 +347,12 @@ function getState(data) {
       (data.notifications.hasUnreadBadge ||
         data.questions.pendingQuestionId === q.id ||
         (data.questions.skippedQuestions[q.id] || 0) > 0),
+    userName: data.user.userName,
+    petName: data.pet.petName,
+    affinityPoints: data.affinity.affinityPoints,
+    blurb: data.pet.stoneType ? STONE_TRAIT[data.pet.stoneType].blurb : null,
+    tags: data.pet.stoneType ? STONE_TRAIT[data.pet.stoneType].tags : [],
+    history: buildHistory(data),
   };
 }
 
