@@ -335,38 +335,31 @@
 
       <!-- ############ SETTINGS ############ -->
       <div id="settings-view" class="screen hidden">
-        <!-- 일반 (스타일만) -->
+        <!-- 일반 -->
         <section class="panel">
           <div class="panel-label">일반</div>
           <div class="set-list">
-            <div class="set-row">
-              <span class="set-box on">[✓]</span>
+            <button class="set-row" data-setting="autoLaunch">
+              <span class="set-box">[&nbsp;&nbsp;]</span>
               <div class="set-text">
                 <div class="set-title">로그인 시 자동 실행</div>
                 <div class="set-desc">컴퓨터를 켜면 몽돌이 함께 깨어나요</div>
               </div>
-            </div>
-            <div class="set-row">
-              <span class="set-box on">[✓]</span>
-              <div class="set-text">
-                <div class="set-title">항상 맨 위</div>
-                <div class="set-desc">다른 창 위에 애완돌을 유지</div>
-              </div>
-            </div>
-            <div class="set-row">
-              <span class="set-box on">[✓]</span>
+            </button>
+            <button class="set-row" data-setting="notifications">
+              <span class="set-box">[&nbsp;&nbsp;]</span>
               <div class="set-text">
                 <div class="set-title">질문 알림</div>
-                <div class="set-desc">새 질문이 오면 트레이에 배지 표시</div>
+                <div class="set-desc">새 질문이 오면 배너 알림 표시 (트레이 배지는 항상 표시)</div>
               </div>
-            </div>
-            <div class="set-row">
+            </button>
+            <button class="set-row" data-setting="soundEnabled">
               <span class="set-box">[&nbsp;&nbsp;]</span>
               <div class="set-text">
                 <div class="set-title">효과음</div>
                 <div class="set-desc">상호작용 시 작은 소리 재생</div>
               </div>
-            </div>
+            </button>
           </div>
         </section>
 
@@ -382,30 +375,29 @@
           </button>
         </section>
 
-        <!-- 화면 위치 (스타일만) -->
+        <!-- 펫 위치 -->
         <section class="panel">
-          <div class="panel-label">화면 위치</div>
-          <div class="grid-4">
-            <button class="chip">좌하단</button>
-            <button class="chip on">우하단</button>
-            <button class="chip">좌상단</button>
-            <button class="chip">우상단</button>
+          <div class="panel-label">펫 위치</div>
+          <div class="grid-3">
+            <button class="chip" data-place="follow">따라오기</button>
+            <button class="chip" data-place="bottom-left">좌하단</button>
+            <button class="chip" data-place="bottom-right">우하단</button>
           </div>
         </section>
 
-        <!-- 애완돌 크기 (스타일만) -->
+        <!-- 애완돌 크기 -->
         <section class="panel">
           <div class="panel-label">애완돌 크기</div>
           <div class="grid-3">
-            <button class="chip">작게</button>
-            <button class="chip on">보통</button>
-            <button class="chip">크게</button>
+            <button class="chip" data-size="small">작게</button>
+            <button class="chip" data-size="medium">보통</button>
+            <button class="chip" data-size="large">크게</button>
           </div>
         </section>
 
-        <!-- 초기화 + 정보 (스타일만) -->
+        <!-- 초기화 + 정보 -->
         <section class="panel panel-last">
-          <button class="reset-btn">↻ 처음부터 다시 키우기</button>
+          <button id="reset-btn" class="reset-btn">↻ 처음부터 다시 키우기</button>
           <div class="app-info">DESK PET v1.0 · 나의 애완돌<br>© 2026 · 작고 단단한 친구</div>
         </section>
       </div>
