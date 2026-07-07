@@ -380,6 +380,11 @@ body {
   padding: 13px 16px;
   background: #c9a12e;
   border-bottom: 2px solid #1b1b16;
+  cursor: pointer;
+}
+
+.callout:hover {
+  background: #d9b13a;
 }
 
 .callout-icon {

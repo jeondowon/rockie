@@ -208,12 +208,14 @@ const TB_BY_ID = Object.fromEntries(TIEBREAKERS.map((t) => [t.id, t]));
 // PET_FAST_EVO=1이면 "하루=5초"로 압축해 알림 흐름을 빠르게 검증할 수 있다.
 const DAY_MS = process.env.PET_FAST_EVO === "1" ? 5000 : 24 * 60 * 60 * 1000;
 const EARLY_COUNT = 4; // 초반 4문항은 하루 간격
-const MAX_SKIPS = 3; // 3회 연속 패스 시 후보 풀에서 제외
+const LATER_INTERVAL = 2 * DAY_MS; // 이후 본 질문은 2일 간격
+const EI_INTERVAL = 3 * DAY_MS; // 2단계 보조 E/I 질문은 3일 간격 (해당 기능 구현 시 사용, plan.md 6.1)
 
-// 답변 수에 따른 다음 노출 간격(ms). 초반 4문항은 하루, 이후 2~3일 (evolve.md 6.1)
+// 답변 수에 따른 다음 노출 간격(ms). 초반 4문항은 하루, 이후 본 질문은 2일 (plan.md 6.1).
+// 초반 4문항(하루) + 이후 8문항(2일) → 12문항 완료까지 자연히 4일 이상 소요.
 function questionInterval(answeredCount) {
   if (answeredCount < EARLY_COUNT) return DAY_MS;
-  return 2 * DAY_MS + Math.random() * DAY_MS; // 2~3일 사이
+  return LATER_INTERVAL;
 }
 
 // 다음 질문 노출 예정 시각 갱신. immediate면 다음 게이트에서 바로 노출
@@ -288,13 +290,21 @@ function serialize(q) {
 }
 
 function getState(data) {
+  const q = nextQuestion(data);
   return {
     stage: data.pet.evolutionStage,
     stoneType: data.pet.stoneType,
     progress: data.questions.mainQuestionProgress,
     total: MAIN_QUESTIONS.length,
-    question: serialize(nextQuestion(data)),
+    question: serialize(q),
     hasBadge: data.notifications.hasUnreadBadge,
+    // 이미 사용자에게 노출된(예고됐거나 한 번 이상 패스한) 질문이 있어 지금 바로 답할 수 있는 상태.
+    // 트레이 "질문에 답하기" 노출 조건. 아직 안 뜬 다음 질문은 제외해 노출 주기를 유지한다.
+    awaitingAnswer:
+      !!q &&
+      (data.notifications.hasUnreadBadge ||
+        data.questions.pendingQuestionId === q.id ||
+        (data.questions.skippedQuestions[q.id] || 0) > 0),
   };
 }
 
@@ -359,23 +369,17 @@ function answer(data, { questionId, stone }) {
   return { confirmed, state: getState(data) };
 }
 
-// "지금은 패스" 처리. 연속 패스를 세고, 본 질문이 3회에 도달하면 풀에서 제외한다
-// (evolve.md 6.5). 타이브레이커는 제외 없이 다음 기회로 미루기만 한다.
+// "지금은 패스" 처리. 사용자는 모든 질문에 답해야 하므로 풀에서 제외하지 않고,
+// 다음 노출 기회로 미루기만 한다(패스 횟수는 기록). 타이브레이커도 동일.
 function skip(data, questionId) {
   if (data.pet.stoneType) return { confirmed: null, state: getState(data) };
   const now = new Date().toISOString();
   const skipped = data.questions.skippedQuestions;
   skipped[questionId] = (skipped[questionId] || 0) + 1;
-
-  const isTb = questionId.startsWith("tb_");
-  if (!isTb && skipped[questionId] >= MAX_SKIPS) {
-    data.questions.mainQuestionProgress += 1; // 3회 연속 패스 → 후보 풀에서 제외
-  }
   data.questions.pendingQuestionId = null; // 다음 기회에 재노출 가능
 
-  const confirmed = tryConfirm(data, now); // 제외로 본 질문이 소진됐을 수 있음
-  rescheduleAfter(data, now, confirmed);
-  return { confirmed, state: getState(data) };
+  rescheduleAfter(data, now, false);
+  return { confirmed: null, state: getState(data) };
 }
 
 module.exports = { getState, answer, skip, isQuestionDue, STONE_ORDER };

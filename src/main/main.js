@@ -9,6 +9,7 @@ const {
   desktopCapturer,
   dialog,
   Notification,
+  nativeTheme,
 } = require("electron");
 const path = require("path");
 const fs = require("fs");
@@ -283,12 +284,12 @@ function trimTransparent(image) {
 const TRAY_ICON_PT = 15;
 
 // 맥 메뉴바 / 윈도우 시스템 트레이에 아이콘을 띄운다 (Tray API는 양쪽 공용)
-function createTray() {
-  let src = nativeImage.createFromPath(path.join(__dirname, "../../assets/template.png"));
+// assets의 PNG 한 장을 트레이용 nativeImage로 만든다.
+// Retina(2x) 대응: 표시 크기는 TRAY_ICON_PT(pt)로 유지하되 1x/2x를 함께 담아 고밀도에서 안 흐리게.
+// 맥: 템플릿 이미지는 다크/라이트 메뉴바에 맞춰 자동 반전(단색). 컬러 배지 아이콘은 비-템플릿이어야 한다.
+function makeTrayIcon(fileName, isTemplate) {
+  let src = nativeImage.createFromPath(path.join(__dirname, "../../assets", fileName));
   src = trimTransparent(src); // 투명 여백 제거 → 그림이 꽉 참
-
-  // Retina(2x) 대응: 표시 크기는 TRAY_ICON_PT(pt)로 유지하되,
-  // 1x/2x 두 해상도를 함께 담아 고밀도 화면에서 흐려지지 않게 한다.
   const icon = nativeImage.createEmpty();
   icon.addRepresentation({
     scaleFactor: 1,
@@ -298,16 +299,32 @@ function createTray() {
     scaleFactor: 2,
     buffer: src.resize({ height: TRAY_ICON_PT * 2, quality: "best" }).toPNG(),
   });
+  if (process.platform === "darwin") icon.setTemplateImage(isTemplate);
+  return icon;
+}
 
-  // 맥: 템플릿 이미지로 지정하면 다크/라이트 메뉴바에 맞춰 자동 반전(단색 실루엣).
-  // 컬러 아이콘을 그대로 쓰고 싶으면 아래 줄을 주석 처리.
-  if (process.platform === "darwin") icon.setTemplateImage(true);
+// 답변 대기(awaitingAnswer) 질문이 있으면 빨간 N 배지 아이콘, 없으면 기본 템플릿 아이콘.
+// 배지는 비-템플릿이라 자동 반전이 안 되므로 메뉴바 테마에 맞춰 밝은/어두운 글리프를 고른다.
+function refreshTrayIcon() {
+  if (!tray || tray.isDestroyed()) return;
+  const awaiting = evolution.getState(store.get()).awaitingAnswer;
+  if (!awaiting) {
+    tray.setImage(makeTrayIcon("template.png", true));
+    return;
+  }
+  const badge = nativeTheme.shouldUseDarkColors ? "new_dark.png" : "new_light.png";
+  tray.setImage(makeTrayIcon(badge, false));
+}
 
-  tray = new Tray(icon);
+function createTray() {
+  tray = new Tray(makeTrayIcon("template.png", true));
   tray.setToolTip("Desktop Pet");
 
   createTrayPopup();
   tray.on("click", toggleTrayPopup);
+
+  refreshTrayIcon(); // 저장된 상태에 맞춰 초기 배지 반영
+  nativeTheme.on("updated", refreshTrayIcon); // 메뉴바 다크/라이트 전환 시 글리프 색 재선택
 }
 
 // ---------- 트레이 팝업 (커스텀 픽셀아트 메뉴) ----------
@@ -402,6 +419,14 @@ ipcMain.on("tray-menu-action", (_event, action) => {
       togglePet();
       if (trayPopup && !trayPopup.isDestroyed()) trayPopup.hide();
       break;
+    case "answer-question":
+      // 트레이 "질문에 답하기" → 펫 창을 띄우고 기존 질문 카드를 애완돌 옆에 연다
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        if (!mainWindow.isVisible()) mainWindow.show();
+        mainWindow.webContents.send("evolution:open-question-card");
+      }
+      if (trayPopup && !trayPopup.isDestroyed()) trayPopup.hide();
+      break;
     case "settings":
       // 뷰 전환은 렌더러(tray.js)에서 처리
       console.log("[tray-menu] 설정 열림");
@@ -481,6 +506,7 @@ function startQuestionGate() {
     data.questions.pendingQuestionId = q.id; // 예고 기록
     data.notifications.hasUnreadBadge = true; // 트레이 배지는 항상 표시(기본 동작)
     store.save();
+    refreshTrayIcon(); // 메뉴바 아이콘에 빨간 N 배지 반영
     mainWindow.webContents.send("evolution:question-available"); // 예고 말풍선
     if (data.notifications.notificationsEnabled) showQuestionBanner(); // 배너는 설정에 따라
   }, GATE_INTERVAL);
@@ -493,6 +519,7 @@ ipcMain.handle("evolution:answer", (_event, payload) => {
   const result = evolution.answer(store.get(), payload);
   store.get().notifications.hasUnreadBadge = false; // 응답했으면 배지 해제
   store.save();
+  refreshTrayIcon(); // 남은 대기 질문 여부에 맞춰 메뉴바 배지 갱신
   // 확정되면 오버레이 캐릭터를 해당 돌 GIF로 전환하도록 알린다
   if (result.confirmed && mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send("evolution:stone-confirmed", result.confirmed);
@@ -503,6 +530,7 @@ ipcMain.handle("evolution:skip", (_event, payload) => {
   const result = evolution.skip(store.get(), payload.questionId);
   store.get().notifications.hasUnreadBadge = false; // 패스도 상호작용이므로 배지 해제
   store.save();
+  refreshTrayIcon(); // 패스해도 대기 상태는 유지되므로 배지 유지(awaitingAnswer 기준)
   if (result.confirmed && mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send("evolution:stone-confirmed", result.confirmed);
   }
@@ -586,6 +614,7 @@ ipcMain.handle("settings:reset", async () => {
 
   store.reset();
   applyStartupSettings(); // 자동 실행/맨 위를 기본값으로 되돌림
+  refreshTrayIcon(); // 대기 질문이 사라졌으니 배지 제거
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.reload(); // 조약돌로 복원
   return true;
 });

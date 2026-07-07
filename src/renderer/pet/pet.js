@@ -207,8 +207,15 @@ function overlayLeft(width, margin) {
 }
 
 function positionBubble() {
-  bubble.style.left = overlayLeft(bubble.offsetWidth, 0) + "px";
-  bubble.style.top = posY - 15 + "px";
+  // 말풍선은 카드와 달리 항상 펫 중심 위에 두고, 화면 밖으로 나갈 때만 안쪽으로 클램프한다.
+  // (고정 코너에서 overlayLeft의 가장자리 앵커를 쓰면 말풍선이 펫 반대쪽으로 쏠려 멀어 보임)
+  const w = bubble.offsetWidth;
+  const left = posX + CHAR_SIZE / 2 - w / 2; // 펫 그림 중심 정렬
+  bubble.style.left = Math.max(4, Math.min(window.innerWidth - w - 4, left)) + "px";
+  // 세로는 박스 상단(posY)이 아니라 펫 '머리 상단'(posY + SPRITE_MARGIN) 기준으로 잡아
+  // 크기가 커져 투명 여백이 늘어도 말풍선~펫 간격이 일정하게 유지되도록 한다.
+  // (offsetHeight + 꼬리 5px + 여유 6px 만큼 위로 = 꼬리 끝이 머리 위 약 6px)
+  bubble.style.top = posY + SPRITE_MARGIN - bubble.offsetHeight - 11 + "px";
 }
 
 // ---------- 3. 클릭 반응 ----------
@@ -519,6 +526,12 @@ window.petAPI.onQuestionAvailable(() => {
   showBubble("물어보고 싶은 게 있어요. 저를 눌러주세요!", 6000);
 });
 
+// 트레이 "질문에 답하기"로 요청이 오면 예고 없이 바로 질문 카드를 연다
+window.petAPI.onOpenQuestionCard(() => {
+  hasPendingQuestion = true;
+  if (qcard.classList.contains("hidden")) openQuestionCard();
+});
+
 // 앱을 껐다 켠 뒤에도 아직 답하지 않은 예고된 질문이 있으면 다시 클릭으로 열 수 있게 한다.
 // (트레이에서 답하던 경로가 사라졌으므로, 이 복원이 없으면 예고된 질문이 갇힌다)
 async function initPendingQuestion() {
@@ -537,7 +550,8 @@ function positionCard() {
   // 카드를 펫 위쪽에 띄우되, 가로 위치는 펫 위치 모드에 맞춰 화면 안쪽으로 펼친다.
   const w = qcard.offsetWidth;
   const h = qcard.offsetHeight;
-  let top = posY - h - 12;
+  // 말풍선과 같은 기준(머리 상단 = posY + SPRITE_MARGIN)으로 잡아 카드를 펫에 더 가깝게 내린다.
+  let top = posY + SPRITE_MARGIN - h - 12;
   if (top < 8) top = 8;
   qcard.style.left = overlayLeft(w, 8) + "px";
   qcard.style.top = top + "px";
@@ -547,6 +561,9 @@ function hideQuestionCard() {
   cardOpen = false;
   qcard.classList.add("hidden");
   qcard.innerHTML = "";
+  // 카드가 커서 밑에서 숨겨지면 mouseleave가 안 fires → 클릭 통과가 꺼진 채 고정돼
+  // 전체 화면이 클릭을 먹는다. 숨길 때 통과를 직접 복구한다.
+  window.petAPI.setIgnoreMouseEvents(true, { forward: true });
 }
 
 async function openQuestionCard() {

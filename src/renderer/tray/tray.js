@@ -97,9 +97,14 @@ function renderPet(state) {
     petPersonalityTags.classList.add("hidden");
   }
 
-  // 안 읽은 질문이 있으면 콜아웃 노출
-  petCallout.classList.toggle("hidden", !state.hasBadge);
+  // 지금 답할 수 있는(노출됐거나 패스한) 질문이 있으면 "질문에 답하기" 콜아웃 노출
+  petCallout.classList.toggle("hidden", !state.awaitingAnswer);
 }
+
+// "질문에 답하기" → 펫 창의 질문 카드를 연다 (팝업은 메인에서 닫음)
+petCallout.addEventListener("click", () => {
+  window.trayAPI.sendAction("answer-question");
+});
 
 // ---------- 설정 · 화면 기록 권한 ----------
 function setPermBox(granted) {
@@ -219,11 +224,11 @@ document.querySelectorAll(".mrow").forEach((item) => {
 
 backBar.addEventListener("click", () => showScreen("menu"));
 
-// 안 읽은 질문이 있으면 "나의 애완돌" 항목에 배지를 표시
+// 지금 답할 수 있는(노출됐거나 패스한) 질문이 있으면 "나의 애완돌" 항목에 배지를 표시
 async function refreshBadge() {
   try {
     const state = await window.trayAPI.getEvolutionState();
-    statusItem.classList.toggle("has-badge", !!state.hasBadge);
+    statusItem.classList.toggle("has-badge", !!state.awaitingAnswer);
   } catch (_err) {
     // 상태를 못 읽으면 배지 없이 둔다
   }
