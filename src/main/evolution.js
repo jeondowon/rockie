@@ -253,6 +253,13 @@ const EARLY_COUNT = 4; // 초반 4문항은 하루 간격
 const LATER_INTERVAL = 2 * DAY_MS; // 이후 본 질문은 2일 간격
 const EI_INTERVAL = 3 * DAY_MS; // 2단계 보조 E/I 질문은 3일 간격 (해당 기능 구현 시 사용, plan.md 6.1)
 
+// ---------- 1→2단계(완전 변성체) 전환 게이트 조건 (evolve.md 3.3) ----------
+// 세 조건 AND: 확정일로부터 45일 경과 + 누적 답변 20개 이상 + 보조 E/I 질문 4개 응답.
+// PET_FAST_EVO에서는 DAY_MS가 5초로 압축되므로 45일 게이트도 함께 빨라진다.
+const STAGE2_MIN_DAYS = 45; // 확정일로부터 최소 경과 일수
+const STAGE2_MIN_ANSWERS = 20; // 누적 답변(본 질문+타이브레이커+E/I) 하한
+const EI_QUESTION_COUNT = 4; // 보조 E/I 질문 개수 (모두 응답해야 함)
+
 // 답변 수에 따른 다음 노출 간격(ms). 초반 4문항은 하루, 이후 본 질문은 2일 (plan.md 6.1).
 // 초반 4문항(하루) + 이후 8문항(2일) → 12문항 완료까지 자연히 4일 이상 소요.
 function questionInterval(answeredCount) {
@@ -384,6 +391,33 @@ function tryConfirm(data, now) {
   return winner;
 }
 
+// 1→2단계(완전 변성체) 전환 게이트 판정 (evolve.md 3.3).
+// 순수 계산만 하고 실제 전환/저장은 하지 않는다. E/I 질문 노출과 2단계 자산이
+// 준비되면 이 결과(ready)로 전환을 발사하도록 호출부에서 연결한다(현재는 예약 로직).
+// 반환: { ready, daysLeft, answersLeft, eiLeft } — 각 남은 값(0이면 해당 조건 충족).
+function canEvolveToStage2(data, nowMs) {
+  const confirmedAt = data.pet.stoneConfirmedAt;
+  const elapsed = confirmedAt ? nowMs - Date.parse(confirmedAt) : 0;
+  const daysLeft = Math.max(
+    0,
+    Math.ceil((STAGE2_MIN_DAYS * DAY_MS - elapsed) / DAY_MS),
+  );
+  const answersLeft = Math.max(
+    0,
+    STAGE2_MIN_ANSWERS - data.questions.answeredQuestions.length,
+  );
+  const eiAnswered =
+    data.traits.eiScores["외향"] + data.traits.eiScores["내향"];
+  const eiLeft = Math.max(0, EI_QUESTION_COUNT - eiAnswered);
+
+  const ready =
+    data.pet.evolutionStage === 1 &&
+    daysLeft === 0 &&
+    answersLeft === 0 &&
+    eiLeft === 0;
+  return { ready, daysLeft, answersLeft, eiLeft };
+}
+
 // 답변 1건 처리 → 점수 반영 + 확정 시도. { confirmed, state } 반환.
 function answer(data, { questionId, stone }) {
   if (data.pet.stoneType) return { confirmed: null, state: getState(data) };
@@ -430,4 +464,11 @@ function skip(data, questionId) {
   return { confirmed: null, state: getState(data) };
 }
 
-module.exports = { getState, answer, skip, isQuestionDue, STONE_ORDER };
+module.exports = {
+  getState,
+  answer,
+  skip,
+  isQuestionDue,
+  canEvolveToStage2,
+  STONE_ORDER,
+};
