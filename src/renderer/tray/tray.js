@@ -52,7 +52,9 @@ const affHearts = document.getElementById("aff-hearts");
 let editingName = false;
 
 function stoneGif(stoneType) {
-  return `../../../assets/gif/${stoneType || "rockie"}_smile.gif`;
+  const stone = stoneType || "rockie";
+  const level = stone === "rockie" ? "level0" : "level1";
+  return `../../../assets/gif/${level}/${stone}_smile.gif`;
 }
 
 // 메뉴 화면에 딱 맞는 창 높이(px) 계산. 항목 수/높이가 바뀌어도 자동으로 맞춰진다.

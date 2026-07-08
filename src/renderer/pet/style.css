@@ -28,6 +28,21 @@ body {
   transform: scale(0.9);
 }
 
+/* 애정 표현 하트. 캐릭터 박스에 정확히 겹쳐(같은 좌표·크기) 앞에 뜬다.
+   클릭은 캐릭터로 통과시켜 펫 클릭 반응이 유지되게 한다. */
+.heart {
+  position: absolute;
+  width: 128px;
+  height: 128px;
+  z-index: 2;
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+
+.heart.hidden {
+  display: none;
+}
+
 .bubble {
   position: absolute;
   max-width: 220px;

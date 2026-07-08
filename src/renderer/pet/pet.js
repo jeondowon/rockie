@@ -1,4 +1,5 @@
 const character = document.getElementById("character");
+const heart = document.getElementById("heart");
 const bubble = document.getElementById("bubble");
 const qcard = document.getElementById("qcard");
 
@@ -87,6 +88,9 @@ function clampX(x) {
 function placeCharacter() {
   character.style.left = posX + "px";
   character.style.top = posY + "px";
+  // 하트는 캐릭터와 같은 320 캔버스라 같은 좌표에 두면 원하는 자리에 정확히 겹친다
+  heart.style.left = posX + "px";
+  heart.style.top = posY + "px";
 }
 
 function setFacing(dir) {
@@ -95,8 +99,19 @@ function setFacing(dir) {
   applySprite();
 }
 
+// 돌 종류별 GIF가 담긴 레벨 폴더. rockie=level0, 확정 4돌=level1.
+// (level2/3 변성체·보석은 진화 전환 로직 구현 시 확장)
+const STONE_LEVEL = {
+  rockie: "level0",
+  granite: "level1",
+  basalt: "level1",
+  marble: "level1",
+  gneiss: "level1",
+};
+
 function spriteUrl(name) {
-  return `../../../assets/gif/${stonePrefix}_${name}.gif`;
+  const level = STONE_LEVEL[stonePrefix] || "level0";
+  return `../../../assets/gif/${level}/${stonePrefix}_${name}.gif`;
 }
 
 // 지친 상태(배터리 부족)면 단계별 표정 gif, 아니면 바라보는 방향의 걷기 gif를 표시.
@@ -105,6 +120,16 @@ function applySprite() {
   const name = tiredSprite || (facing === "left" ? "left" : "right");
   const src = spriteUrl(name);
   if (!character.src.endsWith(src)) character.src = src;
+}
+
+// 애정 표현용 하트 오버레이를 켜고 끈다. level2/3은 love gif가 없어 smile + 하트로
+// 애정을 표현할 예정. 발동 트리거(클릭/진화 순간 등)는 아직 미정이라 표시 토글만 둔다.
+function showHeart() {
+  heart.classList.remove("hidden");
+}
+
+function hideHeart() {
+  heart.classList.add("hidden");
 }
 
 function followStep() {
@@ -693,6 +718,8 @@ function applyPetSize(size) {
   SPRITE_MARGIN = Math.round((px * 36) / 128);
   character.style.width = px + "px";
   character.style.height = px + "px";
+  heart.style.width = px + "px";
+  heart.style.height = px + "px";
 }
 
 // 앱을 처음 켰을 때 펫이 등장할 시작 X 좌표.
