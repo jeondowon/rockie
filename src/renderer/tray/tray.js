@@ -14,12 +14,7 @@ const SCREEN_TITLES = {
   settings: "설정",
 };
 
-const STONE_NAMES = {
-  granite: "화강암",
-  basalt: "현무암",
-  marble: "대리석",
-  gneiss: "편마암",
-};
+// STONE_NAMES/resolveSprite/spriteGifUrl은 공용 ../shared/sprites.js에서 로드된다.
 
 const VARIANT_NAMES = {
   granite: {
@@ -172,40 +167,15 @@ const TRAIT_DESCRIPTIONS = {
   },
 };
 
-// GIF 접두어 매핑 (pet.js와 동일 규칙)
-const VARIANT_STONE = {
-  granite: "pegmatite",
-  basalt: "eclogite",
-  marble: "corundumMarble",
-  gneiss: "migmatite",
-};
-const GEM = {
-  granite: { extrovert: "topaz", introvert: "aquamarine" },
-  basalt: { extrovert: "diamond_cut", introvert: "diamond_rough" },
-  marble: { extrovert: "partiSapphire", introvert: "ruby" },
-  gneiss: { extrovert: "labradorite", introvert: "moonstone" },
-};
-
 // 진화 상태 → 표시할 hero GIF 경로 (하단 펫 상태를 아직 받지 못했을 때의 기본값)
 function heroSprite(stage, stoneType, variant) {
-  let level = "level0";
-  let prefix = "rockie";
-  if (stage >= 3 && stoneType && variant) {
-    level = "level3";
-    prefix = GEM[stoneType][variant];
-  } else if (stage === 2 && stoneType && variant) {
-    level = "level2";
-    prefix = `${VARIANT_STONE[stoneType]}_${variant === "extrovert" ? "e" : "i"}`;
-  } else if (stage >= 1 && stoneType) {
-    level = "level1";
-    prefix = stoneType;
-  }
-  return `../../../assets/gif/${level}/${prefix}_smile.gif`;
+  const { level, prefix } = resolveSprite(stage, stoneType, variant);
+  return spriteGifUrl(level, prefix, "smile");
 }
 
 function displaySpriteUrl(sprite) {
   if (!sprite || !sprite.level || !sprite.prefix || !sprite.pose) return null;
-  return `../../../assets/gif/${sprite.level}/${sprite.prefix}_${sprite.pose}.gif`;
+  return spriteGifUrl(sprite.level, sprite.prefix, sprite.pose);
 }
 
 // 단계별 상태 라벨
@@ -694,8 +664,7 @@ document.querySelectorAll(".mrow").forEach((item) => {
         showScreen("system"); // 폴링은 showScreen 훅에서 시작된다
         break;
       case "settings":
-        window.trayAPI.sendAction(action);
-        showSettings();
+        showSettings(); // 뷰만 전환 (메인에 보낼 동작 없음)
         break;
       case "toggle-pet":
       case "quit":

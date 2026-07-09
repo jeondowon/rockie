@@ -87,6 +87,7 @@ function startDevReload() {
         "../renderer/pet/index.html",
         "../renderer/pet/pet.js",
         "../renderer/pet/style.css",
+        "../renderer/shared/sprites.js",
       ],
     },
     {
@@ -96,6 +97,7 @@ function startDevReload() {
         "../renderer/tray/tray.html",
         "../renderer/tray/tray.js",
         "../renderer/tray/tray.css",
+        "../renderer/shared/sprites.js",
       ],
     },
   ];
@@ -457,9 +459,6 @@ ipcMain.on("tray-popup-resize", (_event, height) => {
 // 팝업 메뉴 항목 클릭 처리
 ipcMain.on("tray-menu-action", (_event, action) => {
   switch (action) {
-    case "status":
-      // "나의 애완돌" 뷰 전환은 렌더러(tray.js)에서 처리하므로 여기선 안 닫는다
-      break;
     case "toggle-pet":
       togglePet(); // 팝업은 닫지 않고 열어 둔다 (연속 토글 가능)
       break;
@@ -470,10 +469,6 @@ ipcMain.on("tray-menu-action", (_event, action) => {
         mainWindow.webContents.send("evolution:open-question-card");
       }
       if (trayPopup && !trayPopup.isDestroyed()) trayPopup.hide();
-      break;
-    case "settings":
-      // 뷰 전환은 렌더러(tray.js)에서 처리
-      console.log("[tray-menu] 설정 열림");
       break;
     case "quit":
       app.quit();

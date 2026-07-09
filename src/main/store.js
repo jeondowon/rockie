@@ -105,4 +105,4 @@ function reset() {
   return data;
 }
 
-module.exports = { load, get, save, reset, FILE };
+module.exports = { load, get, save, reset };

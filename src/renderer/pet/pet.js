@@ -95,7 +95,7 @@ function setFacing(dir) {
 }
 
 function spriteUrl(name) {
-  return `../../../assets/gif/${spriteLevel}/${spritePrefix}_${name}.gif`;
+  return spriteGifUrl(spriteLevel, spritePrefix, name);
 }
 
 function notifyDisplaySprite(pose) {
@@ -803,44 +803,7 @@ async function initBatteryWatcher() {
 }
 
 // ---------- 6. 진화 상태 (단계 전환 시 gif 교체) ----------
-
-const STONE_NAMES = {
-  granite: "화강암",
-  basalt: "현무암",
-  marble: "대리석",
-  gneiss: "편마암",
-};
-
-// 1단계 돌 → 2단계 변성체 접두어 (파일명은 접두어_e/i_포즈, update.md 1.1)
-const VARIANT_STONE = {
-  granite: "pegmatite",
-  basalt: "eclogite",
-  marble: "corundumMarble",
-  gneiss: "migmatite",
-};
-
-// (돌 종류, 변형) → 3단계 보석 접두어 (update.md 1.1)
-const GEM = {
-  granite: { extrovert: "topaz", introvert: "aquamarine" },
-  basalt: { extrovert: "diamond_cut", introvert: "diamond_rough" },
-  marble: { extrovert: "partiSapphire", introvert: "ruby" },
-  gneiss: { extrovert: "labradorite", introvert: "moonstone" },
-};
-
-// 진화 상태 → 표시할 GIF의 레벨 폴더와 접두어
-function resolveSprite(stage, stoneType, variant) {
-  if (stage >= 3 && stoneType && variant) {
-    return { level: "level3", prefix: GEM[stoneType][variant] };
-  }
-  if (stage === 2 && stoneType && variant) {
-    const suffix = variant === "extrovert" ? "e" : "i";
-    return { level: "level2", prefix: `${VARIANT_STONE[stoneType]}_${suffix}` };
-  }
-  if (stage >= 1 && stoneType) {
-    return { level: "level1", prefix: stoneType };
-  }
-  return { level: "level0", prefix: "rockie" };
-}
+// STONE_NAMES/VARIANT_STONE/GEM/resolveSprite/spriteGifUrl은 공용 ../shared/sprites.js에서 로드된다.
 
 function spriteUrlFor(info, name) {
   const { level, prefix } = resolveSprite(
@@ -848,7 +811,7 @@ function spriteUrlFor(info, name) {
     info.stoneType,
     info.variant,
   );
-  return `../../../assets/gif/${level}/${prefix}_${name}.gif`;
+  return spriteGifUrl(level, prefix, name);
 }
 
 function spriteLevelClass(info) {

@@ -601,12 +601,12 @@ function awardAffinity(data, amount) {
   );
 }
 
-// 닦아주기/밥주기: 하루 1회 제한. 진화가 일어났으면 evolved에 새 단계 번호.
-function cleanPet(data) {
+// 닦아주기/밥주기 공통: 하루 1회 제한. 진화가 일어났으면 evolved에 새 단계 번호.
+function carePet(data, doneFlag, points) {
   const before = data.pet.evolutionStage;
-  if (!data.affinity.dailyCleanDone) {
-    data.affinity.dailyCleanDone = true;
-    awardAffinity(data, CLEAN_POINTS);
+  if (!data.affinity[doneFlag]) {
+    data.affinity[doneFlag] = true;
+    awardAffinity(data, points);
     tryAffinityEvaluate(data);
   }
   return {
@@ -616,18 +616,12 @@ function cleanPet(data) {
   };
 }
 
+function cleanPet(data) {
+  return carePet(data, "dailyCleanDone", CLEAN_POINTS);
+}
+
 function feedPet(data) {
-  const before = data.pet.evolutionStage;
-  if (!data.affinity.dailyFeedDone) {
-    data.affinity.dailyFeedDone = true;
-    awardAffinity(data, FEED_POINTS);
-    tryAffinityEvaluate(data);
-  }
-  return {
-    evolved:
-      data.pet.evolutionStage !== before ? data.pet.evolutionStage : null,
-    state: getState(data),
-  };
+  return carePet(data, "dailyFeedDone", FEED_POINTS);
 }
 
 // ---------- 답변 제출 (update.md 8.3) ----------
@@ -757,5 +751,4 @@ module.exports = {
   feedPet,
   completePendingEvolution,
   onDailyReset,
-  STONE_ORDER,
 };

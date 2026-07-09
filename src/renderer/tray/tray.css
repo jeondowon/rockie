@@ -51,10 +51,6 @@ body {
   background: rgba(27, 27, 22, 0.55);
 }
 
-.confirm-overlay.hidden {
-  display: none;
-}
-
 .confirm-box {
   width: 100%;
   background: #f2ede1;
@@ -416,16 +412,6 @@ body {
   }
   to {
     transform: rotate(360deg);
-  }
-}
-
-@keyframes floaty {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-3px);
   }
 }
 
@@ -911,10 +897,6 @@ body {
   margin-top: 4px;
 }
 
-.sys-rows {
-  padding: 0;
-}
-
 .sys-row {
   padding: 13px 16px;
   border-bottom: 2px dashed #cbc4b1;
@@ -1079,12 +1061,6 @@ body {
   color: #6a6452;
   margin-top: 2px;
   line-height: 1.5;
-}
-
-.grid-4 {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 7px;
 }
 
 .grid-3 {
