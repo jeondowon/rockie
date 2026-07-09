@@ -1,7 +1,21 @@
-// 성향 판정(본 질문 12개 + 동점 타이브레이커)과 돌 종류 확정 로직.
+// 진화 판정 엔진 (update.md 기준 v2).
+// - 0→1: 본 질문 12개 → 돌 종류 확정 (동점 시 타이브레이커)
+// - 1→2: E/I 질문 12개 → 변성체 변형(extrovert/introvert) 확정 (동점 시 타이브레이커)
+// - 2→3: 호감도 90 도달 → 보석 확정 (질문 없음, 호감도 트리거)
+// 질문은 매일 오전 8시에 최대 2개를 뽑아 todaysQuestions에 채우고, 사용자가
+// 트레이 버튼으로 능동적으로 답한다(정기 알림/강제 노출 없음).
 // 순수 데이터 + 계산만 담당하고, 저장은 호출부(main)에서 store로 처리한다.
 
-// 돌 종류: 영문 key는 pet.stoneType/GIF 접두어, ko는 traitScores 키(dataschema.md).
+// ---------- 상수 (update.md 2장) ----------
+const MAIN_QUESTION_COUNT = 12; // 0→1 본 질문 총 개수
+const EI_QUESTION_COUNT = 12; // 1→2 E/I 질문 총 개수
+const MAX_DAILY_QUESTIONS = 2; // 하루 최대 답변 가능 수
+const AFFINITY_TARGET = 90; // 2→3 진화 필요 호감도
+const CLEAN_POINTS = 2; // 닦아주기 획득 점수
+const FEED_POINTS = 2; // 밥주기 획득 점수
+const AFFINITY_MAX = 100; // 호감도 상한
+
+// 돌 종류: 영문 key는 pet.stoneType/GIF 접두어, ko는 traitScores 키.
 const STONES = [
   { key: "granite", ko: "화강암" },
   { key: "basalt", ko: "현무암" },
@@ -11,7 +25,7 @@ const STONES = [
 const STONE_ORDER = STONES.map((s) => s.key);
 const KO_BY_KEY = Object.fromEntries(STONES.map((s) => [s.key, s.ko]));
 
-// 본 질문 12개. options 순서 = 화강암/현무암/대리석/편마암 (evolve.md 4.1)
+// 본 질문 12개. options 순서 = 화강암/현무암/대리석/편마암 (update.md 5.1)
 const MAIN_QUESTIONS = [
   {
     id: "main_01",
@@ -150,7 +164,7 @@ const MAIN_QUESTIONS = [
   },
 ];
 
-// 타이브레이커 6쌍 (2지선다). id/pair는 STONE_ORDER 순서로 정규화 (evolve.md 4.2)
+// 본 질문 타이브레이커 6쌍 (2지선다). id/pair는 STONE_ORDER 순서로 정규화 (update.md 5.1)
 const TIEBREAKERS = [
   {
     id: "tb_granite_basalt",
@@ -204,12 +218,142 @@ const TIEBREAKERS = [
 
 const TB_BY_ID = Object.fromEntries(TIEBREAKERS.map((t) => [t.id, t]));
 
-// 답변 히스토리 복원용: id → 질문(본 질문 + 타이브레이커).
+// E/I 질문 12개 (update.md 4.1~4.2). options 순서 = 외향/내향.
+const EI_QUESTIONS = [
+  {
+    id: "ei_01",
+    category: "힘든 하루",
+    text: "힘든 하루를 보낸 날, 나는 주로?",
+    options: [
+      { axis: "외향", label: "친구를 만나거나 연락해서 푼다" },
+      { axis: "내향", label: "혼자 조용히 시간을 보내며 정리한다" },
+    ],
+  },
+  {
+    id: "ei_02",
+    category: "새로운 사람들",
+    text: "새로운 사람들 사이에 있을 때 나는?",
+    options: [
+      { axis: "외향", label: "먼저 말을 걸고 분위기를 만든다" },
+      { axis: "내향", label: "상황을 지켜보다 편해지면 다가간다" },
+    ],
+  },
+  {
+    id: "ei_03",
+    category: "생각 정리",
+    text: "생각이 많아질 때 나는?",
+    options: [
+      { axis: "외향", label: "누군가에게 이야기하며 정리한다" },
+      { axis: "내향", label: "글로 쓰거나 혼자 되짚어본다" },
+    ],
+  },
+  {
+    id: "ei_04",
+    category: "에너지 충전",
+    text: "에너지가 채워지는 순간은?",
+    options: [
+      { axis: "외향", label: "사람들과 함께 있을 때" },
+      { axis: "내향", label: "혼자만의 시간을 가질 때" },
+    ],
+  },
+  {
+    id: "ei_05",
+    category: "휴일 계획",
+    text: "오랜만에 아무 일정 없는 하루, 나는?",
+    options: [
+      { axis: "외향", label: "누군가에게 연락해서 약속을 잡는다" },
+      { axis: "내향", label: "집에서 혼자만의 시간을 보낸다" },
+    ],
+  },
+  {
+    id: "ei_06",
+    category: "정보 수집 방식",
+    text: "관심 있는 주제를 알아볼 때 나는?",
+    options: [
+      { axis: "외향", label: "관련된 사람에게 물어보며 배운다" },
+      { axis: "내향", label: "자료를 찾아 혼자 파고든다" },
+    ],
+  },
+  {
+    id: "ei_07",
+    category: "감정 표현 방식",
+    text: "좋은 일이 생겼을 때 나는?",
+    options: [
+      { axis: "외향", label: "바로 누군가에게 알리고 함께 기뻐한다" },
+      { axis: "내향", label: "혼자 조용히 그 순간을 음미한다" },
+    ],
+  },
+  {
+    id: "ei_08",
+    category: "회복 방식",
+    text: "큰 실수나 실패를 겪은 후 나는?",
+    options: [
+      { axis: "외향", label: "가까운 사람과 이야기하며 털어낸다" },
+      { axis: "내향", label: "조용한 곳에서 스스로 정리한다" },
+    ],
+  },
+  {
+    id: "ei_09",
+    category: "작업 환경 선호",
+    text: "집중해서 일해야 할 때 나는?",
+    options: [
+      { axis: "외향", label: "카페처럼 사람이 있는 곳이 편하다" },
+      { axis: "내향", label: "조용하고 방해받지 않는 곳이 편하다" },
+    ],
+  },
+  {
+    id: "ei_10",
+    category: "대화 스타일",
+    text: "대화 중 자연스러운 나의 역할은?",
+    options: [
+      { axis: "외향", label: "말을 이어가며 화제를 넓힌다" },
+      { axis: "내향", label: "상대의 이야기를 듣고 깊이 반응한다" },
+    ],
+  },
+  {
+    id: "ei_11",
+    category: "낯선 상황 대응",
+    text: "여행지에서 길을 잃었을 때 나는?",
+    options: [
+      { axis: "외향", label: "근처 사람에게 바로 물어본다" },
+      { axis: "내향", label: "지도를 보며 직접 방향을 찾는다" },
+    ],
+  },
+  {
+    id: "ei_12",
+    category: "주말 저녁",
+    text: "금요일 밤이 되면 나는?",
+    options: [
+      { axis: "외향", label: "사람들과 함께 있는 자리가 그립다" },
+      { axis: "내향", label: "혼자 편하게 쉬는 시간이 좋다" },
+    ],
+  },
+];
+
+// E/I 타이브레이커 (6:6 동점 시 1개만 노출, update.md 4.3)
+const EI_TIEBREAKER = {
+  id: "eitb_01",
+  category: "타이브레이커",
+  text: "하루가 끝나갈 무렵, 진짜 내가 원하는 마무리는?",
+  options: [
+    { axis: "외향", label: "좋아하는 사람과 시간을 보내는 것" },
+    { axis: "내향", label: "혼자만의 시간을 갖는 것" },
+  ],
+};
+
+// 답변 히스토리 복원용: id → 질문(모든 종류).
 const QUESTION_BY_ID = Object.fromEntries(
-  [...MAIN_QUESTIONS, ...TIEBREAKERS].map((q) => [q.id, q]),
+  [...MAIN_QUESTIONS, ...TIEBREAKERS, ...EI_QUESTIONS, EI_TIEBREAKER].map(
+    (q) => [q.id, q],
+  ),
 );
 
-// 돌 종류별 성향 요약 문구·태그 (evolve.md 2장 성향 특성).
+// 옵션이 담고 있는 판정 값(돌 종류 또는 E/I 축)을 반환. 저장·판정·복원에서 공통 사용.
+function optValue(o) {
+  return o.stone ?? o.axis;
+}
+
+// 돌 종류별 성향 요약 문구·태그.
 const STONE_TRAIT = {
   granite: {
     blurb: "원칙과 안정을 중시하는 단단한 성향이에요",
@@ -235,7 +379,7 @@ function buildHistory(data) {
     .map((a) => {
       const q = QUESTION_BY_ID[a.questionId];
       if (!q) return null;
-      const opt = q.options.find((o) => o.stone === a.selectedOption);
+      const opt = q.options.find((o) => optValue(o) === a.selectedOption);
       return {
         text: q.text,
         label: opt ? opt.label : "",
@@ -246,52 +390,61 @@ function buildHistory(data) {
     .reverse();
 }
 
-// ---------- 노출 주기 / 스킵 상수 (evolve.md 6장) ----------
-// PET_FAST_EVO=1이면 "하루=5초"로 압축해 알림 흐름을 빠르게 검증할 수 있다.
-const DAY_MS = process.env.PET_FAST_EVO === "1" ? 5000 : 24 * 60 * 60 * 1000;
-const EARLY_COUNT = 4; // 초반 4문항은 하루 간격
-const LATER_INTERVAL = 2 * DAY_MS; // 이후 본 질문은 2일 간격
-const EI_INTERVAL = 3 * DAY_MS; // 2단계 보조 E/I 질문은 3일 간격 (해당 기능 구현 시 사용, plan.md 6.1)
-
-// ---------- 1→2단계(완전 변성체) 전환 게이트 조건 (evolve.md 3.3) ----------
-// 세 조건 AND: 확정일로부터 45일 경과 + 누적 답변 20개 이상 + 보조 E/I 질문 4개 응답.
-// PET_FAST_EVO에서는 DAY_MS가 5초로 압축되므로 45일 게이트도 함께 빨라진다.
-const STAGE2_MIN_DAYS = 45; // 확정일로부터 최소 경과 일수
-const STAGE2_MIN_ANSWERS = 20; // 누적 답변(본 질문+타이브레이커+E/I) 하한
-const EI_QUESTION_COUNT = 4; // 보조 E/I 질문 개수 (모두 응답해야 함)
-
-// 답변 수에 따른 다음 노출 간격(ms). 초반 4문항은 하루, 이후 본 질문은 2일 (plan.md 6.1).
-// 초반 4문항(하루) + 이후 8문항(2일) → 12문항 완료까지 자연히 4일 이상 소요.
-function questionInterval(answeredCount) {
-  if (answeredCount < EARLY_COUNT) return DAY_MS;
-  return LATER_INTERVAL;
+// ---------- 질문 종류 판별 (id 접두어 기준) ----------
+function isMainTiebreaker(id) {
+  return id.startsWith("tb_");
+}
+function isEiTiebreaker(id) {
+  return id.startsWith("eitb_");
+}
+function isEiQuestion(id) {
+  return id.startsWith("ei_");
 }
 
-// 다음 질문 노출 예정 시각 갱신. immediate면 다음 게이트에서 바로 노출
-// (타이브레이커는 정기 주기를 기다리지 않고 즉시 편입, evolve.md 6.6)
-function scheduleNext(data, nowIso, immediate) {
-  const ms = immediate
-    ? Date.parse(nowIso)
-    : Date.parse(nowIso) +
-      questionInterval(data.questions.mainQuestionProgress);
-  data.questions.nextQuestionDueAt = new Date(ms).toISOString();
+// ---------- 질문 풀에서 다음 질문 뽑기 (update.md 8.2) ----------
+// 아직 답하지 않았고 오늘 목록에도 없는 질문을 풀 순서대로 count개 선택.
+function pickUnanswered(data, pool, count) {
+  const answered = new Set(
+    data.questions.answeredQuestions.map((a) => a.questionId),
+  );
+  const inToday = new Set(data.questions.todaysQuestions);
+  const picked = [];
+  for (const q of pool) {
+    if (picked.length >= count) break;
+    if (answered.has(q.id) || inToday.has(q.id)) continue;
+    picked.push(q.id);
+  }
+  return picked;
 }
 
-// 답변/패스 후 다음 노출 시각을 다시 잡는다 (확정됐으면 잡지 않음)
-function rescheduleAfter(data, nowIso, confirmed) {
-  if (confirmed) return;
-  const nq = nextQuestion(data);
-  scheduleNext(data, nowIso, !!(nq && nq.id.startsWith("tb_")));
+function pickNextQuestions(data, count) {
+  if (count <= 0) return [];
+  if (data.pet.evolutionStage === 0)
+    return pickUnanswered(data, MAIN_QUESTIONS, count);
+  if (data.pet.evolutionStage === 1)
+    return pickUnanswered(data, EI_QUESTIONS, count);
+  return []; // 2단계 이상: 질문 없음
 }
 
-// 지금 노출할 질문이 시간 조건상 준비됐는지. 활성/시간대/앱 조건은 호출부(main)에서 판단.
-function isQuestionDue(data, nowMs) {
-  if (data.pet.stoneType) return false;
-  if (!nextQuestion(data)) return false;
-  const due = data.questions.nextQuestionDueAt;
-  return !due || nowMs >= Date.parse(due);
+// ---------- 매일 오전 8시 갱신 (update.md 8.1) ----------
+// 어제 안 답한 질문은 유지하고, 부족분(2 - 남은 개수)만 새로 채운다.
+// 반환: { showBanner } — 갱신 후 답할 질문이 있으면 배너 알림 대상.
+function onDailyReset(data, nowIso) {
+  const remaining = data.questions.todaysQuestions;
+  const need = MAX_DAILY_QUESTIONS - remaining.length;
+  if (need > 0) {
+    data.questions.todaysQuestions = remaining.concat(
+      pickNextQuestions(data, need),
+    );
+  }
+  data.affinity.dailyCleanDone = false;
+  data.affinity.dailyFeedDone = false;
+  data.notifications.hasUnreadBadge = data.questions.todaysQuestions.length > 0;
+  data.questions.dailyResetAt = nowIso;
+  return { showBanner: data.questions.todaysQuestions.length > 0 };
 }
 
+// ---------- 판정 보조 (본 질문 동점 처리) ----------
 // 두 돌의 타이브레이커 쌍 키 (STONE_ORDER 순서로 정규화)
 function pairKey(a, b) {
   return [a, b]
@@ -307,7 +460,7 @@ function tiedStones(data) {
 }
 
 // 아직 안 물어본 동점 쌍의 타이브레이커 하나 (없으면 null)
-function nextTiebreaker(data) {
+function nextMainTiebreaker(data) {
   const tied = tiedStones(data);
   if (tied.length < 2) return null;
   const asked = data.traits.tiebreaker.pairsAsked;
@@ -320,155 +473,240 @@ function nextTiebreaker(data) {
   return null;
 }
 
-// 지금 사용자에게 보여줄 다음 질문 (없으면 null → 확정 준비 완료)
-function nextQuestion(data) {
-  if (data.pet.stoneType) return null;
-  const progress = data.questions.mainQuestionProgress;
-  if (progress < MAIN_QUESTIONS.length) return MAIN_QUESTIONS[progress];
-  return nextTiebreaker(data);
-}
-
-function serialize(q) {
-  if (!q) return null;
-  return {
-    id: q.id,
-    kind: q.id.startsWith("tb_") ? "tiebreaker" : "main",
-    text: q.text,
-    options: q.options.map((o) => ({ stone: o.stone, label: o.label })),
-  };
-}
-
-function getState(data) {
-  const q = nextQuestion(data);
-  return {
-    stage: data.pet.evolutionStage,
-    stoneType: data.pet.stoneType,
-    progress: data.questions.mainQuestionProgress,
-    total: MAIN_QUESTIONS.length,
-    question: serialize(q),
-    hasBadge: data.notifications.hasUnreadBadge,
-    // 이미 사용자에게 노출된(예고됐거나 한 번 이상 패스한) 질문이 있어 지금 바로 답할 수 있는 상태.
-    // 트레이 "질문에 답하기" 노출 조건. 아직 안 뜬 다음 질문은 제외해 노출 주기를 유지한다.
-    awaitingAnswer:
-      !!q &&
-      (data.notifications.hasUnreadBadge ||
-        data.questions.pendingQuestionId === q.id ||
-        (data.questions.skippedQuestions[q.id] || 0) > 0),
-    userName: data.user.userName,
-    petName: data.pet.petName,
-    affinityPoints: data.affinity.affinityPoints,
-    blurb: data.pet.stoneType ? STONE_TRAIT[data.pet.stoneType].blurb : null,
-    tags: data.pet.stoneType ? STONE_TRAIT[data.pet.stoneType].tags : [],
-    history: buildHistory(data),
-  };
-}
-
-function incrementScore(data, stone) {
-  const ko = KO_BY_KEY[stone];
-  if (ko) data.traits.traitScores[ko] += 1;
-}
-
-// 본 질문 12개 + 필요한 타이브레이커까지 끝났으면 돌 종류를 확정한다.
-// 확정되면 stoneType을 반환, 아직이면 null.
-function tryConfirm(data, now) {
-  if (data.pet.stoneType) return null;
-  if (data.questions.mainQuestionProgress < MAIN_QUESTIONS.length) return null;
-  if (nextTiebreaker(data)) return null; // 아직 풀어야 할 동점이 남음
-
+// 타이브레이커까지 다 쓴 뒤 최종 승자 돌 (여전히 동점이면 가장 최근 답변 기준)
+function winnerStone(data) {
   const tied = tiedStones(data);
-  let winner;
-  if (tied.length === 1) {
-    winner = tied[0];
-  } else {
-    // 타이브레이커를 다 썼는데도 동점 → 가장 최근 답변 기준 (evolve.md 5)
-    const answered = data.questions.answeredQuestions;
-    winner = answered[answered.length - 1].selectedOption;
+  if (tied.length === 1) return tied[0];
+  const answered = data.questions.answeredQuestions;
+  return answered[answered.length - 1].selectedOption;
+}
+
+// 타이브레이커를 오늘 목록 맨 앞에 삽입 → 다음에 바로 답할 수 있게 한다 (update.md 5.1/5.2)
+function insertTiebreakerToday(data, id) {
+  if (!data.questions.todaysQuestions.includes(id)) {
+    data.questions.todaysQuestions.unshift(id);
   }
-
-  data.pet.stoneType = winner;
-  data.pet.stoneConfirmedAt = now;
-  data.pet.evolutionStage = 1; // 0(rockie) → 1(돌 확정)
-  return winner;
+  data.notifications.hasUnreadBadge = true;
 }
 
-// 1→2단계(완전 변성체) 전환 게이트 판정 (evolve.md 3.3).
-// 순수 계산만 하고 실제 전환/저장은 하지 않는다. E/I 질문 노출과 2단계 자산이
-// 준비되면 이 결과(ready)로 전환을 발사하도록 호출부에서 연결한다(현재는 예약 로직).
-// 반환: { ready, daysLeft, answersLeft, eiLeft } — 각 남은 값(0이면 해당 조건 충족).
-function canEvolveToStage2(data, nowMs) {
-  const confirmedAt = data.pet.stoneConfirmedAt;
-  const elapsed = confirmedAt ? nowMs - Date.parse(confirmedAt) : 0;
-  const daysLeft = Math.max(
-    0,
-    Math.ceil((STAGE2_MIN_DAYS * DAY_MS - elapsed) / DAY_MS),
-  );
-  const answersLeft = Math.max(
-    0,
-    STAGE2_MIN_ANSWERS - data.questions.answeredQuestions.length,
-  );
-  const eiAnswered =
-    data.traits.eiScores["외향"] + data.traits.eiScores["내향"];
-  const eiLeft = Math.max(0, EI_QUESTION_COUNT - eiAnswered);
+// ---------- 단계 확정 (update.md 8.4) ----------
+function confirmStage1(data, nowIso, stone) {
+  data.pet.stoneType = stone;
+  data.pet.stoneConfirmedAt = nowIso;
+  data.pet.evolutionStage = 1;
+  // 확정 직후 오늘 남은 슬롯이 있으면 같은 개수만큼 E/I 질문으로 교체
+  const n = data.questions.todaysQuestions.length;
+  if (n > 0) {
+    data.questions.todaysQuestions = [];
+    data.questions.todaysQuestions.push(...pickNextQuestions(data, n));
+  }
+}
 
-  const ready =
+function confirmStage2(data, variant) {
+  data.pet.evolutionVariant = variant;
+  data.pet.evolutionStage = 2;
+  // 2단계는 질문 없음: 오늘 남은 질문 비운다
+  data.questions.todaysQuestions = [];
+  data.notifications.hasUnreadBadge = false;
+  // 진입 시점에 이미 호감도 90 이상이면 즉시 3단계 판정 (update.md 6.2)
+  if (data.affinity.affinityPoints >= AFFINITY_TARGET) confirmStage3(data);
+}
+
+function confirmStage3(data) {
+  data.pet.evolutionStage = 3;
+  // 3단계 시각 자산은 (stoneType, evolutionVariant) 조합으로 렌더러 매핑에서 조회
+}
+
+// ---------- 판정 시도 (update.md 8.3) ----------
+function tryEvaluate(data, nowIso) {
+  if (
+    data.pet.evolutionStage === 0 &&
+    data.questions.mainQuestionProgress >= MAIN_QUESTION_COUNT
+  ) {
+    const tb = nextMainTiebreaker(data);
+    if (tb) insertTiebreakerToday(data, tb.id);
+    else confirmStage1(data, nowIso, winnerStone(data));
+  } else if (
     data.pet.evolutionStage === 1 &&
-    daysLeft === 0 &&
-    answersLeft === 0 &&
-    eiLeft === 0;
-  return { ready, daysLeft, answersLeft, eiLeft };
+    data.questions.eiQuestionProgress >= EI_QUESTION_COUNT
+  ) {
+    const e = data.traits.eiScores["외향"];
+    const i = data.traits.eiScores["내향"];
+    if (e > i) confirmStage2(data, "extrovert");
+    else if (i > e) confirmStage2(data, "introvert");
+    else if (!data.traits.tiebreaker.pairsAsked.includes("ei")) {
+      insertTiebreakerToday(data, EI_TIEBREAKER.id);
+    }
+  }
 }
 
-// 답변 1건 처리 → 점수 반영 + 확정 시도. { confirmed, state } 반환.
-function answer(data, { questionId, stone }) {
-  if (data.pet.stoneType) return { confirmed: null, state: getState(data) };
+// ---------- 호감도 획득 (update.md 8.5) ----------
+function tryAffinityEvaluate(data) {
+  if (
+    data.pet.evolutionStage === 2 &&
+    data.affinity.affinityPoints >= AFFINITY_TARGET
+  ) {
+    confirmStage3(data);
+  }
+}
+
+function awardAffinity(data, amount) {
+  data.affinity.affinityPoints = Math.min(
+    AFFINITY_MAX,
+    data.affinity.affinityPoints + amount,
+  );
+}
+
+// 닦아주기/밥주기: 하루 1회 제한. 진화가 일어났으면 evolved에 새 단계 번호.
+function cleanPet(data) {
+  const before = data.pet.evolutionStage;
+  if (!data.affinity.dailyCleanDone) {
+    data.affinity.dailyCleanDone = true;
+    awardAffinity(data, CLEAN_POINTS);
+    tryAffinityEvaluate(data);
+  }
+  return {
+    evolved:
+      data.pet.evolutionStage !== before ? data.pet.evolutionStage : null,
+    state: getState(data),
+  };
+}
+
+function feedPet(data) {
+  const before = data.pet.evolutionStage;
+  if (!data.affinity.dailyFeedDone) {
+    data.affinity.dailyFeedDone = true;
+    awardAffinity(data, FEED_POINTS);
+    tryAffinityEvaluate(data);
+  }
+  return {
+    evolved:
+      data.pet.evolutionStage !== before ? data.pet.evolutionStage : null,
+    state: getState(data),
+  };
+}
+
+// ---------- 답변 제출 (update.md 8.3) ----------
+// { evolved, state } 반환. evolved는 이번 답변으로 올라간 단계 번호(없으면 null).
+function answer(data, { questionId, value }) {
+  const q = QUESTION_BY_ID[questionId];
+  if (!q) return { evolved: null, state: getState(data) };
   const now = new Date().toISOString();
-  const isTb = questionId.startsWith("tb_");
 
-  incrementScore(data, stone);
-  data.questions.answeredQuestions.push({
-    questionId,
-    category: isTb
-      ? "타이브레이커"
-      : (MAIN_QUESTIONS[data.questions.mainQuestionProgress]?.category ?? null),
-    selectedOption: stone,
-    answeredAt: now,
-  });
-
-  if (isTb) {
+  // 1. 점수 반영 + 진행 수 증가 (종류별 트랙 분리)
+  if (isMainTiebreaker(questionId)) {
+    data.traits.traitScores[KO_BY_KEY[value]] += 1;
     const key = questionId.slice(3);
     if (!data.traits.tiebreaker.pairsAsked.includes(key)) {
       data.traits.tiebreaker.pairsAsked.push(key);
     }
     data.traits.tiebreaker.used = true;
+  } else if (isEiTiebreaker(questionId)) {
+    data.traits.eiScores[value] += 1;
+    if (!data.traits.tiebreaker.pairsAsked.includes("ei")) {
+      data.traits.tiebreaker.pairsAsked.push("ei");
+    }
+    data.traits.tiebreaker.used = true;
+  } else if (isEiQuestion(questionId)) {
+    data.traits.eiScores[value] += 1;
+    data.questions.eiQuestionProgress += 1;
   } else {
+    data.traits.traitScores[KO_BY_KEY[value]] += 1;
     data.questions.mainQuestionProgress += 1;
   }
-  delete data.questions.skippedQuestions[questionId]; // 답했으면 연속 패스 기록 초기화
-  data.questions.pendingQuestionId = null; // 응답 완료 → 다음 질문 재노출 가능
 
-  const confirmed = tryConfirm(data, now);
-  rescheduleAfter(data, now, confirmed);
-  return { confirmed, state: getState(data) };
+  // 2. 답변 기록 + 오늘 목록에서 제거
+  data.questions.answeredQuestions.push({
+    questionId,
+    category: q.category ?? null,
+    selectedOption: value,
+    answeredAt: now,
+  });
+  data.questions.todaysQuestions = data.questions.todaysQuestions.filter(
+    (id) => id !== questionId,
+  );
+
+  // 3. 판정 시도 (단계 상승 감지)
+  const before = data.pet.evolutionStage;
+  tryEvaluate(data, now);
+  const evolved =
+    data.pet.evolutionStage !== before ? data.pet.evolutionStage : null;
+
+  // 4. 배지 갱신 (답할 질문이 남아있는 동안 표시)
+  data.notifications.hasUnreadBadge = data.questions.todaysQuestions.length > 0;
+
+  return { evolved, state: getState(data) };
 }
 
-// "지금은 패스" 처리. 사용자는 모든 질문에 답해야 하므로 풀에서 제외하지 않고,
-// 다음 노출 기회로 미루기만 한다(패스 횟수는 기록). 타이브레이커도 동일.
-function skip(data, questionId) {
-  if (data.pet.stoneType) return { confirmed: null, state: getState(data) };
-  const now = new Date().toISOString();
-  const skipped = data.questions.skippedQuestions;
-  skipped[questionId] = (skipped[questionId] || 0) + 1;
-  data.questions.pendingQuestionId = null; // 다음 기회에 재노출 가능
+// ---------- 상태 직렬화 ----------
+function serialize(id) {
+  if (!id) return null;
+  const q = QUESTION_BY_ID[id];
+  if (!q) return null;
+  const kind =
+    isMainTiebreaker(id) || isEiTiebreaker(id)
+      ? "tiebreaker"
+      : isEiQuestion(id)
+        ? "ei"
+        : "main";
+  return {
+    id,
+    kind,
+    text: q.text,
+    options: q.options.map((o) => ({ value: optValue(o), label: o.label })),
+  };
+}
 
-  rescheduleAfter(data, now, false);
-  return { confirmed: null, state: getState(data) };
+// "새로운 질문에 답하기" 버튼 상태 (update.md 9.1)
+function answerButtonState(data) {
+  if (data.pet.evolutionStage >= 2) {
+    return { enabled: false, note: "질문을 모두 마쳤어요." };
+  }
+  if (data.questions.todaysQuestions.length > 0) {
+    return { enabled: true, note: null };
+  }
+  return {
+    enabled: false,
+    note: "오늘의 질문을 모두 마쳤어요. 내일 오전 8시에 새 질문을 준비해둘게요.",
+  };
+}
+
+function getState(data) {
+  const stage = data.pet.evolutionStage;
+  const stoneType = data.pet.stoneType;
+  // 진행도는 현재 트랙 기준: 0단계=본 질문, 1단계=E/I, 2단계 이상=완료
+  let progress = MAIN_QUESTION_COUNT;
+  let total = MAIN_QUESTION_COUNT;
+  if (stage === 0) {
+    progress = data.questions.mainQuestionProgress;
+    total = MAIN_QUESTION_COUNT;
+  } else if (stage === 1) {
+    progress = data.questions.eiQuestionProgress;
+    total = EI_QUESTION_COUNT;
+  }
+  return {
+    stage,
+    stoneType,
+    variant: data.pet.evolutionVariant,
+    progress,
+    total,
+    question: serialize(data.questions.todaysQuestions[0]),
+    answerButton: answerButtonState(data),
+    hasBadge: data.notifications.hasUnreadBadge,
+    userName: data.user.userName,
+    petName: data.pet.petName,
+    affinityPoints: data.affinity.affinityPoints,
+    blurb: stoneType ? STONE_TRAIT[stoneType].blurb : null,
+    tags: stoneType ? STONE_TRAIT[stoneType].tags : [],
+    history: buildHistory(data),
+  };
 }
 
 module.exports = {
   getState,
   answer,
-  skip,
-  isQuestionDue,
-  canEvolveToStage2,
+  cleanPet,
+  feedPet,
+  onDailyReset,
   STONE_ORDER,
 };

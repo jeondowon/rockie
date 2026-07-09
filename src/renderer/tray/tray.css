@@ -28,6 +28,7 @@ body {
 
 /* ---------- 창 프레임 ---------- */
 #popup {
+  position: relative; /* 인앱 확인창 오버레이 기준 */
   width: calc(100% - 10px);
   height: calc(100% - 10px);
   display: flex;
@@ -36,6 +37,74 @@ body {
   border: 3px solid #1b1b16;
   box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.45); /* 블러 없는 하드 섀도우 */
   overflow: hidden;
+}
+
+/* ---------- 인앱 확인창 (처음부터 다시 키우기) ---------- */
+.confirm-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(27, 27, 22, 0.55);
+}
+
+.confirm-overlay.hidden {
+  display: none;
+}
+
+.confirm-box {
+  width: 100%;
+  background: #f2ede1;
+  border: 3px solid #1b1b16;
+  box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.45);
+  padding: 16px;
+}
+
+.confirm-title {
+  font-size: 13px;
+  color: #1b1b16;
+  margin-bottom: 10px;
+}
+
+.confirm-desc {
+  font-size: 10px;
+  line-height: 1.7;
+  color: #514c3e;
+  margin-bottom: 16px;
+}
+
+.confirm-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.confirm-btn {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  text-align: center;
+  padding: 10px;
+  font-size: 12px;
+  border: 2px solid #1b1b16;
+  color: #1b1b16;
+}
+
+.confirm-btn:hover {
+  background: #e7e1d2;
+}
+
+.confirm-btn.danger {
+  border-color: #a8432b;
+  color: #a8432b;
+}
+
+.confirm-btn.danger:hover {
+  background: #a8432b;
+  color: #f2ede1;
 }
 
 /* ---------- 타이틀바 ---------- */
@@ -389,15 +458,38 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  width: 100%;
+  box-sizing: border-box;
+  /* 좌우 16px 마진 + (100% - 32px) 폭으로 이름 수정 버튼과 동일한 너비(패널 내부 폭)로 맞춘다.
+     (button은 width:auto가 내용 폭이라 명시적 폭이 없으면 텍스트 크기로 줄어든다) */
+  width: calc(100% - 32px);
+  margin: 12px 16px 4px;
   padding: 13px 16px;
   background: #c9a12e;
-  border-bottom: 2px solid #1b1b16;
+  border: 2px solid #1b1b16;
+  text-align: left;
+  font-family: inherit;
   cursor: pointer;
 }
 
 .callout:hover {
   background: #d9b13a;
+}
+
+/* 답변 한도 소진/2단계 이상: 비활성 안내 */
+.callout:disabled,
+.callout:disabled:hover {
+  background: #3a372c;
+  cursor: default;
+}
+.callout:disabled .callout-icon {
+  background: #5a5640;
+  color: #8f8a76;
+}
+.callout:disabled .callout-title {
+  color: #cfc9b8;
+}
+.callout:disabled .callout-sub {
+  color: #8f8a76;
 }
 
 .callout-icon {

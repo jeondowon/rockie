@@ -11,7 +11,8 @@ let posX = window.innerWidth / 2;
 let targetX = posX; // 따라갈 목표 X (매 프레임 마우스 위치에 따라 계산됨)
 let mouseX = posX + CHAR_SIZE / 2; // 최신 마우스 X 좌표 (바라보는 방향 판단용)
 let facing = "right"; // 현재 바라보는 방향 (표시할 gif 결정)
-let stonePrefix = "rockie"; // 표시할 돌 종류 gif 접두어. 확정 전엔 기본 캐릭터(rockie)
+let spritePrefix = "rockie"; // 표시할 GIF 접두어 (단계·돌·변형에 따라 결정)
+let spriteLevel = "level0"; // GIF가 담긴 레벨 폴더
 
 const EASE = 0.06; // 목표를 향해 이동하는 비율이 작을수록 천천히 따라감
 const MAX_SPEED = 1; // 프레임당 최대 이동 픽셀 (너무 빠르지 않게 제한)
@@ -99,23 +100,12 @@ function setFacing(dir) {
   applySprite();
 }
 
-// 돌 종류별 GIF가 담긴 레벨 폴더. rockie=level0, 확정 4돌=level1.
-// (level2/3 변성체·보석은 진화 전환 로직 구현 시 확장)
-const STONE_LEVEL = {
-  rockie: "level0",
-  granite: "level1",
-  basalt: "level1",
-  marble: "level1",
-  gneiss: "level1",
-};
-
 function spriteUrl(name) {
-  const level = STONE_LEVEL[stonePrefix] || "level0";
-  return `../../../assets/gif/${level}/${stonePrefix}_${name}.gif`;
+  return `../../../assets/gif/${spriteLevel}/${spritePrefix}_${name}.gif`;
 }
 
 // 지친 상태(배터리 부족)면 단계별 표정 gif, 아니면 바라보는 방향의 걷기 gif를 표시.
-// 표시할 파일은 현재 stonePrefix(rockie 또는 확정된 돌)에 따라 결정된다.
+// 표시할 파일은 현재 진화 단계에 따른 spriteLevel/spritePrefix로 결정된다.
 function applySprite() {
   const name = tiredSprite || (facing === "left" ? "left" : "right");
   const src = spriteUrl(name);
@@ -256,11 +246,6 @@ const clickReactions = [
 ];
 
 character.addEventListener("click", () => {
-  // 물어볼 질문이 예고된 상태면 클릭 시 질문 카드를 연다 (evolve.md 6.4 2단계)
-  if (hasPendingQuestion && qcard.classList.contains("hidden")) {
-    openQuestionCard();
-    return;
-  }
   const msg = clickReactions[Math.floor(Math.random() * clickReactions.length)];
   showBubble(msg);
   pauseWalking(1500);
@@ -547,7 +532,7 @@ async function initBatteryWatcher() {
   }
 }
 
-// ---------- 6. 진화 상태 (돌 종류 확정 시 gif 전환) ----------
+// ---------- 6. 진화 상태 (단계 전환 시 gif 교체) ----------
 
 const STONE_NAMES = {
   granite: "화강암",
@@ -556,57 +541,81 @@ const STONE_NAMES = {
   gneiss: "편마암",
 };
 
-function setStone(stoneType) {
-  if (!stoneType || stonePrefix === stoneType) return;
-  stonePrefix = stoneType;
-  applySprite();
+// 1단계 돌 → 2단계 변성체 접두어 (파일명은 접두어_e/i_포즈, update.md 1.1)
+const VARIANT_STONE = {
+  granite: "pegmatite",
+  basalt: "eclogite",
+  marble: "corundumMarble",
+  gneiss: "migmatite",
+};
+
+// (돌 종류, 변형) → 3단계 보석 접두어 (update.md 1.1)
+const GEM = {
+  granite: { extrovert: "topaz", introvert: "aquamarine" },
+  basalt: { extrovert: "diamond_cut", introvert: "diamond_rough" },
+  marble: { extrovert: "partiSapphire", introvert: "ruby" },
+  gneiss: { extrovert: "labradorite", introvert: "moonstone" },
+};
+
+// 진화 상태 → 표시할 GIF의 레벨 폴더와 접두어
+function resolveSprite(stage, stoneType, variant) {
+  if (stage >= 3 && stoneType && variant) {
+    return { level: "level3", prefix: GEM[stoneType][variant] };
+  }
+  if (stage === 2 && stoneType && variant) {
+    const suffix = variant === "extrovert" ? "e" : "i";
+    return { level: "level2", prefix: `${VARIANT_STONE[stoneType]}_${suffix}` };
+  }
+  if (stage >= 1 && stoneType) {
+    return { level: "level1", prefix: stoneType };
+  }
+  return { level: "level0", prefix: "rockie" };
 }
 
-// 트레이에서 성향 판정이 끝나 돌 종류가 확정되면 즉시 해당 돌 gif로 진화
-window.petAPI.onStoneConfirmed((stoneType) => {
-  setStone(stoneType);
-  showBubble(`저, ${STONE_NAMES[stoneType]}이 됐어요!`, 6000);
+// 진화 정보에 맞춰 스프라이트를 갱신한다. 실제로 바뀌었으면 true.
+function applyEvolution({ stage, stoneType, variant }) {
+  const { level, prefix } = resolveSprite(stage, stoneType, variant);
+  if (level === spriteLevel && prefix === spritePrefix) return false;
+  spriteLevel = level;
+  spritePrefix = prefix;
+  applySprite();
+  return true;
+}
+
+function evolveMessage({ stage, stoneType }) {
+  if (stage === 1) return `저, ${STONE_NAMES[stoneType]}이 됐어요!`;
+  if (stage === 2) return "몸이 변하고 있어요… 변성체가 됐어요!";
+  if (stage === 3) return "반짝… 드디어 보석이 됐어요! ✨";
+  return "";
+}
+
+// 단계가 올라가면 즉시 해당 gif로 전환하고 축하 말풍선을 띄운다
+window.petAPI.onEvolved((info) => {
+  applyEvolution(info);
+  const msg = evolveMessage(info);
+  if (msg) showBubble(msg, 6000);
 });
 
-// 앱 시작 시 이미 확정돼 있으면 해당 돌 모습으로 복원
-async function initStone() {
+// 앱 시작 시 저장된 단계에 맞는 모습으로 복원
+async function initEvolution() {
   try {
-    setStone(await window.petAPI.getStone());
+    const state = await window.petAPI.getEvolutionState();
+    applyEvolution({
+      stage: state.stage,
+      stoneType: state.stoneType,
+      variant: state.variant,
+    });
   } catch (_err) {
     // 상태를 못 읽으면 기본(rockie) 유지
   }
 }
 
-// ---------- 8. 성향 질문 알림 (예고 말풍선 → 클릭 시 카드) ----------
+// ---------- 8. 성향 질문 카드 (트레이 "새로운 질문에 답하기"로만 열림) ----------
 
-let hasPendingQuestion = false;
-let currentQuestion = null;
-
-// 게이트가 "물어볼 질문이 준비됨"을 알리면 예고 말풍선만 띄운다 (강제 팝업 없음)
-window.petAPI.onQuestionAvailable(() => {
-  hasPendingQuestion = true;
-  showBubble("물어보고 싶은 게 있어요. 저를 눌러주세요!", 6000);
-});
-
-// 트레이 "질문에 답하기"로 요청이 오면 예고 없이 바로 질문 카드를 연다
+// 트레이 버튼 요청이 오면 질문 카드를 연다 (능동 접근만, 예고/강제 노출 없음)
 window.petAPI.onOpenQuestionCard(() => {
-  hasPendingQuestion = true;
   if (qcard.classList.contains("hidden")) openQuestionCard();
 });
-
-// 앱을 껐다 켠 뒤에도 아직 답하지 않은 예고된 질문이 있으면 다시 클릭으로 열 수 있게 한다.
-// (트레이에서 답하던 경로가 사라졌으므로, 이 복원이 없으면 예고된 질문이 갇힌다)
-async function initPendingQuestion() {
-  try {
-    const state = await window.petAPI.getEvolutionState();
-    if (state.hasBadge && state.question) {
-      hasPendingQuestion = true;
-      showBubble("물어보고 싶은 게 있어요. 저를 눌러주세요!", 6000);
-    }
-  } catch (_err) {
-    // 상태를 못 읽으면 조용히 넘어간다
-  }
-}
 
 function positionCard() {
   // 카드를 펫 위쪽에 띄우되, 가로 위치는 펫 위치 모드에 맞춰 화면 안쪽으로 펼친다.
@@ -635,13 +644,7 @@ async function openQuestionCard() {
   } catch (_err) {
     return;
   }
-  // 이미 확정됐거나 지금 물을 게 없으면 예고 상태만 정리
-  if (!state.question) {
-    hasPendingQuestion = false;
-    return;
-  }
-  currentQuestion = state.question;
-  window.petAPI.markQuestionRead(); // 열었으면 "읽음" → 트레이 배지 해제
+  if (!state.question) return; // 지금 답할 질문이 없으면 열지 않음
   renderCard(state);
   cardOpen = true;
   qcard.classList.remove("hidden");
@@ -659,13 +662,19 @@ function renderCard(state) {
   qcard.innerHTML = "";
   const q = state.question;
 
+  // 답하지 않고 닫기 (상태 변화 없음 — 질문은 오늘 목록에 그대로 남아 다시 열 수 있다)
+  const close = cardEl("button", "q-close", "✕");
+  close.addEventListener("click", () => hideQuestionCard());
+  qcard.appendChild(close);
+
   if (q.kind === "tiebreaker") {
     qcard.appendChild(
       cardEl("p", "q-hint", "마지막으로 하나만 더 골라주세요!"),
     );
   } else {
+    // progress는 "답 완료 개수"라, 지금 답하는 질문은 그 다음 순번(+1)
     qcard.appendChild(
-      cardEl("p", "q-hint", `질문 ${state.progress} / ${state.total}`),
+      cardEl("p", "q-hint", `질문 ${state.progress + 1} / ${state.total}`),
     );
   }
   qcard.appendChild(cardEl("p", "q-text", q.text));
@@ -673,29 +682,44 @@ function renderCard(state) {
   const options = cardEl("div", "q-options");
   q.options.forEach((opt) => {
     const btn = cardEl("button", "q-opt", opt.label);
-    btn.addEventListener("click", () => answerQuestion(q.id, opt.stone));
+    btn.addEventListener("click", () => answerQuestion(q.id, opt.value));
     options.appendChild(btn);
   });
   qcard.appendChild(options);
-
-  const pass = cardEl("button", "q-pass", "지금은 패스");
-  pass.addEventListener("click", () => passQuestion(q.id));
-  qcard.appendChild(pass);
 }
 
-async function answerQuestion(questionId, stone) {
-  const result = await window.petAPI.answerQuestion({ questionId, stone });
+async function answerQuestion(questionId, value) {
+  const result = await window.petAPI.answerQuestion({ questionId, value });
+  // 오늘 답할 질문이 더 남아 있으면 "답변 완료" 안내 카드로 전환(다음/나중에 선택).
+  if (result.state.question) {
+    renderConfirm(result.state);
+    positionCard();
+    return;
+  }
+  // 남은 질문이 없으면(둘 다 답함·2단계 도달 등) 안내 없이 바로 닫는다.
   hideQuestionCard();
-  hasPendingQuestion = false;
-  // 확정되면 onStoneConfirmed가 진화 말풍선을 띄우므로 여기선 조용히 둔다
-  if (!result.confirmed) showBubble("고마워요! 잘 기억해둘게요.", 3000);
+  // 진화하면 onEvolved가 축하 말풍선을 띄우므로 여기선 조용히 둔다
+  if (!result.evolved) showBubble("고마워요! 잘 기억해둘게요.", 3000);
 }
 
-async function passQuestion(questionId) {
-  await window.petAPI.skipQuestion({ questionId });
-  hideQuestionCard();
-  hasPendingQuestion = false;
-  showBubble("알겠어요, 다음에 또 물어볼게요.", 3000);
+// 한 문항을 답한 뒤, 남은 질문이 있을 때 보여주는 확인 카드.
+function renderConfirm(state) {
+  qcard.innerHTML = "";
+  qcard.appendChild(cardEl("p", "q-hint", "답변 완료"));
+  qcard.appendChild(
+    cardEl("p", "q-text", "잘 기억해둘게요! 다음 질문에도 답해줄래요?"),
+  );
+
+  const actions = cardEl("div", "q-options");
+  const nextBtn = cardEl("button", "q-opt", "다음 질문 답하기");
+  nextBtn.addEventListener("click", () => {
+    renderCard(state);
+    positionCard();
+  });
+  const laterBtn = cardEl("button", "q-opt", "나중에 답하기");
+  laterBtn.addEventListener("click", () => hideQuestionCard());
+  actions.append(nextBtn, laterBtn);
+  qcard.appendChild(actions);
 }
 
 // 카드 위에 마우스가 있을 때만 클릭을 받도록(캐릭터와 동일 패턴)
@@ -760,6 +784,5 @@ character.style.visibility = "hidden";
 placeCharacter();
 requestAnimationFrame(followStep);
 initBatteryWatcher();
-initStone();
-initPendingQuestion();
+initEvolution();
 initSettings();

@@ -16,22 +16,14 @@ contextBridge.exposeInMainWorld("petAPI", {
   onScreenPermissionMissing: (callback) => {
     ipcRenderer.on("screen-permission-missing", () => callback());
   },
-  getStone: () => ipcRenderer.invoke("evolution:get-stone"),
-  onStoneConfirmed: (callback) => {
-    ipcRenderer.on("evolution:stone-confirmed", (_event, stoneType) =>
-      callback(stoneType),
-    );
+  onEvolved: (callback) => {
+    ipcRenderer.on("evolution:evolved", (_event, info) => callback(info));
   },
   getEvolutionState: () => ipcRenderer.invoke("evolution:get-state"),
   answerQuestion: (payload) => ipcRenderer.invoke("evolution:answer", payload),
-  skipQuestion: (payload) => ipcRenderer.invoke("evolution:skip", payload),
-  onQuestionAvailable: (callback) => {
-    ipcRenderer.on("evolution:question-available", () => callback());
-  },
   onOpenQuestionCard: (callback) => {
     ipcRenderer.on("evolution:open-question-card", () => callback());
   },
-  markQuestionRead: () => ipcRenderer.send("evolution:mark-read"),
   getSettings: () => ipcRenderer.invoke("settings:get"),
   onPetSettings: (callback) => {
     ipcRenderer.on("pet-settings", (_event, data) => callback(data));

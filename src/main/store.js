@@ -27,15 +27,16 @@ function defaultData() {
     },
     questions: {
       mainQuestionProgress: 0,
-      postConfirmQuestionCount: 0,
-      pendingQuestionId: null,
-      nextQuestionDueAt: null,
+      eiQuestionProgress: 0,
+      todaysQuestions: [],
+      dailyResetAt: null,
       answeredQuestions: [],
-      skippedQuestions: {},
     },
     affinity: {
       affinityPoints: 0,
       affinityLevel: 1,
+      dailyCleanDone: false,
+      dailyFeedDone: false,
       dailyChatCount: 0,
       dailyInteractionCount: 0,
       lastChatAt: null,
@@ -63,10 +64,22 @@ let data = null;
 function load() {
   try {
     data = JSON.parse(fs.readFileSync(FILE, "utf-8"));
-    // 예전 파일에 없던 최상위 섹션(예: settings)은 기본값으로 보강한다.
+    // 예전 파일 보강: 없던 최상위 섹션(예: settings)과 섹션 내 신규 필드를
+    // 기본값으로 채운다(한 단계 깊이). 기존 값은 건드리지 않고, 스키마에서 빠진
+    // 옛 필드(pendingQuestionId 등)는 그대로 두어도 무시되므로 굳이 지우지 않는다.
     const defaults = defaultData();
     for (const key of Object.keys(defaults)) {
-      if (data[key] === undefined) data[key] = defaults[key];
+      if (data[key] === undefined || data[key] === null) {
+        data[key] = defaults[key];
+      } else if (
+        typeof defaults[key] === "object" &&
+        !Array.isArray(defaults[key])
+      ) {
+        for (const field of Object.keys(defaults[key])) {
+          if (data[key][field] === undefined)
+            data[key][field] = defaults[key][field];
+        }
+      }
     }
   } catch (_err) {
     // 파일이 없거나 깨졌으면 기본값으로 새로 만든다

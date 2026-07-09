@@ -7,7 +7,6 @@ const {
   nativeImage,
   systemPreferences,
   desktopCapturer,
-  dialog,
   Notification,
   nativeTheme,
 } = require("electron");
@@ -27,12 +26,7 @@ let watcherInterval;
 let cursorInterval;
 let dockInterval;
 let dockPrefsInterval;
-let questionGateInterval;
-
-// 질문 알림 게이트용 상태 (evolve.md 6장)
-let lastCursorPoint = null;
-let lastCursorMoveAt = 0;
-let lastActiveWin = null; // { appName, title, bounds }
+let dailyResetInterval;
 
 function createWindow() {
   const primaryDisplay = screen.getPrimaryDisplay();
@@ -71,7 +65,7 @@ function createWindow() {
   startActiveWindowWatcher();
   startCursorTracker();
   startDockTracker();
-  startQuestionGate();
+  startDailyResetTimer();
 
   if (isDev) startDevReload();
 }
@@ -131,15 +125,6 @@ function startCursorTracker() {
   cursorInterval = setInterval(() => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
     const point = screen.getCursorScreenPoint();
-    // 커서가 실제로 움직였으면 활성 시각을 갱신 (질문 알림 게이트에서 사용)
-    if (
-      !lastCursorPoint ||
-      point.x !== lastCursorPoint.x ||
-      point.y !== lastCursorPoint.y
-    ) {
-      lastCursorMoveAt = Date.now();
-      lastCursorPoint = point;
-    }
     const bounds = mainWindow.getBounds();
     // 창 기준 좌표로 변환해서 전달
     mainWindow.webContents.send("cursor-position", {
@@ -334,11 +319,11 @@ function makeTrayIcon(fileName, isTemplate) {
   return icon;
 }
 
-// 답변 대기(awaitingAnswer) 질문이 있으면 빨간 N 배지 아이콘, 없으면 기본 템플릿 아이콘.
+// 오늘 답할 질문이 남아 있으면(hasBadge) 빨간 N 배지 아이콘, 없으면 기본 템플릿 아이콘.
 // 배지는 비-템플릿이라 자동 반전이 안 되므로 메뉴바 테마에 맞춰 밝은/어두운 글리프를 고른다.
 function refreshTrayIcon() {
   if (!tray || tray.isDestroyed()) return;
-  const awaiting = evolution.getState(store.get()).awaitingAnswer;
+  const awaiting = evolution.getState(store.get()).hasBadge;
   if (!awaiting) {
     tray.setImage(makeTrayIcon("template.png", true));
     return;
@@ -474,47 +459,27 @@ ipcMain.on("tray-menu-action", (_event, action) => {
   }
 });
 
-// ---------- 애완돌 질문 알림 게이트 (evolve.md 6장) ----------
-// 시간 조건(다음 노출 예정 시각)이 충족되고, 사용자가 활성 상태이며, 심야가 아니고,
-// 회의/전체화면 앱이 아닐 때만 예고 말풍선을 띄운다. 조건이 안 맞으면 다음 틱에 재시도(큐잉).
-const GATE_INTERVAL = process.env.PET_FAST_EVO === "1" ? 2000 : 30000;
-const ACTIVE_WINDOW_MS = 60 * 1000; // 최근 커서 움직임을 "활성"으로 인정하는 범위
+// ---------- 매일 오전 8시 질문 갱신 (update.md 8.1) ----------
+// 앱 실행 시 + 주기적으로 마지막 갱신 시각을 확인해, 가장 최근 오전 8시 경계를
+// 아직 안 지났으면 갱신을 실행한다. 최초 실행(dailyResetAt=null)도 여기서 부트스트랩된다.
+const DAILY_RESET_HOUR = 8;
 
-function isUserActive() {
-  return Date.now() - lastCursorMoveAt < ACTIVE_WINDOW_MS;
+// nowMs 기준으로 이미 지나온 가장 최근 오전 8시(ms). 8시 이전이면 어제 8시.
+function lastResetBoundary(nowMs) {
+  const eight = new Date(nowMs);
+  eight.setHours(DAILY_RESET_HOUR, 0, 0, 0);
+  if (nowMs < eight.getTime()) eight.setDate(eight.getDate() - 1);
+  return eight.getTime();
 }
 
-function isDaytime() {
-  const h = new Date().getHours();
-  return h >= 8 && h < 23; // 심야(23~08시) 제외
-}
-
-// 회의(Zoom/Meet/Webex) 중이거나 전체화면 앱 실행 중이면 보류
-function isBlockingApp() {
-  if (!lastActiveWin) return false;
-  const ctx = `${lastActiveWin.appName} ${lastActiveWin.title}`.toLowerCase();
-  if (/zoom|google meet|meet\.google|webex/.test(ctx)) return true;
-  const b = lastActiveWin.bounds;
-  if (b) {
-    const { bounds } = screen.getPrimaryDisplay();
-    // 활성 창이 화면을 거의 꽉 채우면 전체화면으로 간주
-    if (b.width >= bounds.width - 4 && b.height >= bounds.height - 4)
-      return true;
-  }
-  return false;
-}
-
-// 새 질문 예고 시 OS 배너 알림을 띄운다 (설정 '질문 알림'이 켜져 있을 때만).
-// 트레이 배지/예고 말풍선과 별개의, 앱 밖에서도 보이는 알림 경로.
+// 매일 오전 8시 배너 알림 (설정 '질문 알림'이 켜져 있을 때만). update.md 9.3
 function showQuestionBanner() {
   if (!Notification.isSupported()) return;
-  const petName = store.get().pet.petName || "애완돌";
   const banner = new Notification({
-    title: "물어보고 싶은 게 있어요",
-    body: `${petName}이(가) 새 질문을 준비했어요. 눌러서 답해 주세요!`,
+    title: "오늘도 나에 대해 알려주세요",
+    body: "새 질문을 준비해뒀어요. 메뉴바에서 답해 주세요!",
   });
   banner.on("click", () => {
-    // 숨겨져 있으면 다시 보여줘 사용자가 펫을 눌러 답할 수 있게 한다 (강제 카드 열기는 안 함)
     if (mainWindow && !mainWindow.isDestroyed()) mainWindow.show();
   });
   banner.show();
@@ -524,54 +489,68 @@ function showQuestionBanner() {
 function showBannerPreview() {
   if (!Notification.isSupported()) return;
   new Notification({
-    title: "물어보고 싶은 게 있어요",
+    title: "오늘도 나에 대해 알려주세요",
     body: "이렇게 표시됩니다",
   }).show();
 }
 
-function startQuestionGate() {
-  questionGateInterval = setInterval(() => {
-    if (!mainWindow || mainWindow.isDestroyed()) return;
-    const data = store.get();
-    if (data.pet.stoneType) return; // 이미 종류 확정됨
-    if (!evolution.isQuestionDue(data, Date.now())) return; // 시간 조건 미충족
-    if (!isDaytime() || isBlockingApp() || !isUserActive()) return; // 큐잉 후 다음 활성 시점 재시도
+function runDailyResetIfNeeded() {
+  const data = store.get();
+  const now = Date.now();
+  const last = data.questions.dailyResetAt
+    ? Date.parse(data.questions.dailyResetAt)
+    : 0;
+  if (last >= lastResetBoundary(now)) return; // 이번 오전 8시 이후로 이미 갱신함
+  const { showBanner } = evolution.onDailyReset(
+    data,
+    new Date(now).toISOString(),
+  );
+  store.save();
+  refreshTrayIcon(); // 트레이 배지 갱신
+  if (showBanner && data.notifications.notificationsEnabled)
+    showQuestionBanner();
+}
 
-    const q = evolution.getState(data).question;
-    if (!q) return;
-    if (data.questions.pendingQuestionId === q.id) return; // 이미 예고함 → 반복 알림 없음(3단계)
-
-    data.questions.pendingQuestionId = q.id; // 예고 기록
-    data.notifications.hasUnreadBadge = true; // 트레이 배지는 항상 표시(기본 동작)
-    store.save();
-    refreshTrayIcon(); // 메뉴바 아이콘에 빨간 N 배지 반영
-    mainWindow.webContents.send("evolution:question-available"); // 예고 말풍선
-    if (data.notifications.notificationsEnabled) showQuestionBanner(); // 배너는 설정에 따라
-  }, GATE_INTERVAL);
+function startDailyResetTimer() {
+  runDailyResetIfNeeded(); // 실행 즉시 한 번 확인 (첫 실행 부트스트랩 포함)
+  dailyResetInterval = setInterval(runDailyResetIfNeeded, 60 * 1000);
 }
 
 // ---------- 애완돌 성향 판정 / 진화 ----------
 ipcMain.handle("evolution:get-state", () => evolution.getState(store.get()));
-ipcMain.handle("evolution:get-stone", () => store.get().pet.stoneType);
+
+// 단계가 올랐을 때 펫 오버레이가 해당 GIF로 전환하도록 진화 정보를 보낸다.
+function notifyEvolved(data) {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  mainWindow.webContents.send("evolution:evolved", {
+    stage: data.pet.evolutionStage,
+    stoneType: data.pet.stoneType,
+    variant: data.pet.evolutionVariant,
+  });
+}
+
 ipcMain.handle("evolution:answer", (_event, payload) => {
-  const result = evolution.answer(store.get(), payload);
-  store.get().notifications.hasUnreadBadge = false; // 응답했으면 배지 해제
+  const data = store.get();
+  const result = evolution.answer(data, payload);
   store.save();
-  refreshTrayIcon(); // 남은 대기 질문 여부에 맞춰 메뉴바 배지 갱신
-  // 확정되면 오버레이 캐릭터를 해당 돌 GIF로 전환하도록 알린다
-  if (result.confirmed && mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send("evolution:stone-confirmed", result.confirmed);
-  }
+  refreshTrayIcon(); // 남은 질문 여부에 맞춰 메뉴바 배지 갱신
+  if (result.evolved) notifyEvolved(data);
   return result;
 });
-ipcMain.handle("evolution:skip", (_event, payload) => {
-  const result = evolution.skip(store.get(), payload.questionId);
-  store.get().notifications.hasUnreadBadge = false; // 패스도 상호작용이므로 배지 해제
+
+// 호감도 획득(백엔드). 실제 닦기/밥 버튼 UI는 별도 구현(update.md 6.1).
+ipcMain.handle("evolution:clean", () => {
+  const data = store.get();
+  const result = evolution.cleanPet(data);
   store.save();
-  refreshTrayIcon(); // 패스해도 대기 상태는 유지되므로 배지 유지(awaitingAnswer 기준)
-  if (result.confirmed && mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send("evolution:stone-confirmed", result.confirmed);
-  }
+  if (result.evolved) notifyEvolved(data);
+  return result;
+});
+ipcMain.handle("evolution:feed", () => {
+  const data = store.get();
+  const result = evolution.feedPet(data);
+  store.save();
+  if (result.evolved) notifyEvolved(data);
   return result;
 });
 // 호감도 지급(상한 100). 실제로 오른 만큼(상한 반영)을 반환한다.
@@ -607,15 +586,6 @@ ipcMain.handle("evolution:set-name", (_event, { target, value }) => {
     petName: data.pet.petName,
     affinityPoints: data.affinity.affinityPoints,
   };
-});
-
-// 질문 카드를 열어 "읽음" 처리 → 트레이 배지 해제
-ipcMain.on("evolution:mark-read", () => {
-  const data = store.get();
-  if (data.notifications.hasUnreadBadge) {
-    data.notifications.hasUnreadBadge = false;
-    store.save();
-  }
 });
 
 // ---------- 설정 (트레이 "설정" 화면) ----------
@@ -674,24 +644,12 @@ ipcMain.on("settings:set", (_event, { key, value }) => {
   store.save();
 });
 
-// "처음부터 다시 키우기" — 확인 후 전체 상태 리셋 + 펫 렌더러 재초기화.
-ipcMain.handle("settings:reset", async () => {
-  // 부모 창(트레이 팝업)은 포커스를 잃으면 blur 핸들러로 숨겨지므로,
-  // 부모 없이 앱 모달로 띄운다.
-  const { response } = await dialog.showMessageBox({
-    type: "warning",
-    buttons: ["취소", "초기화"],
-    defaultId: 0,
-    cancelId: 0,
-    message: "처음부터 다시 키우기",
-    detail:
-      "모든 진행도·성향·호감도·설정이 지워지고 조약돌로 돌아갑니다. 되돌릴 수 없어요.",
-  });
-  if (response !== 1) return false;
-
+// "처음부터 다시 키우기" — 전체 상태 리셋 + 펫 렌더러 재초기화.
+// (확인 절차는 트레이 팝업 안의 인앱 확인창에서 처리하므로 여기선 바로 실행한다)
+ipcMain.handle("settings:reset", () => {
   store.reset();
   applyStartupSettings(); // 자동 실행/맨 위를 기본값으로 되돌림
-  refreshTrayIcon(); // 대기 질문이 사라졌으니 배지 제거
+  runDailyResetIfNeeded(); // 초기화 직후 오늘의 질문을 다시 채우고 배지 갱신
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.reload(); // 조약돌로 복원
   return true;
 });
@@ -744,19 +702,11 @@ function startActiveWindowWatcher() {
       const activeWin = activeWinModule.default;
       const result = await activeWin();
       loggedError = false; // 성공하면(권한 허용 후) 다음 실패를 다시 로그할 수 있게 초기화
-      if (result) {
-        // 게이트(회의/전체화면 보류 판정)에서 참조하도록 최신 활성 창 정보를 보관
-        lastActiveWin = {
+      if (result && mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send("active-window-info", {
           appName: result.owner ? result.owner.name : "",
           title: result.title || "",
-          bounds: result.bounds || null,
-        };
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send("active-window-info", {
-            appName: lastActiveWin.appName,
-            title: lastActiveWin.title,
-          });
-        }
+        });
       }
     } catch (err) {
       // macOS에서 화면 기록 권한이 없으면 여기로 떨어진다.
@@ -780,7 +730,7 @@ app.on("window-all-closed", () => {
   if (cursorInterval) clearInterval(cursorInterval);
   if (dockInterval) clearInterval(dockInterval);
   if (dockPrefsInterval) clearInterval(dockPrefsInterval);
-  if (questionGateInterval) clearInterval(questionGateInterval);
+  if (dailyResetInterval) clearInterval(dailyResetInterval);
   if (process.platform !== "darwin") app.quit();
 });
 

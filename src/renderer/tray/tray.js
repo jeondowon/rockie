@@ -21,6 +21,76 @@ const STONE_NAMES = {
   gneiss: "편마암",
 };
 
+// 2단계 변성체 이름 (update.md 1)
+const VARIANT_NAMES = {
+  granite: "페그마타이트",
+  basalt: "에클로자이트",
+  marble: "루비 대리석",
+  gneiss: "미그마타이트",
+};
+
+// 3단계 보석 이름 (돌 종류 × 외향/내향, update.md 1.1)
+const GEM_NAMES = {
+  granite: { extrovert: "토파즈", introvert: "아쿠아마린" },
+  basalt: {
+    extrovert: "다이아몬드 브릴리언트컷",
+    introvert: "다이아몬드 원석",
+  },
+  marble: { extrovert: "파티사파이어", introvert: "루비" },
+  gneiss: { extrovert: "라브라도라이트", introvert: "문스톤" },
+};
+
+// GIF 접두어 매핑 (pet.js와 동일 규칙)
+const VARIANT_STONE = {
+  granite: "pegmatite",
+  basalt: "eclogite",
+  marble: "corundumMarble",
+  gneiss: "migmatite",
+};
+const GEM = {
+  granite: { extrovert: "topaz", introvert: "aquamarine" },
+  basalt: { extrovert: "diamond_cut", introvert: "diamond_rough" },
+  marble: { extrovert: "partiSapphire", introvert: "ruby" },
+  gneiss: { extrovert: "labradorite", introvert: "moonstone" },
+};
+
+// 진화 상태 → 표시할 hero GIF 경로 (smile 포즈)
+function heroSprite(stage, stoneType, variant) {
+  let level = "level0";
+  let prefix = "rockie";
+  if (stage >= 3 && stoneType && variant) {
+    level = "level3";
+    prefix = GEM[stoneType][variant];
+  } else if (stage === 2 && stoneType && variant) {
+    level = "level2";
+    prefix = `${VARIANT_STONE[stoneType]}_${variant === "extrovert" ? "e" : "i"}`;
+  } else if (stage >= 1 && stoneType) {
+    level = "level1";
+    prefix = stoneType;
+  }
+  return `../../../assets/gif/${level}/${prefix}_smile.gif`;
+}
+
+// 단계별 상태 라벨
+function statusLabel(stage, stoneType, variant) {
+  if (stage >= 3 && stoneType && variant) {
+    return `${GEM_NAMES[stoneType][variant]} · 보석`;
+  }
+  if (stage === 2 && stoneType && variant) {
+    return `${VARIANT_NAMES[stoneType]} · 변성체`;
+  }
+  if (stage >= 1 && stoneType) return `${STONE_NAMES[stoneType]} · 원석`;
+  return "조약돌 · 무던함";
+}
+
+// 단계별 진화 안내 문구
+function evoHint(stage) {
+  if (stage >= 3) return "🜨 마지막 단계예요. 반짝이는 보석이 됐어요.";
+  if (stage === 2) return "🜨 호감도가 90에 닿으면 보석으로 피어나요.";
+  if (stage === 1) return "🜨 이제 E/I 질문에 답하면 변성체로 나아가요.";
+  return "🜨 질문에 답할수록 어떤 돌이 될지 뚜렷해져요.";
+}
+
 // 설정 · 화면 기록 권한
 const permRow = document.getElementById("perm-row");
 const permBox = document.getElementById("perm-box");
@@ -38,6 +108,8 @@ const petPersonalityTags = document.getElementById("pet-personality-tags");
 const petProgressLabel = document.getElementById("pet-progress-label");
 const petProgressFill = document.getElementById("pet-progress-fill");
 const petCallout = document.getElementById("pet-callout");
+const calloutTitle = document.getElementById("callout-title");
+const calloutSub = document.getElementById("callout-sub");
 const petEvoHint = document.getElementById("pet-evo-hint");
 const petHistory = document.getElementById("pet-history");
 const petNameTitle = document.getElementById("pet-name");
@@ -50,12 +122,6 @@ const affValue = document.getElementById("aff-value");
 const affFill = document.getElementById("aff-fill");
 const affHearts = document.getElementById("aff-hearts");
 let editingName = false;
-
-function stoneGif(stoneType) {
-  const stone = stoneType || "rockie";
-  const level = stone === "rockie" ? "level0" : "level1";
-  return `../../../assets/gif/${level}/${stone}_smile.gif`;
-}
 
 // 메뉴 화면에 딱 맞는 창 높이(px) 계산. 항목 수/높이가 바뀌어도 자동으로 맞춰진다.
 function menuWindowHeight() {
@@ -86,13 +152,12 @@ function showScreen(name) {
 // ---------- 나의 애완돌 ----------
 async function showPet() {
   showScreen("pet");
-  // 여기선 진행 상태만 보여줄 뿐 질문에 답하는 게 아니므로 "읽음"으로 처리하지 않는다.
-  // (배지는 캐릭터 옆 카드를 실제로 열었을 때만 해제된다)
+  // 배지는 오늘 답할 질문이 남아 있는 동안 유지되고, 실제로 답해야 사라진다(단순 열람은 영향 없음).
   renderPet(await window.trayAPI.getEvolutionState());
 }
 
 function renderPet(state) {
-  heroImg.src = stoneGif(state.stoneType);
+  heroImg.src = heroSprite(state.stage, state.stoneType, state.variant);
 
   // 이름 (표시/입력/타이틀바) — 화면을 다시 그릴 땐 편집 모드를 닫는다
   applyNames(state.userName, state.petName);
@@ -106,28 +171,41 @@ function renderPet(state) {
     ? `${Math.round((progress / total) * 100)}%`
     : "0%";
 
-  // 돌 종류가 확정됐으면 성향 요약 + 태그, 아니면 진행 중 안내
+  // 상태 라벨 + 성향 요약. 돌 종류가 확정된(1단계 이상) 뒤엔 성향 요약 + 태그.
+  petStatusLabel.textContent = statusLabel(
+    state.stage,
+    state.stoneType,
+    state.variant,
+  );
+  petEvoHint.textContent = evoHint(state.stage);
   if (state.stoneType) {
-    petStatusLabel.textContent = `${STONE_NAMES[state.stoneType]} · 변성 진행형`;
     petPersonality.textContent =
       state.blurb || `${STONE_NAMES[state.stoneType]}(으)로 진화했어요!`;
     renderTags(state.tags || []);
     petPersonalityTags.classList.remove("hidden");
-    petEvoHint.textContent =
-      "🜨 이제 천천히 변성해가는 중이에요. 다음 단계까지 시간과 교감이 필요해요.";
   } else {
-    petStatusLabel.textContent = "조약돌 · 무던함";
     petPersonality.textContent = `아직 알아가는 중이에요 (${progress}/${total})`;
     petPersonalityTags.classList.add("hidden");
-    petEvoHint.textContent = "🜨 질문에 답할수록 어떤 돌이 될지 뚜렷해져요.";
   }
 
   renderAffinity(state.affinityPoints);
 
   renderHistory(state.history || []);
 
-  // 지금 답할 수 있는(노출됐거나 패스한) 질문이 있으면 "질문에 답하기" 콜아웃 노출
-  petCallout.classList.toggle("hidden", !state.awaitingAnswer);
+  // "새로운 질문에 답하기" 버튼 상태 (update.md 9.1)
+  renderAnswerButton(state.answerButton);
+}
+
+// 답변 버튼 활성/비활성 + 안내 문구를 반영한다.
+function renderAnswerButton(ab) {
+  petCallout.disabled = !ab.enabled;
+  if (ab.enabled) {
+    calloutTitle.textContent = "새로운 질문에 답하기";
+    calloutSub.textContent = "애완돌 옆에서 답해 주세요 ▶";
+  } else {
+    calloutTitle.textContent = "질문 완료";
+    calloutSub.textContent = ab.note || "";
+  }
 }
 
 // 성향 태그 칩을 다시 그린다.
@@ -266,6 +344,9 @@ const settingToggles = document.querySelectorAll(".set-row[data-setting]");
 const placeChips = document.querySelectorAll(".chip[data-place]");
 const sizeChips = document.querySelectorAll(".chip[data-size]");
 const resetBtn = document.getElementById("reset-btn");
+const confirmOverlay = document.getElementById("confirm-overlay");
+const confirmCancel = document.getElementById("confirm-cancel");
+const confirmOk = document.getElementById("confirm-ok");
 
 function setToggleBox(btn, on) {
   const box = btn.querySelector(".set-box");
@@ -312,7 +393,18 @@ sizeChips.forEach((chip) => {
   });
 });
 
-resetBtn.addEventListener("click", async () => {
+// 초기화는 되돌릴 수 없으므로 인앱 확인창을 먼저 띄운다 (기본 macOS 알림창 대신)
+function showResetConfirm() {
+  confirmOverlay.classList.remove("hidden");
+}
+function hideResetConfirm() {
+  confirmOverlay.classList.add("hidden");
+}
+
+resetBtn.addEventListener("click", showResetConfirm);
+confirmCancel.addEventListener("click", hideResetConfirm);
+confirmOk.addEventListener("click", async () => {
+  hideResetConfirm();
   const done = await window.trayAPI.resetPet();
   if (done) refreshSettings(); // 기본값으로 되돌아간 상태를 다시 반영
 });
@@ -361,11 +453,11 @@ document.querySelectorAll(".mrow").forEach((item) => {
 
 backBar.addEventListener("click", () => showScreen("menu"));
 
-// 지금 답할 수 있는(노출됐거나 패스한) 질문이 있으면 "나의 애완돌" 항목에 배지를 표시
+// 오늘 답할 질문이 남아 있으면 "나의 애완돌" 항목에 배지를 표시 (update.md 9.2)
 async function refreshBadge() {
   try {
     const state = await window.trayAPI.getEvolutionState();
-    statusItem.classList.toggle("has-badge", !!state.awaitingAnswer);
+    statusItem.classList.toggle("has-badge", !!state.hasBadge);
     petNameTitle.textContent = state.petName || "애완돌"; // 메뉴 화면 타이틀바에도 반영
   } catch (_err) {
     // 상태를 못 읽으면 배지 없이 둔다
@@ -374,6 +466,7 @@ async function refreshBadge() {
 
 // 팝업이 열릴 때마다 메뉴로 초기화하고 권한 상태·배지를 갱신
 window.trayAPI.onWillShow(() => {
+  hideResetConfirm(); // 이전에 열려 있던 확인창이 남지 않도록
   showScreen("menu");
   refreshPermToggle();
   refreshBadge();

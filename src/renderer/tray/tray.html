@@ -89,16 +89,18 @@
             <div class="hero-mood">기분 · 잠잠</div>
           </div>
 
-          <!-- 새 질문 콜아웃 -->
-          <div id="pet-callout" class="callout hidden">
+          <!-- 새로운 질문에 답하기 버튼 (update.md 9.1) -->
+          <button id="pet-callout" class="callout">
             <span class="callout-icon">?</span>
             <div class="callout-text">
-              <div class="callout-title">새 질문이 도착했어요</div>
-              <div class="callout-sub">
-                애완돌이 가끔 질문을 건네요. 그때 옆에서 답해 주세요! ▶
+              <div id="callout-title" class="callout-title">
+                새로운 질문에 답하기
+              </div>
+              <div id="callout-sub" class="callout-sub">
+                애완돌 옆에서 답해 주세요 ▶
               </div>
             </div>
-          </div>
+          </button>
 
           <!-- 이름 -->
           <section class="panel">
@@ -465,6 +467,21 @@
               DESK PET v1.0 · 나의 애완돌<br />© 2026 · 작고 단단한 친구
             </div>
           </section>
+        </div>
+      </div>
+
+      <!-- 인앱 확인창 (처음부터 다시 키우기) -->
+      <div id="confirm-overlay" class="confirm-overlay hidden">
+        <div class="confirm-box">
+          <div class="confirm-title">처음부터 다시 키우기</div>
+          <div class="confirm-desc">
+            모든 진행도·성향·호감도·설정이 지워지고 조약돌로 돌아갑니다. 되돌릴
+            수 없어요.
+          </div>
+          <div class="confirm-actions">
+            <button id="confirm-cancel" class="confirm-btn">취소</button>
+            <button id="confirm-ok" class="confirm-btn danger">초기화</button>
+          </div>
         </div>
       </div>
     </div>
