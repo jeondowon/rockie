@@ -19,6 +19,8 @@ function defaultData() {
       stoneConfirmedAt: null,
       evolutionStage: 0,
       evolutionVariant: null,
+      pendingEvolution: null,
+      presentedEvolutionStages: [],
     },
     traits: {
       traitScores: { 화강암: 0, 현무암: 0, 대리석: 0, 편마암: 0 },
@@ -34,7 +36,6 @@ function defaultData() {
     },
     affinity: {
       affinityPoints: 0,
-      affinityLevel: 1,
       dailyCleanDone: false,
       dailyFeedDone: false,
       dailyChatCount: 0,

@@ -518,6 +518,7 @@ function startDailyResetTimer() {
 
 // ---------- 애완돌 성향 판정 / 진화 ----------
 ipcMain.handle("evolution:get-state", () => evolution.getState(store.get()));
+ipcMain.handle("app:is-dev", () => isDev);
 
 // 단계가 올랐을 때 펫 오버레이가 해당 GIF로 전환하도록 진화 정보를 보낸다.
 function notifyEvolved(data) {
@@ -526,6 +527,8 @@ function notifyEvolved(data) {
     stage: data.pet.evolutionStage,
     stoneType: data.pet.stoneType,
     variant: data.pet.evolutionVariant,
+    pendingEvolution: data.pet.pendingEvolution,
+    userName: data.user.userName,
   });
 }
 
@@ -559,6 +562,12 @@ ipcMain.handle("evolution:feed", () => {
   store.save();
   notifyAffection();
   if (result.evolved) notifyEvolved(data);
+  return result;
+});
+ipcMain.handle("evolution:complete-pending", () => {
+  const data = store.get();
+  const result = evolution.completePendingEvolution(data);
+  store.save();
   return result;
 });
 // 호감도 지급(상한 100). 실제로 오른 만큼(상한 반영)을 반환한다.

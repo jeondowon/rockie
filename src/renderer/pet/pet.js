@@ -424,6 +424,10 @@ const clickReactions = [
 ];
 
 character.addEventListener("click", () => {
+  if (pendingEvolution) {
+    openEvolutionCard();
+    return;
+  }
   const msg = clickReactions[Math.floor(Math.random() * clickReactions.length)];
   showBubble(msg);
   pauseWalking(1500);
@@ -750,16 +754,50 @@ function resolveSprite(stage, stoneType, variant) {
   return { level: "level0", prefix: "rockie" };
 }
 
+function spriteUrlFor(info, name) {
+  const { level, prefix } = resolveSprite(
+    info.stage,
+    info.stoneType,
+    info.variant,
+  );
+  return `../../../assets/gif/${level}/${prefix}_${name}.gif`;
+}
+
+function spriteLevelClass(info) {
+  const { level } = resolveSprite(info.stage, info.stoneType, info.variant);
+  return `evo-${level}`;
+}
+
+function setEvolutionCardImageLevel(img, info) {
+  img.classList.remove("evo-level0", "evo-level1", "evo-level2", "evo-level3");
+  img.classList.add(spriteLevelClass(info));
+}
+
 // 진화 정보에 맞춰 스프라이트를 갱신한다. 실제로 바뀌었으면 true.
 function applyEvolution({ stage, stoneType, variant }) {
   if (PREVIEW) return false; // 미리보기 중엔 실제 상태로 스프라이트를 덮어쓰지 않는다
   const { level, prefix } = resolveSprite(stage, stoneType, variant);
   if (level === spriteLevel && prefix === spritePrefix) return false;
+  const oldCenter = posX + CHAR_SIZE / 2;
+  const oldBottomPad = CHAR_SIZE * spriteGeom().bottomRatio;
+  const oldFootY = posY + CHAR_SIZE - oldBottomPad;
+  const oldSize = CHAR_SIZE;
   spriteLevel = level;
   spritePrefix = prefix;
   applySizing(); // 레벨 scale이 바뀌므로 표시 크기·여백 재계산
+  if (CHAR_SIZE !== oldSize) {
+    posX = clampX(oldCenter - CHAR_SIZE / 2);
+    const newBottomPad = CHAR_SIZE * spriteGeom().bottomRatio;
+    posY = oldFootY - CHAR_SIZE + newBottomPad;
+    targetX = posX;
+    placeCharacter();
+  }
   applySprite();
   return true;
+}
+
+function evolvePreludeMessage(userName) {
+  return `${userName || "대장님"}님, 제 몸이 변하는 것 같아요...!`;
 }
 
 function evolveMessage({ stage, stoneType }) {
@@ -769,17 +807,91 @@ function evolveMessage({ stage, stoneType }) {
   return "";
 }
 
-// 단계가 올라가면 즉시 해당 gif로 전환하고 축하 말풍선을 띄운다
+const EVOLVE_FADE_OUT_MS = 2000;
+const EVOLVE_BLINK_OUT_MS = 220;
+const EVOLVE_BLINK_IN_MS = 220;
+const EVOLVE_FADE_IN_MS = 3000;
+let pendingEvolution = null;
+let completedEvolution = null;
+let evolutionCardAnimating = false;
+let evolutionCardStep = 0;
+
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function preloadImage(src) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = resolve;
+    img.onerror = resolve;
+    img.src = src;
+  });
+}
+
+function setPendingEvolution(pending, userName) {
+  pendingEvolution = pending;
+  if (!pendingEvolution) return;
+  applyEvolution(pendingEvolution.from);
+  showBubble(evolvePreludeMessage(userName), 3000);
+}
+
+function previewEvolution(to) {
+  const fromByStage = {
+    1: { stage: 0, stoneType: null, variant: null },
+    2: { stage: 1, stoneType: to.stoneType, variant: null },
+    3: { stage: 2, stoneType: to.stoneType, variant: to.variant },
+  };
+  setPendingEvolution(
+    {
+      stage: to.stage,
+      from: fromByStage[to.stage],
+      to,
+      createdAt: new Date().toISOString(),
+      preview: true,
+    },
+    null,
+  );
+}
+
+// 단계가 올라가면 바로 gif를 바꾸지 않고, 펫 클릭으로 여는 진화 카드 상태로 둔다.
 window.petAPI.onEvolved((info) => {
-  applyEvolution(info);
-  const msg = evolveMessage(info);
-  if (msg) showBubble(msg, 6000);
+  setPendingEvolution(info.pendingEvolution, info.userName);
 });
+
+async function initEvolutionPreviewKeys() {
+  if (!(await window.petAPI.getIsDev())) return;
+  window.addEventListener("keydown", (e) => {
+    if (e.repeat) return;
+    if (e.code === "Digit1") {
+      previewEvolution({ stage: 1, stoneType: "granite", variant: null });
+    } else if (e.code === "Digit2") {
+      previewEvolution({
+        stage: 2,
+        stoneType: "granite",
+        variant: "extrovert",
+      });
+    } else if (e.code === "Digit3") {
+      previewEvolution({
+        stage: 3,
+        stoneType: "granite",
+        variant: "extrovert",
+      });
+    } else {
+      return;
+    }
+    e.preventDefault();
+  });
+}
 
 // 앱 시작 시 저장된 단계에 맞는 모습으로 복원
 async function initEvolution() {
   try {
     const state = await window.petAPI.getEvolutionState();
+    if (state.pendingEvolution) {
+      setPendingEvolution(state.pendingEvolution, state.userName);
+      return;
+    }
     applyEvolution({
       stage: state.stage,
       stoneType: state.stoneType,
@@ -811,13 +923,21 @@ function positionCard() {
 function hideQuestionCard() {
   cardOpen = false;
   qcard.classList.add("hidden");
+  qcard.classList.remove("evolution-card");
+  qcard.onclick = null;
   qcard.innerHTML = "";
+  evolutionCardAnimating = false;
+  evolutionCardStep = 0;
   // 카드가 커서 밑에서 숨겨지면 mouseleave가 안 fires → 클릭 통과가 꺼진 채 고정돼
   // 전체 화면이 클릭을 먹는다. 숨길 때 통과를 직접 복구한다.
   window.petAPI.setIgnoreMouseEvents(true, { forward: true });
 }
 
 async function openQuestionCard() {
+  if (pendingEvolution) {
+    openEvolutionCard();
+    return;
+  }
   let state;
   try {
     state = await window.petAPI.getEvolutionState();
@@ -829,6 +949,95 @@ async function openQuestionCard() {
   cardOpen = true;
   qcard.classList.remove("hidden");
   positionCard();
+}
+
+function openEvolutionCard() {
+  if (!pendingEvolution || evolutionCardAnimating) return;
+  qcard.innerHTML = "";
+  qcard.classList.add("evolution-card");
+
+  const close = cardEl("button", "q-close", "✕");
+  close.addEventListener("click", (e) => {
+    e.stopPropagation();
+    closeEvolutionCard();
+  });
+
+  const img = document.createElement("img");
+  img.className = "evo-img";
+  img.src = spriteUrlFor(pendingEvolution.from, "smile");
+  setEvolutionCardImageLevel(img, pendingEvolution.from);
+  img.alt = "진화 중인 애완돌";
+  img.draggable = false;
+
+  const hint = cardEl("p", "evo-hint", "클릭해서 진화를 도와주세요!");
+
+  qcard.append(close, img, hint);
+  qcard.onclick = () => advanceEvolutionCard(img, hint);
+  evolutionCardStep = 0;
+  cardOpen = true;
+  qcard.classList.remove("hidden");
+  positionCard();
+  pauseWalking(1500);
+}
+
+function closeEvolutionCard() {
+  const completed = completedEvolution;
+  completedEvolution = null;
+  hideQuestionCard();
+  if (completed) {
+    const msg = evolveMessage(completed.to);
+    if (msg) showBubble(msg, 6000);
+  }
+}
+
+async function advanceEvolutionCard(img, hint) {
+  if (!pendingEvolution || evolutionCardAnimating) return;
+  evolutionCardAnimating = true;
+  const current = pendingEvolution;
+
+  if (evolutionCardStep === 0) {
+    hint.textContent = "좋아요, 힘이 모이고 있어요...";
+    img.classList.add("blink-out");
+    await wait(EVOLVE_BLINK_OUT_MS);
+    img.classList.remove("blink-out");
+    await wait(EVOLVE_BLINK_IN_MS);
+    evolutionCardStep = 1;
+  } else if (evolutionCardStep === 1) {
+    img.classList.add("blink-out");
+    await wait(EVOLVE_BLINK_OUT_MS);
+    img.classList.remove("blink-out");
+    await wait(EVOLVE_BLINK_IN_MS);
+    hint.textContent = "마지막으로 한 번 더 눌러\n힘을 모아주세요!";
+    evolutionCardStep = 2;
+  } else if (evolutionCardStep === 2) {
+    const nextSrc = spriteUrlFor(current.to, "smile");
+    hint.textContent = "(달그락..달그락...)";
+    await preloadImage(nextSrc);
+    img.classList.add("fade-out");
+    await wait(EVOLVE_FADE_OUT_MS);
+    img.src = nextSrc;
+    setEvolutionCardImageLevel(img, current.to);
+    applyEvolution(current.to);
+    applyHeartOffset();
+    img.offsetHeight; // 이미지 교체 후 opacity 0 상태를 먼저 확정시킨다
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        img.classList.remove("fade-out");
+        img.classList.add("reveal-in");
+      });
+    });
+    await wait(EVOLVE_FADE_IN_MS);
+    img.classList.remove("reveal-in");
+    hint.textContent = "축하합니다, 애완돌이 진화했어요!";
+    if (!current.preview) {
+      await window.petAPI.completePendingEvolution();
+    }
+    pendingEvolution = null;
+    completedEvolution = current;
+    evolutionCardStep = 3;
+  }
+
+  evolutionCardAnimating = false;
 }
 
 function cardEl(tag, cls, text) {
@@ -1005,5 +1214,6 @@ placeCharacter();
 requestAnimationFrame(followStep);
 initBatteryWatcher();
 initEvolution();
+initEvolutionPreviewKeys();
 initSettings();
 initTuning();

@@ -121,6 +121,8 @@ const nameEditBtn = document.getElementById("name-edit-btn");
 const affValue = document.getElementById("aff-value");
 const affFill = document.getElementById("aff-fill");
 const affHearts = document.getElementById("aff-hearts");
+const affLevel = document.getElementById("aff-level");
+const affPips = document.getElementById("aff-pips");
 const cleanBtn = document.getElementById("clean-btn");
 const feedBtn = document.getElementById("feed-btn");
 let editingName = false;
@@ -295,7 +297,24 @@ function exitNameEdit() {
   nameEditBtn.textContent = "✎ 이름 수정";
 }
 
-// 호감도 게이지·수치·하트를 실제 포인트(0~100)로 반영
+// 호감도 5단계 구간(균등 20점). 점수 → 레벨(1~5)·명칭. 표시 전용이며,
+// 2→3 진화 판정은 이와 무관하게 raw 90점을 쓴다(evolution.js).
+const AFFINITY_LEVELS = [
+  { min: 0, name: "낯가림" },
+  { min: 20, name: "서먹" },
+  { min: 40, name: "친근" },
+  { min: 60, name: "살가움" },
+  { min: 80, name: "각별" },
+];
+function affinityLevel(points) {
+  let idx = 0;
+  for (let i = 0; i < AFFINITY_LEVELS.length; i++) {
+    if (points >= AFFINITY_LEVELS[i].min) idx = i;
+  }
+  return { index: idx + 1, name: AFFINITY_LEVELS[idx].name };
+}
+
+// 호감도 게이지·수치·하트·레벨명·타이틀바 pip을 실제 포인트(0~100)로 반영
 function renderAffinity(points) {
   const p = Math.max(0, Math.min(100, points || 0));
   affValue.textContent = String(p);
@@ -304,6 +323,11 @@ function renderAffinity(points) {
   affHearts
     .querySelectorAll(".heart")
     .forEach((h, i) => h.classList.toggle("on", i < filled));
+  const { index, name } = affinityLevel(p);
+  affLevel.textContent = name;
+  affPips
+    .querySelectorAll(".pip")
+    .forEach((el, i) => el.classList.toggle("on", i < index)); // pip = 레벨(1~5)
 }
 
 // 닦아주기/밥 주기 버튼 상태 (update.md 9.4). 오늘 완료했으면 비활성 + 완료 문구.
@@ -483,6 +507,7 @@ async function refreshBadge() {
     const state = await window.trayAPI.getEvolutionState();
     statusItem.classList.toggle("has-badge", !!state.hasBadge);
     petNameTitle.textContent = state.petName || "애완돌"; // 메뉴 화면 타이틀바에도 반영
+    renderAffinity(state.affinityPoints); // 타이틀바 호감도 pip(레벨)은 항상 보이므로 여기서도 갱신
   } catch (_err) {
     // 상태를 못 읽으면 배지 없이 둔다
   }

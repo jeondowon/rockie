@@ -23,6 +23,9 @@ contextBridge.exposeInMainWorld("petAPI", {
     ipcRenderer.on("pet:show-heart", () => callback());
   },
   getEvolutionState: () => ipcRenderer.invoke("evolution:get-state"),
+  getIsDev: () => ipcRenderer.invoke("app:is-dev"),
+  completePendingEvolution: () =>
+    ipcRenderer.invoke("evolution:complete-pending"),
   answerQuestion: (payload) => ipcRenderer.invoke("evolution:answer", payload),
   onOpenQuestionCard: (callback) => {
     ipcRenderer.on("evolution:open-question-card", () => callback());

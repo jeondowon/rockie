@@ -165,3 +165,66 @@ body {
 .qcard .q-opt:hover::before {
   visibility: visible;
 }
+
+.qcard.evolution-card {
+  width: 240px;
+  height: 252px;
+  padding-top: 12px;
+  text-align: center;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.qcard.evolution-card .evo-img {
+  display: block;
+  flex: 0 0 auto;
+  width: 148px;
+  height: 148px;
+  margin: 40px auto 4px;
+  image-rendering: auto;
+  opacity: 1;
+  transition: opacity 0.9s ease;
+  -webkit-user-drag: none;
+}
+
+.qcard.evolution-card .evo-img.evo-level2,
+.qcard.evolution-card .evo-img.evo-level3 {
+  transform: scale(0.75);
+}
+
+.qcard.evolution-card .evo-img.fade-out {
+  opacity: 0;
+}
+
+.qcard.evolution-card .evo-img.blink-out {
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+
+.qcard.evolution-card .evo-img.reveal-in {
+  animation: evo-reveal 3s ease both;
+}
+
+.qcard.evolution-card .evo-hint {
+  min-height: 48px;
+  padding: 8px 12px 12px;
+  font-family: "Galmuri11", "DungGeunMo", monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #000000;
+  white-space: pre-line;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@keyframes evo-reveal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

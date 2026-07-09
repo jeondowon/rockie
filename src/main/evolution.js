@@ -430,6 +430,9 @@ function pickNextQuestions(data, count) {
 // 어제 안 답한 질문은 유지하고, 부족분(2 - 남은 개수)만 새로 채운다.
 // 반환: { showBanner } — 갱신 후 답할 질문이 있으면 배너 알림 대상.
 function onDailyReset(data, nowIso) {
+  if (data.pet.evolutionStage >= 2) {
+    data.questions.todaysQuestions = [];
+  }
   const remaining = data.questions.todaysQuestions;
   const need = MAX_DAILY_QUESTIONS - remaining.length;
   if (need > 0) {
@@ -439,7 +442,8 @@ function onDailyReset(data, nowIso) {
   }
   data.affinity.dailyCleanDone = false;
   data.affinity.dailyFeedDone = false;
-  data.notifications.hasUnreadBadge = data.questions.todaysQuestions.length > 0;
+  data.notifications.hasUnreadBadge =
+    data.pet.evolutionStage < 2 && data.questions.todaysQuestions.length > 0;
   data.questions.dailyResetAt = nowIso;
   return { showBanner: data.questions.todaysQuestions.length > 0 };
 }
@@ -461,7 +465,12 @@ function tiedStones(data) {
 
 // 아직 안 물어본 동점 쌍의 타이브레이커 하나 (없으면 null)
 function nextMainTiebreaker(data) {
-  const tied = tiedStones(data);
+  let tied = tiedStones(data);
+  if (tied.length < 2 && data.traits.tiebreaker.used) {
+    const scores = data.traits.traitScores;
+    const max = Math.max(...STONES.map((s) => scores[s.ko]));
+    tied = STONE_ORDER.filter((key) => scores[KO_BY_KEY[key]] >= max - 1);
+  }
   if (tied.length < 2) return null;
   const asked = data.traits.tiebreaker.pairsAsked;
   for (let i = 0; i < tied.length; i++) {
@@ -490,10 +499,31 @@ function insertTiebreakerToday(data, id) {
 }
 
 // ---------- 단계 확정 (update.md 8.4) ----------
+function evolutionSnapshot(data) {
+  return {
+    stage: data.pet.evolutionStage,
+    stoneType: data.pet.stoneType,
+    variant: data.pet.evolutionVariant,
+  };
+}
+
+function queuePendingEvolution(data, from) {
+  const existingFrom = data.pet.pendingEvolution?.from;
+  const to = evolutionSnapshot(data);
+  data.pet.pendingEvolution = {
+    stage: to.stage,
+    from: existingFrom || from,
+    to,
+    createdAt: new Date().toISOString(),
+  };
+}
+
 function confirmStage1(data, nowIso, stone) {
+  const from = evolutionSnapshot(data);
   data.pet.stoneType = stone;
   data.pet.stoneConfirmedAt = nowIso;
   data.pet.evolutionStage = 1;
+  queuePendingEvolution(data, from);
   // 확정 직후 오늘 남은 슬롯이 있으면 같은 개수만큼 E/I 질문으로 교체
   const n = data.questions.todaysQuestions.length;
   if (n > 0) {
@@ -503,8 +533,10 @@ function confirmStage1(data, nowIso, stone) {
 }
 
 function confirmStage2(data, variant) {
+  const from = evolutionSnapshot(data);
   data.pet.evolutionVariant = variant;
   data.pet.evolutionStage = 2;
+  queuePendingEvolution(data, from);
   // 2단계는 질문 없음: 오늘 남은 질문 비운다
   data.questions.todaysQuestions = [];
   data.notifications.hasUnreadBadge = false;
@@ -513,8 +545,20 @@ function confirmStage2(data, variant) {
 }
 
 function confirmStage3(data) {
+  const from = evolutionSnapshot(data);
   data.pet.evolutionStage = 3;
+  queuePendingEvolution(data, from);
   // 3단계 시각 자산은 (stoneType, evolutionVariant) 조합으로 렌더러 매핑에서 조회
+}
+
+function completePendingEvolution(data) {
+  const pending = data.pet.pendingEvolution;
+  if (!pending) return { completed: null, state: getState(data) };
+  if (!data.pet.presentedEvolutionStages.includes(pending.stage)) {
+    data.pet.presentedEvolutionStages.push(pending.stage);
+  }
+  data.pet.pendingEvolution = null;
+  return { completed: pending, state: getState(data) };
 }
 
 // ---------- 판정 시도 (update.md 8.3) ----------
@@ -633,7 +677,8 @@ function answer(data, { questionId, value }) {
     data.pet.evolutionStage !== before ? data.pet.evolutionStage : null;
 
   // 4. 배지 갱신 (답할 질문이 남아있는 동안 표시)
-  data.notifications.hasUnreadBadge = data.questions.todaysQuestions.length > 0;
+  data.notifications.hasUnreadBadge =
+    data.pet.evolutionStage < 2 && data.questions.todaysQuestions.length > 0;
 
   return { evolved, state: getState(data) };
 }
@@ -698,6 +743,7 @@ function getState(data) {
     affinityPoints: data.affinity.affinityPoints,
     dailyCleanDone: data.affinity.dailyCleanDone,
     dailyFeedDone: data.affinity.dailyFeedDone,
+    pendingEvolution: data.pet.pendingEvolution,
     blurb: stoneType ? STONE_TRAIT[stoneType].blurb : null,
     tags: stoneType ? STONE_TRAIT[stoneType].tags : [],
     history: buildHistory(data),
@@ -709,6 +755,7 @@ module.exports = {
   answer,
   cleanPet,
   feedPet,
+  completePendingEvolution,
   onDailyReset,
   STONE_ORDER,
 };

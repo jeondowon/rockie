@@ -5,7 +5,8 @@
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
-    "dev": "DEV_RELOAD=1 electron ."
+    "dev": "DEV_RELOAD=1 electron .",
+    "test": "node --test"
   },
   "devDependencies": {
     "electron": "^31.0.0"
