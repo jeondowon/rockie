@@ -172,7 +172,7 @@ window.petAPI.onShowHeart(triggerHeart);
 //   [  ]     : 이전 / 다음 캐릭터
 //   s        : 표시 크기 순환 (small→medium→large)
 //   c        : 지금까지 맞춘 HEART_OFFSET을 콘솔에 출력 (붙여넣기용)
-const PREVIEW = null; // { level: "level3", prefix: "moonstone" }; // {level, prefix}면 튜닝 켜기, null이면 정상 동작
+const PREVIEW = { level: "level3", prefix: "moonstone" }; // { level: "level3", prefix: "moonstone" }; // {level, prefix}면 튜닝 켜기, null이면 정상 동작
 
 // 넘기기 순서(21종). PREVIEW.prefix로 시작 위치를 잡는다.
 const TUNE_CHARACTERS = [
@@ -199,6 +199,7 @@ const TUNE_CHARACTERS = [
   { level: "level3", prefix: "moonstone" },
 ];
 let tuneIndex = 0;
+let tuneTarget = "heart"; // 방향키가 조정할 대상: "heart" | "bubble" (t로 토글)
 
 function applyPreview() {
   if (!PREVIEW) return;
@@ -208,8 +209,25 @@ function applyPreview() {
   applySizing(); // 미리보기 캐릭터의 레벨 scale 반영
   applySprite();
   applyHeartOffset();
-  showHeart(); // 위치 확인용으로 계속 표시
+  applyTuneVisibility(); // 현재 대상(하트/말풍선)만 상시 표시
+  positionBubble();
   updateTuneHud();
+}
+
+// 튜닝 표시: 대상이 하트면 하트만, 말풍선이면 말풍선만 띄운다.
+// 다른 showBubble의 자동 숨김 타임아웃에 가려지지 않도록 followStep에서 매 프레임 다시 확정한다.
+function applyTuneVisibility() {
+  if (!PREVIEW) return;
+  if (tuneTarget === "bubble") {
+    hideHeart();
+    clearTimeout(bubbleTimeout);
+    bubble.textContent =
+      "안녕하세요! 오늘도 열심히 작업 중이시네요. 잠깐 쉬어가도 좋아요!";
+    bubble.classList.remove("hidden");
+  } else {
+    bubble.classList.add("hidden");
+    showHeart();
+  }
 }
 
 // 방향키 → 현재 캐릭터 HEART_OFFSET 조정 / 캐릭터·크기 전환 / 값 출력.
@@ -224,14 +242,15 @@ function onTuneKey(e) {
     case "ArrowRight":
     case "ArrowUp":
     case "ArrowDown": {
-      const o =
-        HEART_OFFSET[cur.prefix] || (HEART_OFFSET[cur.prefix] = { x: 0, y: 0 });
+      const table = tuneTarget === "bubble" ? BUBBLE_OFFSET : HEART_OFFSET;
+      const o = table[cur.prefix] || (table[cur.prefix] = { x: 0, y: 0 });
       if (e.code === "ArrowLeft") o.x -= step;
       else if (e.code === "ArrowRight") o.x += step;
       else if (e.code === "ArrowUp")
-        o.y -= step; // -y = 위 (HEART_BASE_OFFSET 규칙)
+        o.y -= step; // -y = 위
       else o.y += step;
-      applyHeartOffset();
+      if (tuneTarget === "bubble") positionBubble();
+      else applyHeartOffset();
       updateTuneHud();
       break;
     }
@@ -249,8 +268,13 @@ function onTuneKey(e) {
       applyPetSize(TUNE_SIZES[(i + 1) % TUNE_SIZES.length]); // → applyPreview로 HUD 갱신
       break;
     }
+    case "KeyT":
+      tuneTarget = tuneTarget === "heart" ? "bubble" : "heart";
+      applyTuneVisibility();
+      updateTuneHud();
+      break;
     case "KeyC":
-      dumpHeartOffset();
+      dumpOffset();
       break;
     default:
       return; // 관심 없는 키는 그대로 흘려보냄
@@ -258,13 +282,17 @@ function onTuneKey(e) {
   e.preventDefault();
 }
 
-// 0이 아닌 값만 붙여넣기 좋은 형태로 만들어 클립보드에 복사한다(그대로 HEART_OFFSET에 붙이면 됨).
-// 콘솔에도 출력해 두어 복사 실패(비포커스 등) 시 눈으로 확인할 수 있게 한다.
-function dumpHeartOffset() {
-  const lines = Object.entries(HEART_OFFSET)
+// 0이 아닌 값만 붙여넣기 좋은 형태로 만들어 클립보드에 복사한다(그대로 해당 테이블에 붙이면 됨).
+// 현재 대상(하트/말풍선)의 오프셋을 뽑는다. 콘솔에도 출력해 복사 실패 시 눈으로 확인 가능.
+function dumpOffset() {
+  const [name, table] =
+    tuneTarget === "bubble"
+      ? ["BUBBLE_OFFSET", BUBBLE_OFFSET]
+      : ["HEART_OFFSET", HEART_OFFSET];
+  const lines = Object.entries(table)
     .filter(([, o]) => o.x !== 0 || o.y !== 0)
     .map(([k, o]) => `  ${k}: { x: ${o.x}, y: ${o.y} },`);
-  const text = "const HEART_OFFSET = {\n" + lines.join("\n") + "\n};";
+  const text = `const ${name} = {\n` + lines.join("\n") + "\n};";
   console.log(text);
   navigator.clipboard
     .writeText(text)
@@ -277,11 +305,12 @@ let tuneHud = null;
 function updateTuneHud(note) {
   if (!tuneHud) return;
   const cur = TUNE_CHARACTERS[tuneIndex];
-  const o = HEART_OFFSET[cur.prefix] || { x: 0, y: 0 };
+  const table = tuneTarget === "bubble" ? BUBBLE_OFFSET : HEART_OFFSET;
+  const o = table[cur.prefix] || { x: 0, y: 0 };
   tuneHud.textContent =
     `[${tuneIndex + 1}/${TUNE_CHARACTERS.length}] ${cur.level} · ${cur.prefix}\n` +
-    `offset { x: ${o.x}, y: ${o.y} }   size: ${petSize}\n` +
-    `← → ↑ ↓ 이동(Shift=10) · [ ] 캐릭터 · s 크기 · c 복사` +
+    `▶ ${tuneTarget}  offset { x: ${o.x}, y: ${o.y} }   size: ${petSize}\n` +
+    `← → ↑ ↓ 이동(Shift=10) · [ ] 캐릭터 · t 대상 · s 크기 · c 복사` +
     (note ? `\n${note}` : "");
 }
 
@@ -350,6 +379,7 @@ function followStep() {
   // 세로 이동(Dock 위로 올라가기/내려오기)은 걷기가 멈춰 있어도 계속 동작해야 한다
   verticalStep();
   placeCharacter();
+  if (PREVIEW) applyTuneVisibility(); // 튜닝 중 대상 표시를 매 프레임 재확정
   positionBubble();
   if (cardOpen) positionCard();
   requestAnimationFrame(followStep);
@@ -400,17 +430,65 @@ function overlayLeft(width, margin) {
   return Math.max(margin, Math.min(window.innerWidth - width - margin, left));
 }
 
+// 캐릭터별 말풍선 미세조정(중심 정렬 기준에 더해짐). 단계·돌마다 머리 위치가 320 캔버스
+// 중앙에서 조금씩 벗어나 있어 말풍선(과 꼬리)이 머리와 어긋나므로 스프라이트 접두어별로
+// 보정한다(없으면 0). +x=오른쪽·-y=위. 표시 크기에는 CHAR_SIZE/320 배율로 자동 스케일된다.
+// 좌하단·우하단·따라오기 모두 positionBubble을 거치므로 세 모드에 동일하게 적용된다.
+// PREVIEW 튜너에서 t로 대상을 말풍선으로 바꾼 뒤 방향키로 맞추고 c로 값을 뽑을 수 있다.
+const BUBBLE_OFFSET = {
+  moonstone: { x: -10, y: -40 },
+  labradorite: { x: -10, y: -40 },
+  ruby: { x: -10, y: -20 },
+  partiSapphire: { x: 0, y: -20 },
+  diamond_rough: { x: -10, y: -30 },
+  diamond_cut: { x: -10, y: -30 },
+  aquamarine: { x: 0, y: -30 },
+  topaz: { x: 0, y: -30 },
+  migmatite_i: { x: -10, y: -20 },
+  migmatite_e: { x: -10, y: -20 },
+  corundumMarble_i: { x: -10, y: -20 },
+  corundumMarble_e: { x: -10, y: -20 },
+  eclogite_i: { x: -10, y: -20 },
+  eclogite_e: { x: -10, y: -20 },
+  pegmatite_i: { x: -10, y: -20 },
+  pegmatite_e: { x: -10, y: -20 },
+  gneiss: { x: -10, y: 0 },
+  marble: { x: -10, y: 0 },
+  basalt: { x: -10, y: 0 },
+  granite: { x: -10, y: 0 },
+  rockie: { x: -10, y: 0 },
+};
+
+const BUBBLE_MARGIN = 4; // 몸통과 화면 좌우 끝 사이 최소 여백
+const BUBBLE_TAIL_PAD = 12; // 꼬리가 몸통의 둥근 모서리에 걸치지 않도록 양 끝에서 띄우는 여백
+
 function positionBubble() {
-  // 말풍선은 카드와 달리 항상 펫 중심 위에 두고, 화면 밖으로 나갈 때만 안쪽으로 클램프한다.
-  // (고정 코너에서 overlayLeft의 가장자리 앵커를 쓰면 말풍선이 펫 반대쪽으로 쏠려 멀어 보임)
+  const o = BUBBLE_OFFSET[spritePrefix] || { x: 0, y: 0 };
+  const k = CHAR_SIZE / 320;
   const w = bubble.offsetWidth;
-  const left = posX + CHAR_SIZE / 2 - w / 2; // 펫 그림 중심 정렬
-  bubble.style.left =
-    Math.max(4, Math.min(window.innerWidth - w - 4, left)) + "px";
+
+  // 꼬리(화살표)가 가리켜야 할 지점 = 펫 머리 중심 + 캐릭터 보정.
+  const tailX = posX + CHAR_SIZE / 2 + o.x * k;
+
+  // 몸통은 꼬리 위에 중심을 두되, 화면 밖으로 나가면 안쪽으로 밀어 넣는다(길어져도 화면 안).
+  const left = Math.max(
+    BUBBLE_MARGIN,
+    Math.min(window.innerWidth - w - BUBBLE_MARGIN, tailX - w / 2),
+  );
+  bubble.style.left = left + "px";
+
+  // 몸통이 밀려도 꼬리는 계속 펫 머리를 가리키도록, 꼬리의 몸통 내 x를 따로 잡는다.
+  const tailInBody = Math.max(
+    BUBBLE_TAIL_PAD,
+    Math.min(w - BUBBLE_TAIL_PAD, tailX - left),
+  );
+  bubble.style.setProperty("--tail-x", tailInBody + "px");
+
   // 세로는 박스 상단(posY)이 아니라 펫 '머리 상단'(posY + SPRITE_MARGIN) 기준으로 잡아
   // 크기가 커져 투명 여백이 늘어도 말풍선~펫 간격이 일정하게 유지되도록 한다.
   // (offsetHeight + 꼬리 5px + 여유 6px 만큼 위로 = 꼬리 끝이 머리 위 약 6px)
-  bubble.style.top = posY + SPRITE_MARGIN - bubble.offsetHeight - 11 + "px";
+  bubble.style.top =
+    posY + SPRITE_MARGIN - bubble.offsetHeight - 11 + o.y * k + "px";
 }
 
 // ---------- 3. 클릭 반응 ----------

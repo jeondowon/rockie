@@ -67,7 +67,8 @@ body {
   content: "";
   position: absolute;
   bottom: -5px;
-  left: 50%;
+  /* 꼬리 x는 JS(positionBubble)가 몸통 내 픽셀로 잡아 항상 펫 머리를 가리키게 한다. 미설정 시 중앙 */
+  left: var(--tail-x, 50%);
   transform: translateX(-50%);
   border-width: 8px 8px 0 8px;
   border-style: solid;
