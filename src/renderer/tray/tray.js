@@ -121,6 +121,8 @@ const nameEditBtn = document.getElementById("name-edit-btn");
 const affValue = document.getElementById("aff-value");
 const affFill = document.getElementById("aff-fill");
 const affHearts = document.getElementById("aff-hearts");
+const cleanBtn = document.getElementById("clean-btn");
+const feedBtn = document.getElementById("feed-btn");
 let editingName = false;
 
 // 메뉴 화면에 딱 맞는 창 높이(px) 계산. 항목 수/높이가 바뀌어도 자동으로 맞춰진다.
@@ -189,6 +191,7 @@ function renderPet(state) {
   }
 
   renderAffinity(state.affinityPoints);
+  renderCareButtons(state.dailyCleanDone, state.dailyFeedDone);
 
   renderHistory(state.history || []);
 
@@ -303,6 +306,14 @@ function renderAffinity(points) {
     .forEach((h, i) => h.classList.toggle("on", i < filled));
 }
 
+// 닦아주기/밥 주기 버튼 상태 (update.md 9.4). 오늘 완료했으면 비활성 + 완료 문구.
+function renderCareButtons(cleanDone, feedDone) {
+  cleanBtn.disabled = !!cleanDone;
+  cleanBtn.textContent = cleanDone ? "깨끗해졌어요!" : "닦아주기";
+  feedBtn.disabled = !!feedDone;
+  feedBtn.textContent = feedDone ? "맛있었어요!" : "밥 주기";
+}
+
 // "이름 수정" ↔ "저장" 토글. 저장 시에만 store에 반영한다.
 nameEditBtn.addEventListener("click", async () => {
   if (!editingName) {
@@ -319,6 +330,19 @@ nameEditBtn.addEventListener("click", async () => {
 // "질문에 답하기" → 펫 창의 질문 카드를 연다 (팝업은 메인에서 닫음)
 petCallout.addEventListener("click", () => {
   window.trayAPI.sendAction("answer-question");
+});
+
+// 닦아주기/밥 주기 → 호감도 +2 (하루 1회). 게이지·버튼을 즉시 갱신한다.
+// 90 도달로 진화하면 펫 창이 축하 연출을 띄운다(메인의 notifyEvolved).
+cleanBtn.addEventListener("click", async () => {
+  const { state } = await window.trayAPI.cleanPet();
+  renderAffinity(state.affinityPoints);
+  renderCareButtons(state.dailyCleanDone, state.dailyFeedDone);
+});
+feedBtn.addEventListener("click", async () => {
+  const { state } = await window.trayAPI.feedPet();
+  renderAffinity(state.affinityPoints);
+  renderCareButtons(state.dailyCleanDone, state.dailyFeedDone);
 });
 
 // ---------- 설정 · 화면 기록 권한 ----------

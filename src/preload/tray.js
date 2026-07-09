@@ -14,6 +14,8 @@ contextBridge.exposeInMainWorld("trayAPI", {
   getEvolutionState: () => ipcRenderer.invoke("evolution:get-state"),
   setName: (target, value) =>
     ipcRenderer.invoke("evolution:set-name", { target, value }),
+  cleanPet: () => ipcRenderer.invoke("evolution:clean"),
+  feedPet: () => ipcRenderer.invoke("evolution:feed"),
   getSettings: () => ipcRenderer.invoke("settings:get"),
   setSetting: (key, value) => ipcRenderer.send("settings:set", { key, value }),
   resetPet: () => ipcRenderer.invoke("settings:reset"),

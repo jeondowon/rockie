@@ -696,6 +696,8 @@ function getState(data) {
     userName: data.user.userName,
     petName: data.pet.petName,
     affinityPoints: data.affinity.affinityPoints,
+    dailyCleanDone: data.affinity.dailyCleanDone,
+    dailyFeedDone: data.affinity.dailyFeedDone,
     blurb: stoneType ? STONE_TRAIT[stoneType].blurb : null,
     tags: stoneType ? STONE_TRAIT[stoneType].tags : [],
     history: buildHistory(data),

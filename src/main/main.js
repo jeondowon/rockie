@@ -538,11 +538,18 @@ ipcMain.handle("evolution:answer", (_event, payload) => {
   return result;
 });
 
-// 호감도 획득(백엔드). 실제 닦기/밥 버튼 UI는 별도 구현(update.md 6.1).
+// 닦기/밥으로 애정을 준 직후 펫 창에 하트 오버레이를 잠깐 띄우도록 신호를 보낸다.
+function notifyAffection() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  mainWindow.webContents.send("pet:show-heart");
+}
+
+// 호감도 획득. 트레이 "돌보기" 버튼(닦아주기/밥 주기)에서 호출된다.
 ipcMain.handle("evolution:clean", () => {
   const data = store.get();
   const result = evolution.cleanPet(data);
   store.save();
+  notifyAffection();
   if (result.evolved) notifyEvolved(data);
   return result;
 });
@@ -550,6 +557,7 @@ ipcMain.handle("evolution:feed", () => {
   const data = store.get();
   const result = evolution.feedPet(data);
   store.save();
+  notifyAffection();
   if (result.evolved) notifyEvolved(data);
   return result;
 });
