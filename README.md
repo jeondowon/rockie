@@ -13,17 +13,30 @@ npm run dev      # 파일 저장 시 렌더러 자동 새로고침 (개발용)
 
 ## 2. 파일 구조
 
-- `main.js` : 전체 화면을 덮는 투명·항상 위 창 생성, 전역 커서 위치 전달(16ms 주기), 활성 창 정보 폴링(3초 주기), Dock 상태 추적, 트레이 아이콘·팝업, 성향 판정 IPC, 개발용 자동 리로드
-- `preload.js` / `trayPreload.js` : 렌더러 ↔ 메인 프로세스 간 안전한 IPC 브릿지(`window.petAPI`)
-- `index.html` / `style.css` / `renderer.js` : 캐릭터 이동·방향 전환, Dock 회피, 말풍선, 클릭 반응, 확정 시 GIF 전환
-- `trayMenu.html` / `trayMenu.css` / `trayMenu.js` : 트레이 아이콘 클릭 시 뜨는 커스텀 픽셀아트 팝업(상태 보기 / 보이기·숨기기 / 설정 / 종료, 성향 질문 카드)
-- `store.js` : 애완돌 상태를 `userData/petdata.json` 단일 JSON으로 영속화 (스키마는 `dataschema.md` 참고)
-- `evolution.js` : 성향 판정(본 질문 12개 + 동점 타이브레이커)과 돌 종류 확정 로직
-- `gif/` : 돌별 스프라이트. 각 돌(rockie·granite·basalt·marble·gneiss)마다 6가지 상태(`left`/`right`/`smile`/`love`/`sad`/`sleepy`) GIF
-- `template.png` : 트레이(메뉴바) 아이콘 원본
-- `package.json` : 의존성 정의 (`electron`, `active-win`)
+```
+src/
+  main/                메인 프로세스
+    main.js            창·트레이 팝업 생성, IPC 배선, 커서/활성 창 폴링, 알림·설정
+    dock-tracker.js    macOS Dock 위치·표시 추적 (AppleScript + 휴리스틱)
+    system-stats.js    시스템 모니터 데이터 조회 (systeminformation)
+    store.js           상태를 userData/petdata.json 단일 JSON으로 영속화
+    evolution.js       진화 판정 엔진 (질문 집계·타이브레이커·단계 확정, Electron 무의존)
+    questions.js       성향 질문 데이터 (본 12 + 타이브레이커 6 + E/I 12 + E/I 타이브레이커)
+  preload/             렌더러 ↔ 메인 IPC 브릿지
+    pet.js             window.petAPI (펫 오버레이 창)
+    tray.js            window.trayAPI (트레이 팝업 창)
+  renderer/
+    pet/               펫 오버레이 (index.html · pet.js · style.css)
+    tray/              트레이 팝업 4화면 (tray.html · tray.js · tray.css)
+    shared/sprites.js  진화 상태 ↔ GIF 매핑 단일 정의처 (두 렌더러 공용)
+assets/
+  gif/level0~3/        단계별 스프라이트 ({접두어}_{포즈}.gif) + heart.gif
+  tray/                메뉴바 아이콘 (template.png, 배지 new_dark/new_light.png)
+docs/                  기획·스펙 문서
+test/                  진화 로직 테스트 (node --test)
+```
 
-관련 설계 문서: `plan.md`(확장 로드맵), `evolve.md`(성향/진화 설계), `dataschema.md`(저장 데이터 구조)
+관련 설계 문서: `docs/plan.md`(기획·작업 현황), `docs/evolution.md`·`docs/update.md`(진화 v2 정본), `docs/dataschema.md`(저장 데이터 구조)
 
 ## 3. 동작 방식
 
@@ -35,7 +48,7 @@ npm run dev      # 파일 저장 시 렌더러 자동 새로고침 (개발용)
 4. macOS Dock이 캐릭터와 겹치면 Dock 바로 위로 부드럽게 올라갔다가, 벗어나면 다시 화면 맨 아래로 내려옵니다.
 5. 마우스가 캐릭터 위에 있을 때만 일시적으로 클릭을 받도록 전환합니다(그 외 영역은 클릭 통과).
 6. 클릭하면 랜덤한 짧은 반응 메시지를 보여주고 잠시 멈춥니다.
-7. 3초마다 현재 활성 창(앱 이름, 창 제목)을 확인해서, `renderer.js`의 규칙과 일치하면 해당 메시지를 말풍선으로 띄웁니다.
+7. 3초마다 현재 활성 창(앱 이름, 창 제목)을 확인해서, `pet.js`의 규칙과 일치하면 해당 메시지를 말풍선으로 띄웁니다.
    - 예: VSCode/IntelliJ/Cursor 등 코드 에디터 → "집중모드 ON!"
    - 예: 창 제목에 "YouTube" 포함 → "즐감하세요~"
 
@@ -60,7 +73,7 @@ npm run dev      # 파일 저장 시 렌더러 자동 새로고침 (개발용)
 - macOS에서 활성 창의 **제목**을 읽으려면 `active-win`이 **화면 기록(Screen Recording) 권한**을 요구합니다. 시스템 설정 > 개인정보 보호 및 보안 > 화면 기록에서 이 앱을 허용해야 활성 앱 감지(말풍선)가 동작합니다.
 - macOS Dock의 정확한 위치·표시 여부는 AppleScript(System Events)로 읽으며, 자동화/손쉬운 사용 권한이 없으면 커서 위치 휴리스틱으로 근사합니다.
 - Windows에서는 별도 권한 없이 바로 동작합니다.
-- 캐릭터를 교체하려면 `gif/` 안의 스프라이트를 바꾸고, 필요 시 `style.css`의 `.character` 크기(현재 128px)와 `renderer.js`의 `CHAR_SIZE`·`SPRITE_MARGIN` 값을 함께 맞춰주면 됩니다.
+- 캐릭터를 교체하려면 `assets/gif/` 안의 스프라이트를 바꾸고, 필요 시 `pet.js`의 `SIZE_PX`·`SPRITE_GEOM` 값을 함께 맞춰주면 됩니다. 진화 상태 ↔ GIF 접두어 매핑은 `src/renderer/shared/sprites.js`가 단일 정의처입니다.
 
 ## 6. 향후 확장 아이디어
 
