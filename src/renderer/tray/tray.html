@@ -112,10 +112,15 @@
                 <input id="pet-name-input" class="name-input hidden" />
               </label>
             </div>
-            <button id="name-edit-btn" class="name-edit-btn">
-              ✎ 이름 수정
-            </button>
-            <div class="panel-note">
+            <div class="name-actions">
+              <button id="name-cancel-btn" class="name-edit-btn hidden">
+                취소
+              </button>
+              <button id="name-edit-btn" class="name-edit-btn">
+                ✎ 이름 수정
+              </button>
+            </div>
+            <div id="name-reward-note" class="panel-note">
               ✎ 이름을 지어주면 애완돌이 기뻐해요 (호감도 +)
             </div>
           </section>
@@ -311,7 +316,7 @@
           </section>
         </div>
 
-        <!-- ############ SYSTEM (스타일만) ############ -->
+        <!-- ############ SYSTEM ############ -->
         <div id="system-view" class="screen hidden">
           <div class="sys-head">
             <div class="sys-title">시스템 모니터</div>

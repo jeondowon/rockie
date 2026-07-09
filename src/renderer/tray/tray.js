@@ -57,7 +57,7 @@ function lines(...parts) {
 
 const TRAIT_DESCRIPTIONS = {
   rockie: lines(
-    "조약돌은 모든 Rockie 돌들의 기본 형태랍니다.",
+    "조약돌은 모든 Rockie 돌들의 기본 형태입니다.",
     "잼재력을 발견하고 새로운 형태를 찾아보세요!",
   ),
   granite: {
@@ -265,6 +265,9 @@ const petNameInput = document.getElementById("pet-name-input");
 const userNameValue = document.getElementById("user-name-value");
 const petNameValue = document.getElementById("pet-name-value");
 const nameEditBtn = document.getElementById("name-edit-btn");
+const nameActions = nameEditBtn.parentElement;
+const nameCancelBtn = document.getElementById("name-cancel-btn");
+const nameRewardNote = document.getElementById("name-reward-note");
 const affValue = document.getElementById("aff-value");
 const affFill = document.getElementById("aff-fill");
 const affHearts = document.getElementById("aff-hearts");
@@ -273,6 +276,8 @@ const affPips = document.getElementById("aff-pips");
 const cleanBtn = document.getElementById("clean-btn");
 const feedBtn = document.getElementById("feed-btn");
 let editingName = false;
+let currentUserName = "";
+let currentPetName = "";
 let currentPetDisplaySprite = null;
 
 // 메뉴 화면에 딱 맞는 창 높이(px) 계산. 항목 수/높이가 바뀌어도 자동으로 맞춰진다.
@@ -303,8 +308,7 @@ function showScreen(name) {
   if (name === "system") {
     refreshPetDisplaySprite();
     startSystemMonitor();
-  }
-  else stopSystemMonitor();
+  } else stopSystemMonitor();
 }
 
 // ---------- 나의 애완돌 ----------
@@ -452,11 +456,14 @@ function renderHistory(list) {
 
 // 이름 값을 표시 스팬·입력창·타이틀바에 반영 (미지정 시 기본값 노출)
 function applyNames(userName, petName) {
+  currentUserName = userName || "";
+  currentPetName = petName || "";
   userNameValue.textContent = userName || "—";
   petNameValue.textContent = petName || "애완돌";
   userNameInput.value = userName || "";
   petNameInput.value = petName || "";
   petNameTitle.textContent = petName || "애완돌";
+  nameRewardNote.classList.toggle("hidden", !!userName && !!petName);
 }
 
 // 편집 모드 진입: 값 숨기고 입력창 노출, 버튼을 "저장"으로
@@ -467,6 +474,10 @@ function enterNameEdit() {
   userNameInput.classList.remove("hidden");
   petNameInput.classList.remove("hidden");
   nameEditBtn.textContent = "저장";
+  nameActions.classList.add("editing");
+  nameEditBtn.classList.add("name-save-btn");
+  nameCancelBtn.classList.add("name-cancel-btn");
+  nameCancelBtn.classList.remove("hidden");
   userNameInput.focus();
 }
 
@@ -478,6 +489,16 @@ function exitNameEdit() {
   userNameInput.classList.add("hidden");
   petNameInput.classList.add("hidden");
   nameEditBtn.textContent = "✎ 이름 수정";
+  nameActions.classList.remove("editing");
+  nameEditBtn.classList.remove("name-save-btn");
+  nameCancelBtn.classList.remove("name-cancel-btn");
+  nameCancelBtn.classList.add("hidden");
+}
+
+function cancelNameEdit() {
+  userNameInput.value = currentUserName;
+  petNameInput.value = currentPetName;
+  exitNameEdit();
 }
 
 // 호감도 5단계 구간(균등 20점). 점수 → 레벨(1~5)·명칭. 표시 전용이며,
@@ -533,6 +554,8 @@ nameEditBtn.addEventListener("click", async () => {
   renderAffinity(result.affinityPoints); // 최초 지정 보상이 게이지에 바로 반영
   exitNameEdit();
 });
+
+nameCancelBtn.addEventListener("click", cancelNameEdit);
 
 // "질문에 답하기" → 펫 창의 질문 카드를 연다 (팝업은 메인에서 닫음)
 petCallout.addEventListener("click", () => {

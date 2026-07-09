@@ -555,6 +555,16 @@ body {
   color: #1b1b16;
 }
 
+.name-actions {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.name-actions.editing {
+  grid-template-columns: 1fr 1fr;
+}
+
 .name-edit-btn {
   all: unset;
   box-sizing: border-box;
@@ -563,7 +573,6 @@ body {
   width: 100%;
   text-align: center;
   padding: 9px;
-  margin-top: 12px;
   border: 2px solid #1b1b16;
   background: #faf7ef;
   color: #1b1b16;
@@ -573,6 +582,26 @@ body {
 .name-edit-btn:hover {
   background: #1b1b16;
   color: #f2ede1;
+}
+
+.name-save-btn {
+  background: #4f7a3f;
+  color: #f2ede1;
+}
+
+.name-save-btn:hover {
+  background: #3f6530;
+  color: #f2ede1;
+}
+
+.name-cancel-btn {
+  background: #e7e1d2;
+  color: #4a4535;
+}
+
+.name-cancel-btn:hover {
+  background: #cbc4b1;
+  color: #1b1b16;
 }
 
 /* ---------- PET: 돌보기 (닦아주기 · 밥 주기) ---------- */
