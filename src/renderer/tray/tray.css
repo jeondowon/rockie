@@ -410,6 +410,15 @@ body {
   }
 }
 
+@keyframes pet-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @keyframes floaty {
   0%,
   100% {
@@ -858,7 +867,8 @@ body {
   height: 52px;
   image-rendering: pixelated;
   flex: none;
-  animation: bob 1.8s ease-in-out infinite;
+  transform-origin: center;
+  animation: pet-rotate var(--sys-pet-rotate-duration, 3.2s) linear infinite;
 }
 
 .sys-mood {

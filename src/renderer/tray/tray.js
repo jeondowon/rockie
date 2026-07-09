@@ -248,6 +248,7 @@ const statusItem = document.querySelector('.mrow[data-action="status"]');
 // 나의 애완돌 화면의 동적 요소
 const heroImg = document.getElementById("hero-img");
 const heroMood = document.getElementById("hero-mood");
+const sysPet = document.querySelector(".sys-pet");
 const petStatusLabel = document.getElementById("pet-status-label");
 const petPersonality = document.getElementById("pet-personality");
 const petPersonalityTags = document.getElementById("pet-personality-tags");
@@ -299,7 +300,10 @@ function showScreen(name) {
   // 메뉴는 항목 높이에 맞춰 짧게, 하위 화면은 기존 높이(0 = full)로 창 리사이즈
   window.trayAPI.resizePopup(name === "menu" ? menuWindowHeight() : 0);
   // 시스템 모니터는 화면이 보이는 동안만 폴링한다.
-  if (name === "system") startSystemMonitor();
+  if (name === "system") {
+    refreshPetDisplaySprite();
+    startSystemMonitor();
+  }
   else stopSystemMonitor();
 }
 
@@ -369,9 +373,10 @@ async function refreshPetDisplaySprite() {
 }
 
 function applyPetDisplaySprite() {
-  if (screens.pet.classList.contains("hidden")) return;
   const src = displaySpriteUrl(currentPetDisplaySprite);
-  if (src) heroImg.src = src;
+  if (!src) return;
+  if (!screens.pet.classList.contains("hidden")) heroImg.src = src;
+  sysPet.src = src;
 }
 
 window.trayAPI.onPetDisplaySprite((sprite) => {
@@ -761,6 +766,8 @@ function rate(bytesPerSec) {
 }
 
 function renderSystem(s) {
+  renderPetMotion(s.cpu.load);
+
   // CPU
   setText("sc-cpu-val", `${Math.round(s.cpu.load)}%`);
   setFill("sc-cpu-fill", s.cpu.load);
@@ -821,16 +828,27 @@ function renderSystem(s) {
   renderMood(s.cpu.load);
 }
 
+function renderPetMotion(load) {
+  const pct = Math.max(0, Math.min(100, load || 0));
+  let duration = 3.2; // 활동적: 현재 체감 유지
+  if (pct < 25) duration = 12;
+  else if (pct >= 70) duration = 0.35;
+  document.documentElement.style.setProperty(
+    "--sys-pet-rotate-duration",
+    `${duration}s`,
+  );
+}
+
 function renderMood(load) {
   let mood, desc;
   if (load < 25) {
     mood = "새근새근 · 여유";
     desc = "한가로워요. 돌이 느긋하게 쉬고 있어요.";
   } else if (load < 70) {
-    mood = "꿈틀꿈틀 · 활동적";
+    mood = "달그락 달그락 · 활동적";
     desc = "적당한 부하. 돌이 살짝 몸을 뒤척여요.";
   } else {
-    mood = "부릉부릉 · 바쁨";
+    mood = "데굴데굴 · 바쁨";
     desc = "부하가 높아요! 돌이 바쁘게 움직여요.";
   }
   setText("sys-mood", mood);
