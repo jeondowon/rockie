@@ -1,7 +1,7 @@
 {
-  "name": "rockie-deskpet",
+  "name": "rockie-desktop-pet",
   "version": "1.0.0",
-  "description": "애완돌 키우기",
+  "description": "A desktop pet application built with Electron.",
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
