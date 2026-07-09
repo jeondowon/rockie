@@ -10,6 +10,10 @@ contextBridge.exposeInMainWorld("trayAPI", {
   onWillShow: (callback) => {
     ipcRenderer.on("tray-popup-will-show", () => callback());
   },
+  onWillHide: (callback) => {
+    ipcRenderer.on("tray-popup-will-hide", () => callback());
+  },
+  getSystemStats: () => ipcRenderer.invoke("system:get-stats"),
   resizePopup: (height) => ipcRenderer.send("tray-popup-resize", height),
   getEvolutionState: () => ipcRenderer.invoke("evolution:get-state"),
   setName: (target, value) =>

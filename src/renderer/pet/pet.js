@@ -172,7 +172,7 @@ window.petAPI.onShowHeart(triggerHeart);
 //   [  ]     : 이전 / 다음 캐릭터
 //   s        : 표시 크기 순환 (small→medium→large)
 //   c        : 지금까지 맞춘 HEART_OFFSET을 콘솔에 출력 (붙여넣기용)
-const PREVIEW = { level: "level3", prefix: "moonstone" }; // { level: "level3", prefix: "moonstone" }; // {level, prefix}면 튜닝 켜기, null이면 정상 동작
+const PREVIEW = null; // { level: "level3", prefix: "moonstone" }; // {level, prefix}면 튜닝 켜기, null이면 정상 동작
 
 // 넘기기 순서(21종). PREVIEW.prefix로 시작 위치를 잡는다.
 const TUNE_CHARACTERS = [

@@ -223,12 +223,6 @@ body {
   color: #1b1b16;
 }
 
-.menu-head-sub {
-  font-size: 9px;
-  color: #7d7765;
-  margin-left: auto;
-}
-
 .menu-list {
   display: flex;
   flex-direction: column;
@@ -881,26 +875,87 @@ body {
 }
 
 .sys-rows {
-  padding: 4px 0 0;
+  padding: 0;
 }
 
 .sys-row {
   padding: 13px 16px;
   border-bottom: 2px dashed #cbc4b1;
+  cursor: pointer;
+}
+
+.sys-row:hover {
+  background: #ece5d5;
 }
 
 .sys-row-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
-  margin-bottom: 9px;
+  margin: 0 -16px 9px; /* 좌우로 흘려 hover 하이라이트가 행 폭 전체를 덮게 */
+  width: auto;
+  padding: 5px 16px;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  box-sizing: border-box;
+}
+
+.sys-arrow {
+  width: 13px;
+  flex: none;
+  font-family: "Galmuri14", monospace;
+  font-size: 11px;
+  visibility: hidden;
+}
+
+.sys-row:hover .sys-arrow {
+  visibility: visible;
+}
+
+.sys-detail {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 10px;
+  padding-left: 24px;
+}
+
+.sys-detail.open {
+  display: flex;
+}
+
+.sys-detail-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+}
+
+.sys-detail-row .k {
+  color: #6a6452;
+}
+
+.sys-detail-row .v {
+  font-family: "Galmuri14", monospace;
+  color: #1b1b16;
 }
 
 .sys-glyph {
   width: 16px;
-  text-align: center;
-  font-family: "Galmuri14", monospace;
-  font-size: 13px;
+  height: 16px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sys-glyph svg {
+  width: 16px;
+  height: 16px;
+  display: block;
 }
 
 .sys-label {

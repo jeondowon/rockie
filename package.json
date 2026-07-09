@@ -1,7 +1,7 @@
 {
-  "name": "desktop-pet",
+  "name": "rockie-deskpet",
   "version": "1.0.0",
-  "description": "데스크톱을 돌아다니며 상황별 메시지를 보여주는 데스크톱 펫",
+  "description": "애완돌 키우기",
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
@@ -12,6 +12,7 @@
     "electron": "^31.0.0"
   },
   "dependencies": {
-    "active-win": "^8.2.1"
+    "active-win": "^8.2.1",
+    "systeminformation": "^5.31.15"
   }
 }

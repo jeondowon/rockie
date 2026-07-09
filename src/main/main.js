@@ -15,6 +15,7 @@ const fs = require("fs");
 const { execFile } = require("child_process");
 const store = require("./store");
 const evolution = require("./evolution");
+const si = require("systeminformation");
 
 // 개발 모드 여부: `npm run dev`(DEV_RELOAD=1)로 실행하면 파일 저장 시 자동 새로고침
 const isDev = !app.isPackaged && process.env.DEV_RELOAD === "1";
@@ -381,6 +382,7 @@ function createTrayPopup() {
   // 팝업 바깥 클릭 등으로 포커스를 잃으면 자동으로 닫는다
   trayPopup.on("blur", () => {
     trayPopupHiddenAt = Date.now();
+    trayPopup.webContents.send("tray-popup-will-hide"); // 렌더러가 시스템 모니터 폴링 중단
     trayPopup.hide();
   });
 }
@@ -388,6 +390,7 @@ function createTrayPopup() {
 function toggleTrayPopup() {
   if (!trayPopup || trayPopup.isDestroyed()) return;
   if (trayPopup.isVisible()) {
+    trayPopup.webContents.send("tray-popup-will-hide"); // 렌더러가 시스템 모니터 폴링 중단
     trayPopup.hide();
     return;
   }
@@ -669,6 +672,84 @@ ipcMain.handle("settings:reset", () => {
   runDailyResetIfNeeded(); // 초기화 직후 오늘의 질문을 다시 채우고 배지 갱신
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.reload(); // 조약돌로 복원
   return true;
+});
+
+// 시스템 모니터: 트레이 SYSTEM 화면이 열려 있는 동안 렌더러가 주기적으로 호출한다.
+// 표시용 숫자만 추려서 반환하고, 서식/색상/기분 판정은 렌더러가 담당한다.
+const GB = 1024 ** 3;
+ipcMain.handle("system:get-stats", async () => {
+  try {
+    const def = await si.networkInterfaceDefault();
+    const [load, mem, disks, batt, ifaces, netStat] = await Promise.all([
+      si.currentLoad(),
+      si.mem(),
+      si.fsSize(),
+      si.battery(),
+      si.networkInterfaces(),
+      si.networkStats(def),
+    ]);
+
+    // macOS는 루트('/')가 읽기전용 스냅샷이라 사용률이 실제와 다르다 → 데이터 볼륨 우선
+    const vol =
+      disks.find((d) => d.mount === "/System/Volumes/Data") ||
+      disks.find((d) => d.mount === "/") ||
+      disks[0] ||
+      {};
+    const diskUsed = (vol.size || 0) - (vol.available || 0);
+
+    const ni = (Array.isArray(ifaces) ? ifaces : [ifaces]).find(
+      (n) => n.iface === def,
+    );
+    const netLabel =
+      ni && ni.type === "wired"
+        ? "유선"
+        : ni && ni.type === "wireless"
+          ? "Wi-Fi"
+          : (ni && ni.ifaceName) || def || "네트워크";
+    const st = (netStat && netStat[0]) || {};
+
+    return {
+      cpu: {
+        load: load.currentLoad,
+        system: load.currentLoadSystem,
+        user: load.currentLoadUser,
+        idle: load.currentLoadIdle,
+      },
+      ram: {
+        pct: mem.total ? Math.round((mem.active / mem.total) * 100) : 0,
+        activeGB: mem.active / GB,
+        availableGB: mem.available / GB,
+        totalGB: mem.total / GB,
+        swapGB: (mem.swapused || 0) / GB,
+      },
+      disk: {
+        pct: vol.size ? Math.round((diskUsed / vol.size) * 100) : 0,
+        usedGB: diskUsed / GB,
+        freeGB: (vol.available || 0) / GB,
+        totalGB: (vol.size || 0) / GB,
+      },
+      battery: batt.hasBattery
+        ? {
+            has: true,
+            pct: Math.round(batt.percent),
+            charging: batt.isCharging,
+            ac: batt.acConnected,
+            healthPct: batt.designedCapacity
+              ? Math.round((batt.maxCapacity / batt.designedCapacity) * 100)
+              : null,
+            cycles: batt.cycleCount ?? null,
+          }
+        : { has: false },
+      network: {
+        label: netLabel,
+        ip: (ni && ni.ip4) || "-",
+        rxSec: Math.max(0, st.rx_sec || 0),
+        txSec: Math.max(0, st.tx_sec || 0),
+      },
+    };
+  } catch (_err) {
+    return null; // 조회 실패 시 렌더러는 이전 값을 유지한다
+  }
 });
 
 ipcMain.handle("get-screen-permission", () => {

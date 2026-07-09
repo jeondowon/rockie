@@ -151,6 +151,9 @@ function showScreen(name) {
   }
   // 메뉴는 항목 높이에 맞춰 짧게, 하위 화면은 기존 높이(0 = full)로 창 리사이즈
   window.trayAPI.resizePopup(name === "menu" ? menuWindowHeight() : 0);
+  // 시스템 모니터는 화면이 보이는 동안만 폴링한다.
+  if (name === "system") startSystemMonitor();
+  else stopSystemMonitor();
 }
 
 // ---------- 나의 애완돌 ----------
@@ -485,7 +488,7 @@ document.querySelectorAll(".mrow").forEach((item) => {
         showPet(); // 뷰만 전환 (메인에 보낼 동작 없음)
         break;
       case "system":
-        showScreen("system"); // 스타일만, 동작은 추후 구현
+        showScreen("system"); // 폴링은 showScreen 훅에서 시작된다
         break;
       case "settings":
         window.trayAPI.sendAction(action);
@@ -519,4 +522,152 @@ window.trayAPI.onWillShow(() => {
   showScreen("menu");
   refreshPermToggle();
   refreshBadge();
+});
+
+// 팝업이 닫히면 시스템 모니터 폴링을 멈춘다 (숨은 창에서 계속 도는 것 방지)
+window.trayAPI.onWillHide(() => stopSystemMonitor());
+
+// ---------- 시스템 모니터 (SYSTEM 화면) ----------
+const SYS_POLL_MS = 2000;
+let sysTimer = null;
+
+function startSystemMonitor() {
+  if (sysTimer) return;
+  tickSystem(); // 즉시 1회 갱신 후 주기 폴링
+  sysTimer = setInterval(tickSystem, SYS_POLL_MS);
+}
+
+function stopSystemMonitor() {
+  if (!sysTimer) return;
+  clearInterval(sysTimer);
+  sysTimer = null;
+}
+
+async function tickSystem() {
+  const stats = await window.trayAPI.getSystemStats();
+  if (stats) renderSystem(stats); // 조회 실패(null)면 이전 값 유지
+}
+
+const byId = (id) => document.getElementById(id);
+
+function setText(id, text) {
+  byId(id).textContent = text;
+}
+
+function setFill(id, pct) {
+  byId(id).style.width = `${Math.max(0, Math.min(100, pct))}%`;
+}
+
+// 사용률 색상: 여유(초록) < 60 · 주의(노랑) < 85 · 높음(빨강)
+function loadClass(pct) {
+  return pct < 60 ? "green" : pct < 85 ? "gold" : "rust";
+}
+
+// 배터리는 반대로 잔량이 낮을수록 경고
+function batteryClass(pct, charging) {
+  if (charging) return "green";
+  return pct > 40 ? "green" : pct > 15 ? "gold" : "rust";
+}
+
+// 글리프·값·게이지에 색상 클래스를 한 번에 적용
+function paint(metric, cls) {
+  byId(`sc-${metric}-glyph`).className = `sys-glyph ${cls}`;
+  byId(`sc-${metric}-val`).className = `sys-val ${cls}`;
+  byId(`sc-${metric}-fill`).className = `gauge-fill ${cls}`;
+}
+
+const gb = (n) => `${n.toFixed(1)} GB`;
+
+// 초당 바이트 → 사람이 읽는 속도
+function rate(bytesPerSec) {
+  if (bytesPerSec >= 1024 * 1024)
+    return `${(bytesPerSec / (1024 * 1024)).toFixed(1)} MB/s`;
+  return `${(bytesPerSec / 1024).toFixed(1)} KB/s`;
+}
+
+function renderSystem(s) {
+  // CPU
+  setText("sc-cpu-val", `${Math.round(s.cpu.load)}%`);
+  setFill("sc-cpu-fill", s.cpu.load);
+  paint("cpu", loadClass(s.cpu.load));
+  setText("sc-cpu-system", `${s.cpu.system.toFixed(1)}%`);
+  setText("sc-cpu-user", `${s.cpu.user.toFixed(1)}%`);
+  setText("sc-cpu-idle", `${s.cpu.idle.toFixed(1)}%`);
+
+  // RAM
+  setText("sc-ram-val", `${s.ram.pct}%`);
+  setFill("sc-ram-fill", s.ram.pct);
+  paint("ram", loadClass(s.ram.pct));
+  setText("sc-ram-active", gb(s.ram.activeGB));
+  setText("sc-ram-available", gb(s.ram.availableGB));
+  setText("sc-ram-total", gb(s.ram.totalGB));
+  setText("sc-ram-swap", gb(s.ram.swapGB));
+
+  // 저장
+  setText("sc-disk-val", `${s.disk.pct}%`);
+  setFill("sc-disk-fill", s.disk.pct);
+  paint("disk", loadClass(s.disk.pct));
+  setText("sc-disk-used", gb(s.disk.usedGB));
+  setText("sc-disk-free", gb(s.disk.freeGB));
+  setText("sc-disk-total", gb(s.disk.totalGB));
+
+  // 배터리
+  if (s.battery.has) {
+    const b = s.battery;
+    const state = b.charging ? "충전 중" : b.ac ? "전원 연결" : "충전 안 함";
+    setText("sc-bat-val", `${b.pct}%`);
+    setFill("sc-bat-fill", b.pct);
+    paint("bat", batteryClass(b.pct, b.charging));
+    setText("sc-bat-sub", state);
+    setText("sc-bat-power", state);
+    setText("sc-bat-health", b.healthPct != null ? `${b.healthPct}%` : "—");
+    setText("sc-bat-cycles", b.cycles != null ? `${b.cycles}회` : "—");
+  } else {
+    setText("sc-bat-val", "—");
+    setFill("sc-bat-fill", 0);
+    paint("bat", "green");
+    setText("sc-bat-sub", "배터리 없음");
+    setText("sc-bat-power", "—");
+    setText("sc-bat-health", "—");
+    setText("sc-bat-cycles", "—");
+  }
+
+  // 네트워크 (자연한 최대치가 없어 총 처리량을 100Mbps=꽉 참으로 근사)
+  const mbps = ((s.network.rxSec + s.network.txSec) * 8) / 1e6;
+  setText("sc-net-val", rate(s.network.rxSec + s.network.txSec));
+  setFill("sc-net-fill", mbps);
+  paint("net", loadClass(mbps));
+  setText("sc-net-sub", s.network.label);
+  setText("sc-net-ip", s.network.ip);
+  setText("sc-net-up", `↑ ${rate(s.network.txSec)}`);
+  setText("sc-net-down", `↓ ${rate(s.network.rxSec)}`);
+
+  // 반응 카드: CPU 부하로 애완돌 기분 분기
+  renderMood(s.cpu.load);
+}
+
+function renderMood(load) {
+  let mood, desc;
+  if (load < 25) {
+    mood = "새근새근 · 여유";
+    desc = "한가로워요. 돌이 느긋하게 쉬고 있어요.";
+  } else if (load < 70) {
+    mood = "꿈틀꿈틀 · 활동적";
+    desc = "적당한 부하. 돌이 살짝 몸을 뒤척여요.";
+  } else {
+    mood = "부릉부릉 · 바쁨";
+    desc = "부하가 높아요! 돌이 바쁘게 움직여요.";
+  }
+  setText("sys-mood", mood);
+  setText("sys-mood-desc", desc);
+}
+
+// 항목 박스 클릭 → 세부 정보 드롭다운 토글
+document.querySelectorAll(".sys-row").forEach((row) => {
+  row.addEventListener("click", () => {
+    const head = row.querySelector(".sys-row-head");
+    const metric = head.dataset.metric;
+    const open = byId(`sc-${metric}-detail`).classList.toggle("open");
+    head.setAttribute("aria-expanded", open ? "true" : "false");
+  });
 });
