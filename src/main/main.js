@@ -28,6 +28,11 @@ let cursorInterval;
 let dockInterval;
 let dockPrefsInterval;
 let dailyResetInterval;
+let petDisplaySprite = {
+  level: "level0",
+  prefix: "rockie",
+  pose: "right",
+};
 
 function createWindow() {
   const primaryDisplay = screen.getPrimaryDisplay();
@@ -257,6 +262,20 @@ ipcMain.on("set-ignore-mouse-events", (_event, ignore, options) => {
   if (!mainWindow) return;
   mainWindow.setIgnoreMouseEvents(ignore, options);
 });
+
+ipcMain.on("pet:display-sprite", (_event, sprite) => {
+  if (!sprite || !sprite.level || !sprite.prefix || !sprite.pose) return;
+  petDisplaySprite = {
+    level: sprite.level,
+    prefix: sprite.prefix,
+    pose: sprite.pose,
+  };
+  if (trayPopup && !trayPopup.isDestroyed()) {
+    trayPopup.webContents.send("pet:display-sprite", petDisplaySprite);
+  }
+});
+
+ipcMain.handle("pet:get-display-sprite", () => petDisplaySprite);
 
 // 캐릭터 창 표시/숨김 토글
 function togglePet() {

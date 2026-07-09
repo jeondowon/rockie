@@ -22,6 +22,7 @@ contextBridge.exposeInMainWorld("petAPI", {
   onShowHeart: (callback) => {
     ipcRenderer.on("pet:show-heart", () => callback());
   },
+  setDisplaySprite: (sprite) => ipcRenderer.send("pet:display-sprite", sprite),
   getEvolutionState: () => ipcRenderer.invoke("evolution:get-state"),
   getIsDev: () => ipcRenderer.invoke("app:is-dev"),
   completePendingEvolution: () =>

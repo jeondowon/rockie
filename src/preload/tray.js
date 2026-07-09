@@ -15,6 +15,10 @@ contextBridge.exposeInMainWorld("trayAPI", {
   },
   getSystemStats: () => ipcRenderer.invoke("system:get-stats"),
   resizePopup: (height) => ipcRenderer.send("tray-popup-resize", height),
+  getPetDisplaySprite: () => ipcRenderer.invoke("pet:get-display-sprite"),
+  onPetDisplaySprite: (callback) => {
+    ipcRenderer.on("pet:display-sprite", (_event, data) => callback(data));
+  },
   getEvolutionState: () => ipcRenderer.invoke("evolution:get-state"),
   setName: (target, value) =>
     ipcRenderer.invoke("evolution:set-name", { target, value }),

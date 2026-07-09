@@ -98,12 +98,21 @@ function spriteUrl(name) {
   return `../../../assets/gif/${spriteLevel}/${spritePrefix}_${name}.gif`;
 }
 
+function notifyDisplaySprite(pose) {
+  window.petAPI.setDisplaySprite({
+    level: spriteLevel,
+    prefix: spritePrefix,
+    pose,
+  });
+}
+
 // 지친 상태(배터리 부족)면 단계별 표정 gif, 아니면 바라보는 방향의 걷기 gif를 표시.
 // 표시할 파일은 현재 진화 단계에 따른 spriteLevel/spritePrefix로 결정된다.
 function applySprite() {
   const name = tiredSprite || (facing === "left" ? "left" : "right");
   const src = spriteUrl(name);
   if (!character.src.endsWith(src)) character.src = src;
+  notifyDisplaySprite(name);
 }
 
 // 애정 표현용 하트 오버레이. level2/3은 love gif가 없어 smile + 하트로 애정을 표현한다.
@@ -1275,6 +1284,7 @@ async function initSettings() {
     posX = startX();
     posY = groundY();
     placeCharacter();
+    applySprite();
     character.style.visibility = "visible";
   }
 }
