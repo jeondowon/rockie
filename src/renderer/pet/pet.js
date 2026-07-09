@@ -482,11 +482,12 @@ function positionBubble() {
     BUBBLE_TAIL_PAD,
     Math.min(w - BUBBLE_TAIL_PAD, tailX - left),
   );
-  bubble.style.setProperty("--tail-x", tailInBody + "px");
+  const bubbleBorderLeft = parseFloat(getComputedStyle(bubble).borderLeftWidth);
+  bubble.style.setProperty("--tail-x", tailInBody - bubbleBorderLeft + "px");
 
   // 세로는 박스 상단(posY)이 아니라 펫 '머리 상단'(posY + SPRITE_MARGIN) 기준으로 잡아
   // 크기가 커져 투명 여백이 늘어도 말풍선~펫 간격이 일정하게 유지되도록 한다.
-  // (offsetHeight + 꼬리 5px + 여유 6px 만큼 위로 = 꼬리 끝이 머리 위 약 6px)
+  // (offsetHeight + 꼬리 11px 만큼 위로 = 꼬리 끝이 머리 위에 닿음)
   bubble.style.top =
     posY + SPRITE_MARGIN - bubble.offsetHeight - 11 + o.y * k + "px";
 }

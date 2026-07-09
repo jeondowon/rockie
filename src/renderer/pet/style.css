@@ -47,12 +47,13 @@ body {
   position: absolute;
   max-width: 220px;
   padding: 10px 14px;
-  background: #ffffff;
-  color: #222222;
-  font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
-  font-size: 13px;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  background: #f2ede1;
+  border: 3px solid #1b1b16;
+  color: #1b1b16;
+  font-family: "Galmuri11", "Galmuri14", monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.45);
   z-index: 3;
   opacity: 1;
   transition: opacity 0.3s ease;
@@ -66,13 +67,25 @@ body {
 .bubble::after {
   content: "";
   position: absolute;
-  bottom: -5px;
+  top: 100%;
   /* 꼬리 x는 JS(positionBubble)가 몸통 내 픽셀로 잡아 항상 펫 머리를 가리키게 한다. 미설정 시 중앙 */
   left: var(--tail-x, 50%);
   transform: translateX(-50%);
-  border-width: 8px 8px 0 8px;
+  border-width: 8px 7px 0 7px;
   border-style: solid;
-  border-color: #ffffff transparent transparent transparent;
+  border-color: #1b1b16 transparent transparent transparent;
+}
+
+.bubble::before {
+  content: "";
+  position: absolute;
+  top: calc(100% - 2px);
+  left: var(--tail-x, 50%);
+  transform: translateX(-50%);
+  border-width: 6px 5px 0 5px;
+  border-style: solid;
+  border-color: #f2ede1 transparent transparent transparent;
+  z-index: 1;
 }
 
 /* ---------- 질문 카드 (펫 옆 오버레이) ---------- */
@@ -80,11 +93,11 @@ body {
 .qcard {
   position: absolute;
   width: 220px;
-  background: #ffffff;
-  border: 3px solid #000000;
-  box-shadow: 4px 4px 0 #000000;
-  color: #000000;
-  font-family: "Galmuri11", "DungGeunMo", monospace;
+  background: #f2ede1;
+  border: 3px solid #1b1b16;
+  box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.45);
+  color: #1b1b16;
+  font-family: "Galmuri11", "Galmuri14", monospace;
   z-index: 4;
 }
 
@@ -102,29 +115,30 @@ body {
   font-family: inherit;
   font-size: 11px;
   line-height: 1;
-  background: #ffffff;
-  color: #000000;
+  background: #f2ede1;
+  color: #1b1b16;
   border: none;
   cursor: pointer;
   z-index: 1;
 }
 
 .qcard .q-close:hover {
-  color: #888888;
+  color: #6a6452;
 }
 
 .qcard .q-hint {
   padding: 8px 12px 0;
   font-size: 10px;
   line-height: 1.5;
-  color: #555555;
+  color: #6a6452;
 }
 
 .qcard .q-text {
   padding: 10px 12px;
   font-size: 12px;
   line-height: 1.5;
-  border-bottom: 1px dashed #000000;
+  color: #1b1b16;
+  border-bottom: 2px dashed #cbc4b1;
 }
 
 .qcard .q-options {
@@ -139,9 +153,10 @@ body {
   font-size: 11px;
   text-align: left;
   line-height: 1.4;
-  background: #ffffff;
+  color: #1b1b16;
+  background: #f2ede1;
   border: none;
-  border-top: 1px dashed #000000;
+  border-top: 2px dashed #cbc4b1;
   padding: 8px 12px 8px 26px;
   cursor: pointer;
 }
@@ -160,7 +175,7 @@ body {
 }
 
 .qcard .q-opt:hover {
-  background: #eeeeee;
+  background: #e7e1d2;
 }
 
 .qcard .q-opt:hover::before {
@@ -211,10 +226,10 @@ body {
 .qcard.evolution-card .evo-hint {
   min-height: 48px;
   padding: 8px 12px 12px;
-  font-family: "Galmuri11", "DungGeunMo", monospace;
+  font-family: inherit;
   font-size: 11px;
   line-height: 1.5;
-  color: #000000;
+  color: #1b1b16;
   white-space: pre-line;
   display: flex;
   align-items: center;
