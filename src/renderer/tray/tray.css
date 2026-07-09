@@ -998,6 +998,13 @@ body {
   height: 16px;
 }
 
+.sys-legend {
+  padding: 12px 16px 16px;
+  font-size: 9px;
+  color: #6a6452;
+  line-height: 1.7;
+}
+
 /* 색상 유틸 (글리프/값/범례) */
 .green {
   color: #4f7a3f;
