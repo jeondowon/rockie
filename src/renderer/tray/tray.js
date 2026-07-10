@@ -295,9 +295,7 @@ const nameCancelBtn = document.getElementById("name-cancel-btn");
 const nameRewardNote = document.getElementById("name-reward-note");
 const affValue = document.getElementById("aff-value");
 const affFill = document.getElementById("aff-fill");
-const affHearts = document.getElementById("aff-hearts");
 const affLevel = document.getElementById("aff-level");
-const affPips = document.getElementById("aff-pips");
 const cleanBtn = document.getElementById("clean-btn");
 const feedBtn = document.getElementById("feed-btn");
 let editingName = false;
@@ -547,20 +545,13 @@ function affinityLevel(points) {
   return { index: idx + 1, name: AFFINITY_LEVELS[idx].name };
 }
 
-// 호감도 게이지·수치·하트·레벨명·타이틀바 pip을 실제 포인트(0~100)로 반영
+// 호감도 게이지·수치·레벨명을 실제 포인트(0~100)로 반영
 function renderAffinity(points) {
   const p = Math.max(0, Math.min(100, points || 0));
   affValue.textContent = String(p);
   affFill.style.width = `${p}%`;
-  const filled = Math.round(p / 20); // 하트 5칸 = 100점
-  affHearts
-    .querySelectorAll(".heart")
-    .forEach((h, i) => h.classList.toggle("on", i < filled));
-  const { index, name } = affinityLevel(p);
+  const { name } = affinityLevel(p);
   affLevel.textContent = name;
-  affPips
-    .querySelectorAll(".pip")
-    .forEach((el, i) => el.classList.toggle("on", i < index)); // pip = 레벨(1~5)
 }
 
 // 닦아주기/밥 주기 버튼 상태 (update.md 9.4). 오늘 완료했으면 비활성 + 완료 문구.

@@ -129,22 +129,6 @@ body {
   color: #b8b2a2;
 }
 
-.pips {
-  display: flex;
-  gap: 2px;
-}
-
-.pip {
-  width: 8px;
-  height: 8px;
-  display: block;
-  background: #514c3e;
-}
-
-.pip.on {
-  background: #a8432b;
-}
-
 /* ---------- 뒤로가기 바 ---------- */
 .back-bar {
   all: unset;
@@ -645,34 +629,6 @@ body {
   background: #4f7a3f;
   color: #f2ede1;
   font-size: 10px;
-}
-
-/* ---------- PET: 호감도 하트 ---------- */
-.hearts {
-  display: flex;
-  gap: 4px;
-  margin-top: 9px;
-}
-
-.heart {
-  width: 14px;
-  height: 14px;
-  display: block;
-  background: #514c3e;
-  clip-path: polygon(
-    50% 100%,
-    10% 55%,
-    10% 25%,
-    32% 12%,
-    50% 30%,
-    68% 12%,
-    90% 25%,
-    90% 55%
-  );
-}
-
-.heart.on {
-  background: #a8432b;
 }
 
 /* ---------- PET: 인벤토리 ---------- */
