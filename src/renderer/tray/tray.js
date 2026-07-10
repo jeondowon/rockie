@@ -53,7 +53,7 @@ function lines(...parts) {
 const TRAIT_DESCRIPTIONS = {
   rockie: lines(
     "조약돌은 모든 Rockie 돌들의 기본 형태입니다.",
-    "잼재력을 발견하고 새로운 형태를 찾아보세요!",
+    "잠재력을 발견하고 새로운 형태를 찾아보세요!",
   ),
   granite: {
     stage1: lines(
@@ -168,8 +168,21 @@ function statusLabel(stage, stoneType, variant) {
   return "조약돌";
 }
 
+// 진화를 끝낸 사용자가 (스킨으로) 조약돌 모습을 다시 착용했을 때의 문구.
+// 실제 0단계의 발견 안내와 달리, 진화 근거 칸은 회상 톤(BLURB),
+// 성향 설명 칸은 정체성 톤(TRAIT)으로 서로 다르게 표시한다.
+const ROCKIE_SKIN_BLURB = lines(
+  "처음 만났던 조약돌 시절의 모습이에요.",
+  "튜닝의 끝은 순정이라고들 하죠.",
+);
+const ROCKIE_SKIN_TRAIT = lines(
+  "겉모습은 처음으로 돌아갔지만,",
+  "그동안 쌓아온 성향은 그대로예요.",
+);
+
 function traitDescription(stage, stoneType, variant) {
-  if (!stoneType) return TRAIT_DESCRIPTIONS.rockie;
+  if (!stoneType) return TRAIT_DESCRIPTIONS.rockie; // 실제 0단계: 발견 안내
+  if (stage < 1) return ROCKIE_SKIN_TRAIT; // 진화 후 조약돌 스킨 착용: 정체성 톤
   const desc = TRAIT_DESCRIPTIONS[stoneType];
   if (stage >= 3 && variant) return desc[variant].stage3;
   if (stage === 2 && variant) return desc[variant].stage2;
@@ -246,7 +259,8 @@ const EVOLVE_RATIONALE = {
 };
 
 function evolveRationale(stage, stoneType, variant) {
-  if (!stoneType) return TRAIT_DESCRIPTIONS.rockie;
+  if (!stoneType) return TRAIT_DESCRIPTIONS.rockie; // 실제 0단계: 발견 안내
+  if (stage < 1) return ROCKIE_SKIN_BLURB; // 진화 후 조약돌 스킨 착용: 회상 톤
   const r = EVOLVE_RATIONALE[stoneType];
   if (stage >= 3 && variant) return r[variant].stage3;
   if (stage === 2 && variant) return r[variant].stage2;
@@ -342,6 +356,37 @@ async function showPet() {
   refreshPetDisplaySprite();
 }
 
+// 히어로 아래 형태 설명(상태 라벨·진화 근거·성향 설명)은 표시 단계 = 스킨 착용 시 그 단계
+// (activeSkinStage), 없으면 실제 단계를 따른다. 진행도 힌트·성향 태그는 실제 상태 기준.
+// 스킨 변경 시에도 재호출해 히어로 이미지와 설명의 단계를 일치시킨다.
+function renderHeroText(state) {
+  const displayStage =
+    state.activeSkinStage != null ? state.activeSkinStage : state.stage;
+  petStatusLabel.textContent = statusLabel(
+    displayStage,
+    state.stoneType,
+    state.variant,
+  );
+  heroMood.textContent = evolveRationale(
+    displayStage,
+    state.stoneType,
+    state.variant,
+  );
+  petEvoHint.textContent = evoHint(state.stage);
+  if (state.stoneType) {
+    petPersonality.textContent = traitDescription(
+      displayStage,
+      state.stoneType,
+      state.variant,
+    );
+    renderTags(state.tags || []);
+    petPersonalityTags.classList.remove("hidden");
+  } else {
+    petPersonality.textContent = `아직 알아가는 중이에요 (${state.progress || 0}/${state.total || 0})`;
+    petPersonalityTags.classList.add("hidden");
+  }
+}
+
 function renderPet(state) {
   heroImg.src =
     displaySpriteUrl(currentPetDisplaySprite) ||
@@ -359,31 +404,9 @@ function renderPet(state) {
     ? `${Math.round((progress / total) * 100)}%`
     : "0%";
 
-  // 상태 라벨 + 성향 요약. 돌 종류가 확정된(1단계 이상) 뒤엔 성향 요약 + 태그.
-  petStatusLabel.textContent = statusLabel(
-    state.stage,
-    state.stoneType,
-    state.variant,
-  );
-  // 히어로 아래: 진화 근거 / 성향 요약 패널: 단계별 성향 설명
-  heroMood.textContent = evolveRationale(
-    state.stage,
-    state.stoneType,
-    state.variant,
-  );
-  petEvoHint.textContent = evoHint(state.stage);
-  if (state.stoneType) {
-    petPersonality.textContent = traitDescription(
-      state.stage,
-      state.stoneType,
-      state.variant,
-    );
-    renderTags(state.tags || []);
-    petPersonalityTags.classList.remove("hidden");
-  } else {
-    petPersonality.textContent = `아직 알아가는 중이에요 (${progress}/${total})`;
-    petPersonalityTags.classList.add("hidden");
-  }
+  // 상태 라벨·진화 근거·성향 설명은 "지금 보이는 형태" 기준(스킨 착용 시 그 단계),
+  // 진행도 힌트·성향 태그는 실제 상태 기준. renderHeroText가 이 구분을 담당한다.
+  renderHeroText(state);
 
   renderAffinity(state.affinityPoints);
   renderCareButtons(state.dailyCleanDone, state.dailyFeedDone);
@@ -446,7 +469,8 @@ document.querySelector(".skin-grid").addEventListener("click", async (e) => {
       : lastPetState.stage;
   if (wornStage === s) return; // 이미 착용 중이면 무반응
   const state = await window.trayAPI.setActiveSkin(s);
-  renderSkins(state); // 배지 즉시 갱신 (히어로는 펫 브로드캐스트로 반영)
+  renderSkins(state); // 배지 즉시 갱신 (히어로 이미지는 펫 브로드캐스트로 반영)
+  renderHeroText(state); // 형태 설명(라벨·근거·성향)을 착용 단계에 맞춰 갱신
 });
 
 async function refreshPetDisplaySprite() {
