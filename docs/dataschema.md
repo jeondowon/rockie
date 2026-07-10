@@ -176,7 +176,7 @@
 | 필드            | 타입    | 기본값     | 설명                                                                          |
 | --------------- | ------- | ---------- | ----------------------------------------------------------------------------- |
 | `autoLaunch`    | boolean | `false`    | 로그인 시 자동 실행. `app.setLoginItemSettings({openAtLogin})`와 동기화        |
-| `soundEnabled`  | boolean | `false`    | 효과음 on/off. 사운드 시스템 도입 전이라 값만 보관                             |
+| `soundEnabled`  | boolean | `false`    | 효과음 on/off. 펫 렌더러가 Web Audio로 클릭·돌보기·진화 시 8비트풍 효과음 재생 |
 | `petPlacement`  | enum    | `"follow"` | `follow`(커서 따라오기) / `bottom-left`(좌하단 고정) / `bottom-right`(우하단 고정) |
 | `petSize`       | enum    | `"medium"` | `small`(96px) / `medium`(128px, 현재 기본) / `large`(176px)                   |
 

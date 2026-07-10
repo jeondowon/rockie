@@ -52,8 +52,8 @@ function defaultData() {
       turnsSinceLastSummary: 0,
     },
     settings: {
-      autoLaunch: false,
-      soundEnabled: false,
+      autoLaunch: true,
+      soundEnabled: true,
       petPlacement: "follow", // "follow" | "bottom-left" | "bottom-right"
       petSize: "medium", // "small" | "medium" | "large"
     },

@@ -57,6 +57,9 @@ function createWindow() {
       preload: path.join(__dirname, "../preload/pet.js"),
       contextIsolation: true,
       nodeIntegration: false,
+      // 효과음(Web Audio)이 트레이 '돌보기'처럼 펫 창 밖에서 트리거될 때도 재생되도록
+      // 자동재생에 사용자 제스처를 요구하지 않는다.
+      autoplayPolicy: "no-user-gesture-required",
     },
   });
 
@@ -86,6 +89,7 @@ function startDevReload() {
         "../renderer/pet/index.html",
         "../renderer/pet/pet.js",
         "../renderer/pet/style.css",
+        "../renderer/shared/sound.js",
         "../renderer/shared/sprites.js",
       ],
     },
@@ -512,6 +516,7 @@ function sendPetSettings() {
   mainWindow.webContents.send("pet-settings", {
     placement: s.petPlacement,
     size: s.petSize,
+    sound: s.soundEnabled,
   });
 }
 
@@ -544,7 +549,8 @@ ipcMain.on("settings:set", (_event, { key, value }) => {
       if (value) showBannerPreview(); // 켠 순간 실제 배너 모습을 미리보기로 표시
       break;
     case "soundEnabled":
-      data.settings.soundEnabled = value; // 사운드 시스템 도입 전이라 값만 보관
+      data.settings.soundEnabled = value;
+      sendPetSettings(); // 펫 렌더러의 효과음 on/off 즉시 반영
       break;
     case "petPlacement":
       data.settings.petPlacement = value;

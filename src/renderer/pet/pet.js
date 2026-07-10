@@ -164,6 +164,7 @@ function applyHeartOffset() {
 const HEART_DURATION = 3000;
 let heartTimer = null;
 function triggerHeart() {
+  playSound("care");
   applyHeartOffset(); // 현재 스프라이트/크기에 맞춘 위치 보정
   showHeart();
   clearTimeout(heartTimer);
@@ -517,6 +518,7 @@ character.addEventListener("click", () => {
     return;
   }
   const msg = clickReactions[Math.floor(Math.random() * clickReactions.length)];
+  playSound("click");
   showBubble(msg);
   pauseWalking(1500);
 });
@@ -1075,6 +1077,7 @@ async function advanceEvolutionCard(img, hint) {
       requestAnimationFrame(() => {
         img.classList.remove("fade-out");
         img.classList.add("reveal-in");
+        playSound("evolve"); // 새 모습이 드러나는 순간에 축하음
       });
     });
     await wait(EVOLVE_FADE_IN_MS);
@@ -1239,6 +1242,7 @@ async function initSettings() {
     const s = await window.petAPI.getSettings();
     placement = s.petPlacement || "follow";
     applyPetSize(s.petSize || "medium");
+    setSoundEnabled(s.soundEnabled);
   } catch (_err) {
     // 설정을 못 읽으면 기본값(따라오기 · 보통)을 유지
   } finally {
@@ -1253,9 +1257,10 @@ async function initSettings() {
 }
 
 // 트레이 설정에서 위치/크기를 바꾸면 즉시 반영
-window.petAPI.onPetSettings(({ placement: p, size }) => {
+window.petAPI.onPetSettings(({ placement: p, size, sound }) => {
   if (p) placement = p;
   if (size) applyPetSize(size);
+  if (sound !== undefined) setSoundEnabled(sound);
 });
 
 // ---------- 7. 초기화 ----------
