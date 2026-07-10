@@ -17,6 +17,8 @@ const {
 // ---------- 상수 (update.md 2장) ----------
 const MAIN_QUESTION_COUNT = MAIN_QUESTIONS.length; // 0→1 본 질문 총 개수
 const EI_QUESTION_COUNT = EI_QUESTIONS.length; // 1→2 E/I 질문 총 개수
+const STAGE1_DISPLAY_COUNT = ONBOARDING_QUESTIONS.length + MAIN_QUESTION_COUNT;
+const QUESTION_DISPLAY_TOTAL = STAGE1_DISPLAY_COUNT + EI_QUESTION_COUNT;
 const AFFINITY_TARGET = 90; // 2→3 진화 필요 호감도
 const CLEAN_POINTS = 3; // 닦아주기 획득 점수
 const FEED_POINTS = 3; // 밥주기 획득 점수
@@ -491,6 +493,13 @@ function completeOnboarding(data) {
   return getOnboardingState(data);
 }
 
+function onboardingAnswerCount(data) {
+  if (onboardingCompleted(data)) return ONBOARDING_QUESTIONS.length;
+  return ONBOARDING_QUESTIONS.filter((oq) =>
+    data.questions.answeredQuestions.some((a) => a.questionId === oq.id),
+  ).length;
+}
+
 // ---------- 상태 직렬화 ----------
 function serialize(id) {
   if (!id) return null;
@@ -534,22 +543,20 @@ function answerButtonState(data) {
 function getState(data) {
   const stage = data.pet.evolutionStage;
   const stoneType = data.pet.stoneType;
-  // 진행도는 현재 트랙 기준: 0단계=본 질문, 1단계=E/I, 2단계 이상=완료
-  let progress = MAIN_QUESTION_COUNT;
-  let total = MAIN_QUESTION_COUNT;
+  // 표시용 진행도: 온보딩+0→1 질문 16개, 1→2 질문 6개를 한 막대로 보여준다.
+  let progress = QUESTION_DISPLAY_TOTAL;
   if (stage === 0) {
-    progress = data.questions.mainQuestionProgress;
-    total = MAIN_QUESTION_COUNT;
+    progress =
+      onboardingAnswerCount(data) + data.questions.mainQuestionProgress;
   } else if (stage === 1) {
-    progress = data.questions.eiQuestionProgress;
-    total = EI_QUESTION_COUNT;
+    progress = STAGE1_DISPLAY_COUNT + data.questions.eiQuestionProgress;
   }
   return {
     stage,
     stoneType,
     variant: data.pet.evolutionVariant,
     progress,
-    total,
+    total: QUESTION_DISPLAY_TOTAL,
     question: serialize(validTodayQuestions(data)[0]),
     answerButton: answerButtonState(data),
     hasBadge:

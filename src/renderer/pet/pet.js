@@ -968,12 +968,13 @@ function applyEvolution({ stage, stoneType, variant }) {
 }
 
 function evolvePreludeMessage(userName) {
-  return `${userName || "대장님"}님, 제 몸이 변하는 것 같아요...!`;
+  const displayName = userName ? `${userName}님` : "주인님";
+  return `${displayName}, 제 몸이 변하는 것 같아요...!`;
 }
 
 function evolveMessage({ stage, stoneType }) {
   if (stage === 1) return `저, ${STONE_NAMES[stoneType]}이 됐어요!`;
-  if (stage === 2) return "몸이 변하고 있어요… 변성체가 됐어요!";
+  if (stage === 2) return "저, 변성체가 됐어요!";
   if (stage === 3) return "반짝… 드디어 보석이 됐어요! ✨";
   return "";
 }

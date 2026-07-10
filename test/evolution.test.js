@@ -190,7 +190,7 @@ test("1단계에서 E/I 질문 완료 후 변성체 2단계로 확정된다", ()
   assert.equal(data.notifications.hasUnreadBadge, false);
 });
 
-test("E/I 6:6 동점이면 타이브레이커를 우선 삽입하고 답변 후 확정한다", () => {
+test("E/I 3:3 동점이면 타이브레이커를 우선 삽입하고 답변 후 확정한다", () => {
   const data = makeData();
   data.pet.evolutionStage = 1;
   data.pet.stoneType = "marble";
@@ -291,4 +291,27 @@ test("온보딩 질문은 0→1 점수에 반영되고 완료 후 오늘 질문 
     "main_02",
     "main_03",
   ]);
+});
+
+test("표시용 질문 진행도는 온보딩 포함 16개와 E/I 6개를 합쳐 22개로 계산한다", () => {
+  const data = makeData();
+
+  let state = evolution.getState(data);
+  assert.equal(state.progress, 4);
+  assert.equal(state.total, 22);
+
+  answerIds(data, mainIds(), "granite");
+  state = evolution.getState(data);
+  assert.equal(state.progress, 16);
+  assert.equal(state.total, 22);
+
+  answerIds(data, eiIds().slice(0, 2), "외향");
+  state = evolution.getState(data);
+  assert.equal(state.progress, 18);
+  assert.equal(state.total, 22);
+
+  answerIds(data, eiIds().slice(2), "외향");
+  state = evolution.getState(data);
+  assert.equal(state.progress, 22);
+  assert.equal(state.total, 22);
 });

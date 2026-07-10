@@ -1266,6 +1266,17 @@ body {
   );
 }
 
+.gauge-stage-break {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  bottom: 0;
+  left: calc((16 / 22) * 100%);
+  width: 4px;
+  background: #1b1b16;
+  transform: translateX(-50%);
+}
+
 /* ---------- PET: 히어로 ---------- */
 .hero {
   padding: 18px 16px 16px;
