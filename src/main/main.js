@@ -9,6 +9,7 @@ const {
   desktopCapturer,
   Notification,
   nativeTheme,
+  powerMonitor,
 } = require("electron");
 const path = require("path");
 const fs = require("fs");
@@ -555,6 +556,9 @@ ipcMain.handle("evolution:set-name", (_event, { target, value }) => {
     return null;
   }
   store.save();
+  if (target === "user" && mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("pet:user-name-change", data.user.userName);
+  }
   return {
     userName: data.user.userName,
     petName: data.pet.petName,
@@ -632,6 +636,8 @@ ipcMain.handle("settings:reset", () => {
 
 // 시스템 모니터: 트레이 SYSTEM 화면이 열려 있는 동안 렌더러가 주기적으로 호출한다.
 ipcMain.handle("system:get-stats", () => getSystemStats());
+
+ipcMain.handle("app:get-idle-time", () => powerMonitor.getSystemIdleTime());
 
 ipcMain.handle("get-screen-permission", () => {
   if (process.platform !== "darwin") return "granted";

@@ -1,7 +1,8 @@
-# 로컬 전용: 에이전트/도구 지침 (리포에 커밋하지 않음)
-claude.md
 CLAUDE.md
 AGENTS.md
+
+release.md
+chatting.md
 
 node_modules/
 .DS_Store

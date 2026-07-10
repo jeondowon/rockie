@@ -28,8 +28,14 @@ contextBridge.exposeInMainWorld("petAPI", {
   onShowSmile: (callback) => {
     ipcRenderer.on("pet:show-smile", () => callback());
   },
+  onUserNameChange: (callback) => {
+    ipcRenderer.on("pet:user-name-change", (_event, userName) =>
+      callback(userName),
+    );
+  },
   setDisplaySprite: (sprite) => ipcRenderer.send("pet:display-sprite", sprite),
   getEvolutionState: () => ipcRenderer.invoke("evolution:get-state"),
+  getIdleTime: () => ipcRenderer.invoke("app:get-idle-time"),
   getIsDev: () => ipcRenderer.invoke("app:is-dev"),
   completePendingEvolution: () =>
     ipcRenderer.invoke("evolution:complete-pending"),

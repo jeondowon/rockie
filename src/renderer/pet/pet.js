@@ -14,6 +14,8 @@ let facing = "right"; // 현재 바라보는 방향 (표시할 gif 결정)
 let smiling = false; // 닦아주기 직후 웃는 얼굴(smile gif)을 잠깐 표시하는 동안 true
 let spritePrefix = "rockie"; // 표시할 GIF 접두어 (단계·돌·변형에 따라 결정)
 let spriteLevel = "level0"; // GIF가 담긴 레벨 폴더
+let activeTimePeriod = getTimePeriod(); // 로컬 시각 기준 현재 시간대(아침/낮/저녁/밤)
+let userName = null;
 
 const EASE = 0.06; // 목표를 향해 이동하는 비율이 작을수록 천천히 따라감
 const MAX_SPEED = 1; // 프레임당 최대 이동 픽셀 (너무 빠르지 않게 제한)
@@ -127,13 +129,66 @@ function notifyDisplaySprite(pose) {
   });
 }
 
+// 로컬 시스템 시간만 사용한다. 네트워크/위치 권한 없이 시간대별 반응을 결정한다.
+function getTimePeriod(date = new Date()) {
+  const hour = date.getHours();
+  if (hour >= 5 && hour < 11) return "morning";
+  if (hour >= 11 && hour < 17) return "day";
+  if (hour >= 17 && hour < 22) return "evening";
+  return "night";
+}
+
+function timeSprite() {
+  return activeTimePeriod === "night" ? "sleepy" : null;
+}
+
+function updateTimePeriod() {
+  const next = getTimePeriod();
+  if (next === activeTimePeriod) return;
+  activeTimePeriod = next;
+  applySprite();
+}
+
+function initTimeWatcher() {
+  updateTimePeriod();
+  setInterval(updateTimePeriod, 60 * 1000);
+}
+
+const ACTIVE_IDLE_LIMIT_SEC = 5 * 60; // 이 이상 입력이 없으면 쉰 것으로 보고 누적 사용 시간을 초기화
+const USAGE_CHECK_INTERVAL = 60 * 1000;
+let continuousActiveMs = 0;
+let lastUsageCheckAt = Date.now();
+
+async function updateUsageContext() {
+  const now = Date.now();
+  const elapsed = now - lastUsageCheckAt;
+  lastUsageCheckAt = now;
+
+  try {
+    const idleSec = await window.petAPI.getIdleTime();
+    if (idleSec >= ACTIVE_IDLE_LIMIT_SEC) {
+      continuousActiveMs = 0;
+      return;
+    }
+    continuousActiveMs += elapsed;
+  } catch (_err) {
+    // idle time을 읽지 못하면 오래 사용 메시지만 조용히 끈다.
+    continuousActiveMs = 0;
+  }
+}
+
+function initUsageWatcher() {
+  updateUsageContext();
+  setInterval(updateUsageContext, USAGE_CHECK_INTERVAL);
+}
+
 // 지친 상태(배터리 부족)면 단계별 표정 gif, 아니면 바라보는 방향의 걷기 gif를 표시.
 // 표시할 파일은 현재 진화 단계에 따른 spriteLevel/spritePrefix로 결정된다.
 function applySprite() {
   if (onboardingLocked) return;
   const name = smiling
     ? "smile"
-    : tiredSprite || (facing === "left" ? "left" : "right");
+    : tiredSprite || timeSprite() || (facing === "left" ? "left" : "right");
   const src = spriteUrl(name);
   if (!character.src.endsWith(src)) character.src = src;
   notifyDisplaySprite(name);
@@ -565,12 +620,99 @@ function positionBubble() {
 // ---------- 3. 클릭 반응 ----------
 
 const clickReactions = [
+  "네, 여기 있어요.",
   "왜 부르셨어요?",
+  "부르셨어요?",
+  "저 보고 싶으셨어요?",
+  "같이 있어드릴게요.",
   "오늘도 화이팅입니다!",
-  "잠깐 쉬었다 가도 좋아요.",
   "심심하신가요?",
+  "무슨 일인가요?",
   "무슨 작업 중이세요?",
+  "저는 잘 굴러가고 있어요.",
+  "오늘 기분은 어떠세요?",
+  "작업은 잘 되고 있나요?",
+  "저도 옆에서 지켜보고 있어요.",
+  "필요하면 또 불러주세요.",
 ];
+
+const TIME_CLICK_REACTIONS = {
+  morning: [
+    "좋은 아침이에요!",
+    "오늘도 천천히 시작해봐요.",
+    "기지개 켜셨나요?",
+    "오늘 첫 할 일은 뭐예요?",
+    "아침엔 너무 서두르지 않아도 돼요.",
+  ],
+  day: [
+    "점심은 챙기셨나요?",
+    "낮에도 집중 잘하고 계시네요.",
+    "오후까지 에너지 아껴가요.",
+    "햇빛 한 번 보고 오셨나요?",
+    "오늘 흐름 괜찮으신가요?",
+  ],
+  evening: [
+    "오늘 하루도 거의 다 왔어요.",
+    "저녁엔 조금 쉬어도 좋아요.",
+    "슬슬 정리 모드인가요?",
+    "오늘 한 일, 꽤 많았을 것 같아요.",
+    "남은 일은 작게 쪼개서 해봐요.",
+  ],
+  night: [
+    "늦은 시간이네요... 무리하지 마세요.",
+    "저도 슬슬 졸려요.",
+    "이 시간엔 저장부터 해두세요.",
+    "눈이 무거워지는 시간이네요.",
+    "내일의 {owner}도 생각해주세요.",
+  ],
+};
+
+const LONG_USE_CLICK_REACTIONS = [
+  {
+    after: 45 * 60 * 1000,
+    messages: [
+      "꽤 오래 앉아 있었어요. 잠깐 일어나볼까요?",
+      "눈이 피곤할 시간이에요. 멀리 한 번 봐주세요.",
+      "물 한 잔 마시고 와도 좋아요.",
+    ],
+  },
+  {
+    after: 90 * 60 * 1000,
+    messages: [
+      "잠깐 스트레칭하면 제가 기다리고 있을게요.",
+      "쉬는 것도 작업의 일부예요.",
+      "손목 한 번 풀어주세요.",
+    ],
+  },
+  {
+    after: 120 * 60 * 1000,
+    messages: [
+      "너무 오래 버티고 있는 건 아닌가요?",
+      "한 번 숨 돌리고 다시 해봐요.",
+      "잠깐 쉬었다 가도 좋아요.",
+    ],
+  },
+];
+
+function currentLongUseReactions() {
+  return LONG_USE_CLICK_REACTIONS.flatMap((tier) =>
+    continuousActiveMs >= tier.after ? tier.messages : [],
+  );
+}
+
+function currentClickReactions() {
+  return clickReactions
+    .concat(TIME_CLICK_REACTIONS[activeTimePeriod] || [])
+    .concat(currentLongUseReactions());
+}
+
+function ownerDisplayName() {
+  return userName ? `${userName}님` : "주인님";
+}
+
+function formatMessage(message) {
+  return message.replaceAll("{owner}", ownerDisplayName());
+}
 
 character.addEventListener("click", () => {
   if (justDragged) {
@@ -581,7 +723,10 @@ character.addEventListener("click", () => {
     openEvolutionCard();
     return;
   }
-  const msg = clickReactions[Math.floor(Math.random() * clickReactions.length)];
+  const reactions = currentClickReactions();
+  const msg = formatMessage(
+    reactions[Math.floor(Math.random() * reactions.length)],
+  );
   playSound("click");
   showBubble(msg);
   pauseWalking(1500);
@@ -664,6 +809,12 @@ const WINDOW_RULES = [
   // --- 커뮤니케이션 (사생활 영역 먼저 걸러냄) ---
   { id: "private", pattern: /kakaotalk|카카오톡|mail|메일/, silent: true },
   {
+    id: "sensitive",
+    pattern:
+      /bank|은행|card|카드|증권|stock|주식|crypto|coinbase|upbit|bithumb|병원|hospital|정부|gov\.kr|민원|password|1password|bitwarden|keychain|authenticator|인증/,
+    silent: true,
+  },
+  {
     id: "meeting",
     pattern: /zoom|google meet|meet\.google|webex/,
     messages: ["회의 중엔 저도 조용히 할게요."],
@@ -677,9 +828,25 @@ const WINDOW_RULES = [
 
   // --- 개발/코딩 ---
   {
+    id: "github-actions",
+    pattern: /github.*actions|actions.*github|workflow runs|checks/,
+    messages: ["초록 체크 기다리는 시간이네요.", "빌드가 얌전히 통과하길 빌게요."],
+  },
+  {
     id: "github-pr",
     pattern: /pull request/,
     messages: ["머지 승인 기다리는 중?", "리뷰 코멘트 잘 달아주세요~"],
+  },
+  {
+    id: "github-issue",
+    pattern: /github.*issues|issues.*github|new issue/,
+    messages: ["이슈를 하나씩 굴려볼까요?", "문제의 모양을 정리하는 중이군요."],
+  },
+  {
+    id: "dev-docs",
+    pattern:
+      /developer\.mozilla|mdn|stackoverflow|stack overflow|npmjs|npm |node\.js|react|vue|svelte|electron|typescript|chrome devtools/,
+    messages: ["문서 보는 개발자, 믿음직해요.", "해답의 조각을 찾는 중이군요."],
   },
   {
     id: "ide",
@@ -699,6 +866,24 @@ const WINDOW_RULES = [
       "rm -rf는 안돼요!",
       "명령어, 하나도 안 틀리고 잘 치고 계세요.",
     ],
+  },
+
+  // --- 리서치/학습 ---
+  {
+    id: "ai-assistant",
+    pattern: /chatgpt|claude|perplexity|gemini|copilot/,
+    messages: ["생각을 정리하는 중이시군요.", "질문을 잘게 쪼개면 더 잘 굴러가요."],
+  },
+  {
+    id: "research",
+    pattern:
+      /google search|naver|네이버|wikipedia|위키백과|arxiv|scholar|pubmed|medium/,
+    messages: ["지식 산책 중이네요.", "자료 찾는 눈빛이 진지해요."],
+  },
+  {
+    id: "pdf",
+    pattern: /preview|acrobat|pdf/,
+    messages: ["문서 깊숙이 들어가셨네요.", "중요한 부분은 표시해두면 좋아요."],
   },
 
   // --- 엔터테인먼트/휴식 ---
@@ -723,6 +908,11 @@ const WINDOW_RULES = [
     pattern: /spotify|youtube music|music|melon/,
     messages: ["좋은 노래네요.", "좋은 음악 듣고 계시네요."],
   },
+  {
+    id: "game",
+    pattern: /steam|battle\.net|riot client|league of legends|valorant|epic games|minecraft/,
+    messages: ["잠깐 쉬는 시간인가요?", "한 판만... 이라는 말은 조심해야 해요."],
+  },
 
   // --- SNS/쇼핑 (체류 시간에 따라 톤이 세짐) ---
   {
@@ -742,11 +932,27 @@ const WINDOW_RULES = [
   },
   {
     id: "shopping",
-    pattern: /coupang|쿠팡|musinsa|무신사|11번가|gmarket|지마켓|aliexpress/,
+    pattern:
+      /coupang|쿠팡|musinsa|무신사|11번가|gmarket|지마켓|aliexpress|amazon|apple store|steam store/,
     messages: ["장바구니만 채우고 계신가요?", "지갑은 안녕하신가요..?"],
+  },
+  {
+    id: "food",
+    pattern: /baemin|배달의민족|yogiyo|요기요|coupang eats|쿠팡이츠/,
+    messages: ["맛있는 고민 중이시네요.", "오늘 메뉴는 신중한 문제죠."],
   },
 
   // --- 생산성/문서 ---
+  {
+    id: "calendar",
+    pattern: /calendar|캘린더|google calendar|ical/,
+    messages: ["일정이 꽤 촘촘하네요.", "시간표 사이에 숨 쉴 틈도 챙겨주세요."],
+  },
+  {
+    id: "task",
+    pattern: /jira|linear|trello|asana|todoist|reminders|미리 알림/,
+    messages: ["할 일을 하나씩 굴려볼까요?", "작게 쪼개면 덜 무거워져요."],
+  },
   {
     id: "notes",
     pattern: /notion|obsidian/,
@@ -759,8 +965,13 @@ const WINDOW_RULES = [
   },
   {
     id: "design",
-    pattern: /figma|photoshop|illustrator/,
+    pattern: /figma|photoshop|illustrator|canva|pinterest|dribbble|behance/,
     messages: ["디자인 감각 좋으시네요.", "오늘 작업물도 기대돼요!"],
+  },
+  {
+    id: "maps",
+    pattern: /google maps|naver map|카카오맵|maps/,
+    messages: ["어디론가 가실 준비인가요?", "길 찾기는 미리 해두면 마음이 편해요."],
   },
 
   // --- 일반 브라우저 (가장 마지막 폴백) ---
@@ -972,6 +1183,10 @@ function evolvePreludeMessage(userName) {
   return `${displayName}, 제 몸이 변하는 것 같아요...!`;
 }
 
+function setUserName(name) {
+  userName = name || null;
+}
+
 function evolveMessage({ stage, stoneType }) {
   if (stage === 1) return `저, ${STONE_NAMES[stoneType]}이 됐어요!`;
   if (stage === 2) return "저, 변성체가 됐어요!";
@@ -1060,6 +1275,7 @@ async function initEvolutionPreviewKeys() {
 async function initEvolution() {
   try {
     const state = await window.petAPI.getEvolutionState();
+    setUserName(state.userName);
     if (!state.onboarding?.completed) {
       setOnboardingLocked(true);
       return;
@@ -1088,6 +1304,8 @@ window.petAPI.onOnboardingCompleted(async () => {
 
 // 트레이에서 스킨을 착용/해제하면 main이 표시할 형태를 보내온다
 window.petAPI.onSkinChange((info) => applyEvolution(info));
+
+window.petAPI.onUserNameChange(setUserName);
 
 // ---------- 8. 성향 질문 카드 (트레이 "새로운 질문에 답하기"로만 열림) ----------
 
@@ -1442,6 +1660,8 @@ window.petAPI.onPetSettings(({ placement: p, size, sound }) => {
 character.style.visibility = "hidden";
 placeCharacter();
 requestAnimationFrame(followStep);
+initTimeWatcher();
+initUsageWatcher();
 initBatteryWatcher();
 initEvolution();
 initEvolutionPreviewKeys();
