@@ -11,6 +11,7 @@ let posX = window.innerWidth / 2;
 let targetX = posX; // 따라갈 목표 X (매 프레임 마우스 위치에 따라 계산됨)
 let mouseX = posX + CHAR_SIZE / 2; // 최신 마우스 X 좌표 (바라보는 방향 판단용)
 let facing = "right"; // 현재 바라보는 방향 (표시할 gif 결정)
+let smiling = false; // 닦아주기 직후 웃는 얼굴(smile gif)을 잠깐 표시하는 동안 true
 let spritePrefix = "rockie"; // 표시할 GIF 접두어 (단계·돌·변형에 따라 결정)
 let spriteLevel = "level0"; // GIF가 담긴 레벨 폴더
 
@@ -109,7 +110,9 @@ function notifyDisplaySprite(pose) {
 // 지친 상태(배터리 부족)면 단계별 표정 gif, 아니면 바라보는 방향의 걷기 gif를 표시.
 // 표시할 파일은 현재 진화 단계에 따른 spriteLevel/spritePrefix로 결정된다.
 function applySprite() {
-  const name = tiredSprite || (facing === "left" ? "left" : "right");
+  const name = smiling
+    ? "smile"
+    : tiredSprite || (facing === "left" ? "left" : "right");
   const src = spriteUrl(name);
   if (!character.src.endsWith(src)) character.src = src;
   notifyDisplaySprite(name);
@@ -172,6 +175,22 @@ function triggerHeart() {
 }
 
 window.petAPI.onShowHeart(triggerHeart);
+
+// 닦아주기 직후 웃는 얼굴(smile gif)을 잠깐 보여줬다가 평소 스프라이트로 되돌린다.
+const SMILE_DURATION = 3000;
+let smileTimer = null;
+function triggerSmile() {
+  playSound("care");
+  smiling = true;
+  applySprite();
+  clearTimeout(smileTimer);
+  smileTimer = setTimeout(() => {
+    smiling = false;
+    applySprite();
+  }, SMILE_DURATION);
+}
+
+window.petAPI.onShowSmile(triggerSmile);
 
 // ── 개발용: 하트 위치 실시간 튜닝 ─────────────────────────────────────────
 // PREVIEW를 {level, prefix}로 두면 실제 진화 없이 그 캐릭터로 시작해 하트를 계속 띄우고,

@@ -444,10 +444,11 @@ ipcMain.handle("evolution:answer", (_event, payload) => {
   return result;
 });
 
-// 닦기/밥으로 애정을 준 직후 펫 창에 하트 오버레이를 잠깐 띄우도록 신호를 보낸다.
-function notifyAffection() {
+// 애정을 준 직후 펫 창에 애정 표현(하트/웃음)을 잠깐 띄우도록 신호를 보낸다.
+// 밥 주기는 하트, 닦아주기는 웃는 얼굴(smile gif)로 구분한다.
+function notifyAffection(channel) {
   if (!mainWindow || mainWindow.isDestroyed()) return;
-  mainWindow.webContents.send("pet:show-heart");
+  mainWindow.webContents.send(channel);
 }
 
 // 호감도 획득. 트레이 "돌보기" 버튼(닦아주기/밥 주기)에서 호출된다.
@@ -455,7 +456,7 @@ ipcMain.handle("evolution:clean", () => {
   const data = store.get();
   const result = evolution.cleanPet(data);
   store.save();
-  notifyAffection();
+  notifyAffection("pet:show-smile");
   if (result.evolved) notifyEvolved(data);
   return result;
 });
@@ -463,7 +464,7 @@ ipcMain.handle("evolution:feed", () => {
   const data = store.get();
   const result = evolution.feedPet(data);
   store.save();
-  notifyAffection();
+  notifyAffection("pet:show-heart");
   if (result.evolved) notifyEvolved(data);
   return result;
 });
