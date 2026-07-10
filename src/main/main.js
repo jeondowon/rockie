@@ -448,8 +448,16 @@ ipcMain.handle("onboarding:complete", () => {
   const state = evolution.completeOnboarding(data);
   store.save();
   refreshTrayIcon();
-  if (!before && data.onboarding.completed && mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send("onboarding:completed");
+  if (!before && data.onboarding.completed) {
+    if (
+      data.questions.todaysQuestions.length > 0 &&
+      data.notifications.notificationsEnabled
+    ) {
+      showQuestionBanner();
+    }
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send("onboarding:completed");
+    }
   }
   return state;
 });
