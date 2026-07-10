@@ -356,6 +356,9 @@ ipcMain.on("tray-menu-action", (_event, action) => {
       }
       if (trayPopup && !trayPopup.isDestroyed()) trayPopup.hide();
       break;
+    case "close-popup":
+      if (trayPopup && !trayPopup.isDestroyed()) trayPopup.hide();
+      break;
     case "quit":
       app.quit();
       break;

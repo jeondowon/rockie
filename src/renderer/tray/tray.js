@@ -331,23 +331,27 @@ function menuWindowHeight() {
 
 // ---------- 온보딩 프롤로그 ----------
 const onboardingScene = document.getElementById("onboarding-scene");
+const onboardingMeteor = document.getElementById("onboarding-meteor");
 const onboardingSpeaker = document.getElementById("onboarding-speaker");
 const onboardingText = document.getElementById("onboarding-text");
 const onboardingOptions = document.getElementById("onboarding-options");
 const onboardingNext = document.getElementById("onboarding-next");
 let onboardingState = null;
+let onboardingLandHandler = null; // 운석 착지(animationend)에 맞춰 문구를 노출하는 1회성 리스너
 
 const ONBOARDING_FLOW = [
   {
     scene: "scene-intro",
     speaker: "ROCKIE",
-    text: "어느 날, 작은 별똥별이 떨어졌습니다.",
+    text: "어느 날, 하늘에서 작은 별똥별이 떨어졌습니다.",
     button: "시작하기",
   },
   {
     scene: "scene-fall",
     speaker: "PROLOGUE",
     text: "쿵! 갑자기 눈앞에 정체불명의 운석이 떨어졌어요!",
+    // 운석 낙하 애니메이션이 끝나는(착지) 순간에 맞춰 문구를 노출한다
+    revealOnLand: true,
   },
   { question: 0, scene: "scene-landed", speaker: "QUESTION" },
   {
@@ -380,7 +384,7 @@ const ONBOARDING_FLOW = [
   {
     scene: "scene-pebble",
     speaker: "PROLOGUE",
-    text: "조약돌이 조심스럽게 당신을 바라봅니다.",
+    text: "조약돌이 당신을 바라봅니다.",
   },
   { question: 3, scene: "scene-pebble", speaker: "QUESTION" },
   {
@@ -415,6 +419,11 @@ function setOnboardingScene(scene) {
 }
 
 function renderOnboardingStep() {
+  // 이전 스텝의 착지 대기 리스너 정리
+  if (onboardingLandHandler) {
+    onboardingMeteor.removeEventListener("animationend", onboardingLandHandler);
+    onboardingLandHandler = null;
+  }
   const stepIndex = Math.min(
     onboardingState?.step || 0,
     ONBOARDING_FLOW.length - 1,
@@ -422,6 +431,8 @@ function renderOnboardingStep() {
   const step = ONBOARDING_FLOW[stepIndex];
   setOnboardingScene(step.scene);
   onboardingSpeaker.textContent = step.speaker || "PROLOGUE";
+  onboardingSpeaker.classList.remove("hidden");
+  onboardingText.classList.remove("hidden");
   onboardingOptions.classList.add("hidden");
   onboardingOptions.replaceChildren();
   onboardingNext.classList.remove("hidden");
@@ -448,6 +459,29 @@ function renderOnboardingStep() {
         return btn;
       }),
     );
+    return;
+  }
+
+  // 운석 낙하 애니메이션(meteor-fall)이 끝나는 착지 순간에 맞춰
+  // 문구/화자칩/버튼을 노출한다. 고정 타이머 대신 실제 착지에 동기화한다.
+  if (step.revealOnLand) {
+    onboardingSpeaker.classList.add("hidden");
+    onboardingText.classList.add("hidden");
+    onboardingText.textContent = "";
+    onboardingNext.classList.add("hidden");
+    onboardingLandHandler = (e) => {
+      if (e.animationName !== "meteor-fall") return; // 꼬리 등 다른 애니메이션 무시
+      onboardingMeteor.removeEventListener(
+        "animationend",
+        onboardingLandHandler,
+      );
+      onboardingLandHandler = null;
+      onboardingSpeaker.classList.remove("hidden");
+      onboardingText.classList.remove("hidden");
+      onboardingText.textContent = step.text;
+      onboardingNext.classList.remove("hidden");
+    };
+    onboardingMeteor.addEventListener("animationend", onboardingLandHandler);
     return;
   }
 
@@ -916,6 +950,7 @@ confirmOk.addEventListener("click", async () => {
   hideResetConfirm();
   const done = await window.trayAPI.resetPet();
   if (done) refreshSettings(); // 기본값으로 되돌아간 상태를 다시 반영
+  window.trayAPI.sendAction("close-popup"); // 초기화 확정 후 트레이 창을 닫는다
 });
 
 permRow.addEventListener("click", async () => {

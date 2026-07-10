@@ -129,6 +129,12 @@ body {
   color: #b8b2a2;
 }
 
+/* 온보딩 중엔 아직 이름이 없어 우측 상단 이름칸이 기본값("애완돌")으로 뜬다.
+   의미가 없으므로 온보딩 화면에서는 숨긴다. */
+#popup:has(#onboarding-view:not(.hidden)) .titlebar-meta {
+  display: none;
+}
+
 /* ---------- 뒤로가기 바 ---------- */
 .back-bar {
   all: unset;
@@ -174,6 +180,12 @@ body {
 .body::-webkit-scrollbar-thumb {
   background: #1b1b16;
   border: 2px solid #e7e1d2;
+}
+
+/* 온보딩은 씬+대화창이 창을 꽉 채우도록 설계돼 스크롤이 필요 없다.
+   경계값에서 스크롤바가 잠깐 뜨는 것을 막아 화면을 깔끔하게 유지한다. */
+.body:has(#onboarding-view:not(.hidden)) {
+  overflow: hidden;
 }
 
 .screen {
@@ -277,10 +289,11 @@ body {
   border-bottom: 3px solid #1b1b16;
 }
 
-/* 질문 선택지가 보이는 단계에서는 씬을 낮춰 질문 카드가 스크롤 없이 들어가게.
-   씬 요소들이 전부 bottom 기준이라 높이가 줄어도 지면 구도가 유지된다 */
-#onboarding-view:has(.onboarding-options:not(.hidden)) .onboarding-scene {
-  height: 150px;
+/* 첫 화면은 씬을 크게 잡아 하단 공백을 줄인다. 진행 시 scene-fall의 transition으로
+   2.5초에 걸쳐 천천히 180px로 줄어들며 "이제 스토리가 시작된다"는 느낌을 준다.
+   (transition을 scene-fall 쪽에만 둬서 첫 등장 때 커지는 애니메이션은 생기지 않는다.) */
+.onboarding-scene.scene-intro {
+  height: 320px;
 }
 
 /* 흰색 픽셀 별 (2px 잔별 + 3px 큰별, 서로 다른 박자로 깜빡임) */
@@ -436,7 +449,7 @@ body {
   text-indent: 6px; /* letter-spacing이 마지막 글자 뒤에도 붙어 중심이 왼쪽으로 쏠리는 것 보정 */
   color: #f2ede1;
   text-shadow:
-    3px 3px 0 #a8432b,
+    3px 3px 0 #c9a12e,
     6px 6px 0 rgba(27, 27, 22, 0.65);
 }
 
@@ -613,27 +626,33 @@ body {
     22px 20px 0 rgba(27, 27, 22, 0.22);
 }
 
-/* 낙하 (1회성): 오른쪽 위 → 대각선 착지 + 착지 순간 화면 흔들림/먼지 */
+/* 낙하 (1회성): 오른쪽 위 → 대각선 착지 + 착지 순간 화면 흔들림/먼지.
+   첫 화면(320px)에서 낙하 장면(180px)으로 2.5초간 천천히 축소된 뒤 운석이 떨어진다.
+   축소가 끝나는 2.5초 시점부터 낙하가 시작되도록 모든 낙하 연출을 그만큼 지연한다. */
 .onboarding-scene.scene-fall {
-  animation: scene-shake 0.3s steps(1, end) 0.8s;
+  height: 180px;
+  transition: height 2.5s ease-in-out;
+  animation: scene-shake 0.3s steps(1, end) 3.3s;
 }
 
 .onboarding-scene.scene-fall .meteor {
-  opacity: 1;
-  animation: meteor-fall 0.8s steps(14, end) both;
+  /* 축소(2.5초) 동안에는 opacity:0(기본값)으로 숨고, 이후 낙하하며 나타난다 */
+  animation: meteor-fall 0.8s steps(14, end) 2.5s forwards;
 }
 
 .onboarding-scene.scene-fall .meteor::before {
   display: block;
-  animation: tail-fade 0.8s steps(6, end) both;
+  animation: tail-fade 0.8s steps(6, end) 2.5s both;
 }
 
 @keyframes meteor-fall {
   from {
+    opacity: 1;
     left: 266px;
     bottom: 270px;
   }
   to {
+    opacity: 1;
     left: 156px;
     bottom: 30px;
   }
@@ -668,38 +687,41 @@ body {
   }
 }
 
-/* 충돌 먼지 파편 (1회성, 착지 시점에 맞춰 지연) */
+/* 충돌 먼지 파편 (1회성, 착지 시점에 맞춰 지연)
+   운석(가로 중심 180px) 바로 밑 풀밭 표면에서 좌우로 낮게 퍼졌다 사라진다. */
 .impact-dust {
   position: absolute;
-  left: 178px;
-  bottom: 46px;
+  left: 180px;
+  bottom: 38px;
   width: 5px;
   height: 5px;
   opacity: 0;
 }
 
+/* forwards로 두어 착지 전(지연 3.3초 동안)에는 기본값(opacity:0)으로 숨는다.
+   both였을 때는 backwards-fill로 0% 키프레임(먼지 픽셀)이 미리 표시되던 문제가 있었다. */
 .onboarding-scene.scene-fall .impact-dust {
-  animation: dust-burst 0.55s steps(4, end) 0.8s both;
+  animation: dust-burst 0.55s steps(4, end) 3.3s forwards;
 }
 
 @keyframes dust-burst {
   0% {
     opacity: 1;
     box-shadow:
-      -10px -6px 0 #cbc4b1,
-      10px -8px 0 #a89f8a,
-      -6px -14px 0 #c9a12e,
-      8px -16px 0 #cbc4b1,
-      0 -10px 0 #a89f8a;
+      -8px 0 0 #cbc4b1,
+      8px 1px 0 #a89f8a,
+      -3px -2px 0 #c9a12e,
+      4px -1px 0 #cbc4b1,
+      0 2px 0 #a89f8a;
   }
   100% {
     opacity: 0;
     box-shadow:
-      -36px -22px 0 #cbc4b1,
-      36px -26px 0 #a89f8a,
-      -20px -42px 0 #c9a12e,
-      26px -46px 0 #cbc4b1,
-      2px -38px 0 #a89f8a;
+      -32px 2px 0 #cbc4b1,
+      32px 3px 0 #a89f8a,
+      -18px -4px 0 #c9a12e,
+      22px -2px 0 #cbc4b1,
+      2px 4px 0 #a89f8a;
   }
 }
 
@@ -724,7 +746,7 @@ body {
 }
 
 .onboarding-scene.scene-fall .impact-mark {
-  animation: appear-hold 0.05s steps(1, end) 0.82s both;
+  animation: appear-hold 0.05s steps(1, end) 3.32s both;
 }
 
 .onboarding-scene.scene-landed .impact-mark,
@@ -962,12 +984,15 @@ body {
   border-radius: 8px 6px 4px 3px;
 }
 
+/* 파편은 운석이 갈라진(meteor-open 0.45s) 뒤에 흩어져야 한다.
+   forwards로 두어 그 전까지는 기본값(opacity:0)으로 숨고, 운석이 갈라진 다음
+   0.5초 시점부터 사방으로 흩어진다 (both였을 때처럼 미리 풀에 표시되지 않는다). */
 .onboarding-scene.scene-pebble .shard-left {
-  animation: shard-pop-l 0.5s steps(4, end) 0.1s both;
+  animation: shard-pop-l 0.5s steps(4, end) 0.5s forwards;
 }
 
 .onboarding-scene.scene-pebble .shard-right {
-  animation: shard-pop-r 0.5s steps(4, end) 0.1s both;
+  animation: shard-pop-r 0.5s steps(4, end) 0.5s forwards;
 }
 
 @keyframes shard-pop-l {
@@ -1070,6 +1095,21 @@ body {
   text-align: center;
   font-size: 13px;
   padding-top: 18px;
+}
+
+/* 앱 한 줄 소개: 첫 화면에서만 표시. 서사 문구보다 한 톤 낮춰 은은하게 */
+.onboarding-tagline {
+  display: none;
+}
+
+.onboarding-scene.scene-intro ~ .onboarding-dialog .onboarding-tagline {
+  display: block;
+  margin-top: 14px;
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  color: #8d8a7a;
+  word-break: keep-all;
 }
 
 /* 질문 단계: 질문 텍스트 + 선택지를 펫 창 질문 카드(qcard)와 같은
