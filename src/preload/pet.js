@@ -19,6 +19,9 @@ contextBridge.exposeInMainWorld("petAPI", {
   onEvolved: (callback) => {
     ipcRenderer.on("evolution:evolved", (_event, info) => callback(info));
   },
+  onSkinChange: (callback) => {
+    ipcRenderer.on("pet:skin-change", (_event, info) => callback(info));
+  },
   onShowHeart: (callback) => {
     ipcRenderer.on("pet:show-heart", () => callback());
   },

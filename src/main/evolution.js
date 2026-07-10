@@ -247,6 +247,8 @@ function completePendingEvolution(data) {
     data.pet.presentedEvolutionStages.push(pending.stage);
   }
   data.pet.pendingEvolution = null;
+  // 새 단계로 진화하면 착용 중이던 이전 스킨을 벗고 새 형태를 보여준다
+  data.pet.activeSkinStage = null;
   return { completed: pending, state: getState(data) };
 }
 
@@ -427,13 +429,24 @@ function getState(data) {
     dailyCleanDone: data.affinity.dailyCleanDone,
     dailyFeedDone: data.affinity.dailyFeedDone,
     pendingEvolution: data.pet.pendingEvolution,
+    activeSkinStage: data.pet.activeSkinStage ?? null,
     tags: stoneType ? STONE_TRAIT[stoneType].tags : [],
     history: buildHistory(data),
   };
 }
 
+// 스킨 착용/해제: 현재 단계 이하의 해금된 단계만 표시 형태로 지정할 수 있다.
+// stage가 null이거나 현재 단계와 같으면 해제(실제 단계 표시)로 취급한다.
+function setActiveSkin(data, stage) {
+  const current = data.pet.evolutionStage;
+  data.pet.activeSkinStage =
+    stage != null && stage >= 0 && stage < current ? stage : null;
+  return getState(data);
+}
+
 module.exports = {
   getState,
+  setActiveSkin,
   answer,
   cleanPet,
   feedPet,

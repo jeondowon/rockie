@@ -21,6 +21,7 @@ function defaultData() {
       evolutionVariant: null,
       pendingEvolution: null,
       presentedEvolutionStages: [],
+      activeSkinStage: null,
     },
     traits: {
       traitScores: { 화강암: 0, 현무암: 0, 대리석: 0, 편마암: 0 },

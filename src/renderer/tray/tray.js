@@ -390,9 +390,64 @@ function renderPet(state) {
 
   renderHistory(state.history || []);
 
+  renderSkins(state);
+
   // "새로운 질문에 답하기" 버튼 상태 (update.md 9.1)
   renderAnswerButton(state.answerButton);
 }
+
+// 스킨 그리드: 내 계열(조약돌→돌→변성체→보석) 4칸을 현재 단계 기준으로 렌더.
+// state.stage >= 칸 단계면 해금(이미지·이름 표시), 아니면 불투명 커버로 가린다.
+let lastPetState = null;
+
+function renderSkins(state) {
+  lastPetState = state;
+  // 착용 중인 스킨이 있으면 그 단계가 "착용중", 없으면 현재 실제 단계가 "착용중"
+  const wornStage =
+    state.activeSkinStage != null ? state.activeSkinStage : state.stage;
+  document.querySelectorAll(".skin-cell").forEach((cell) => {
+    const s = Number(cell.dataset.stage);
+    const unlocked = state.stage >= s;
+    const isCurrent = wornStage === s;
+    const box = cell.querySelector(".skin-box");
+    const img = cell.querySelector(".skin-img");
+    const nameEl = cell.querySelector(".skin-name");
+    const badge = cell.querySelector(".skin-current");
+
+    box.classList.toggle("locked", !unlocked);
+    box.classList.toggle("current", isCurrent);
+    badge.classList.toggle("hidden", !isCurrent);
+
+    if (unlocked) {
+      img.src = heroSprite(s, state.stoneType, state.variant);
+      // 스킨 칸은 이름만 짧게: 2단계 변성체의 "(…)" 부연 설명은 떼어낸다
+      nameEl.textContent = statusLabel(
+        s,
+        state.stoneType,
+        state.variant,
+      ).replace(/\s*\(.*\)$/, "");
+    } else {
+      img.removeAttribute("src");
+      nameEl.textContent = "???";
+    }
+  });
+}
+
+// 스킨 칸 클릭 → 착용. 해금된(현재 단계 이하) 칸만 반응한다.
+// 이미 착용 중인 칸을 다시 누르면 무반응. 실제 단계 칸을 누르면 원래 모습으로 복귀.
+document.querySelector(".skin-grid").addEventListener("click", async (e) => {
+  const cell = e.target.closest(".skin-cell");
+  if (!cell || !lastPetState) return;
+  const s = Number(cell.dataset.stage);
+  if (lastPetState.stage < s) return; // 잠긴 스킨
+  const wornStage =
+    lastPetState.activeSkinStage != null
+      ? lastPetState.activeSkinStage
+      : lastPetState.stage;
+  if (wornStage === s) return; // 이미 착용 중이면 무반응
+  const state = await window.trayAPI.setActiveSkin(s);
+  renderSkins(state); // 배지 즉시 갱신 (히어로는 펫 브로드캐스트로 반영)
+});
 
 async function refreshPetDisplaySprite() {
   try {

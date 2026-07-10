@@ -468,6 +468,20 @@ ipcMain.handle("evolution:feed", () => {
   if (result.evolved) notifyEvolved(data);
   return result;
 });
+// 스킨 착용/해제. 펫 창이 표시 형태를 바꾸도록 해석된 단계 정보를 보낸다.
+ipcMain.handle("evolution:set-skin", (_event, stage) => {
+  const data = store.get();
+  const state = evolution.setActiveSkin(data, stage);
+  store.save();
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("pet:skin-change", {
+      stage: state.activeSkinStage ?? state.stage,
+      stoneType: state.stoneType,
+      variant: state.variant,
+    });
+  }
+  return state;
+});
 ipcMain.handle("evolution:complete-pending", () => {
   const data = store.get();
   const result = evolution.completePendingEvolution(data);

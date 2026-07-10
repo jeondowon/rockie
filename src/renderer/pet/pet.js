@@ -965,7 +965,8 @@ async function initEvolution() {
       return;
     }
     applyEvolution({
-      stage: state.stage,
+      // 스킨을 착용 중이면 그 단계 형태로 표시(돌 종류·변형은 그대로 유지)
+      stage: state.activeSkinStage != null ? state.activeSkinStage : state.stage,
       stoneType: state.stoneType,
       variant: state.variant,
     });
@@ -973,6 +974,9 @@ async function initEvolution() {
     // 상태를 못 읽으면 기본(rockie) 유지
   }
 }
+
+// 트레이에서 스킨을 착용/해제하면 main이 표시할 형태를 보내온다
+window.petAPI.onSkinChange((info) => applyEvolution(info));
 
 // ---------- 8. 성향 질문 카드 (트레이 "새로운 질문에 답하기"로만 열림) ----------
 
