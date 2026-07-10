@@ -46,22 +46,18 @@ function optValue(o) {
   return o.stone ?? o.axis;
 }
 
-// 돌 종류별 성향 요약 문구·태그.
+// 돌 종류별 성향 태그.
 const STONE_TRAIT = {
   granite: {
-    blurb: "원칙과 안정을 중시하는 단단한 성향이에요",
     tags: ["원칙주의", "안정 지향", "책임감"],
   },
   basalt: {
-    blurb: "즉흥적이고 행동이 앞서는 성향이에요",
     tags: ["즉흥적", "행동 지향", "현재 중심"],
   },
   marble: {
-    blurb: "공감과 감성을 중시하는 따뜻한 성향이에요",
     tags: ["이상주의", "공감", "감성 중심"],
   },
   gneiss: {
-    blurb: "논리와 구조로 파고드는 분석형이에요",
     tags: ["논리", "전략", "구조적 사고"],
   },
 };
@@ -431,7 +427,6 @@ function getState(data) {
     dailyCleanDone: data.affinity.dailyCleanDone,
     dailyFeedDone: data.affinity.dailyFeedDone,
     pendingEvolution: data.pet.pendingEvolution,
-    blurb: stoneType ? STONE_TRAIT[stoneType].blurb : null,
     tags: stoneType ? STONE_TRAIT[stoneType].tags : [],
     history: buildHistory(data),
   };

@@ -627,6 +627,9 @@ body {
 /* ---------- PET: 성향 요약 ---------- */
 .personality-text {
   font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-line;
+  word-break: keep-all;
   color: #5c5646;
 }
 
