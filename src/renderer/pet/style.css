@@ -35,6 +35,13 @@ body.onboarding-locked .qcard {
   transform: scale(0.9);
 }
 
+/* 드래그로 위치를 옮기는 중: 집어 든 느낌으로 커서를 grabbing으로 바꾸고
+   :active 축소 대신 살짝 커진 상태로 커서를 따라오게 한다. */
+body.dragging .character {
+  cursor: grabbing;
+  transform: scale(1.08);
+}
+
 /* 애정 표현 하트. 캐릭터 박스에 정확히 겹쳐(같은 좌표·크기) 앞에 뜬다.
    클릭은 캐릭터로 통과시켜 펫 클릭 반응이 유지되게 한다. */
 .heart {

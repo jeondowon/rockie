@@ -35,6 +35,21 @@ let pauseTimer = null;
 let cardOpen = false; // 질문 카드가 열려 있으면 걷기를 멈추고 카드를 펫 옆에 고정
 let onboardingLocked = true;
 
+// ---------- 드래그로 위치 옮기기 (follow 모드) ----------
+// 캐릭터를 꾸욱 눌렀다가(롱프레스) 끌면 원하는 자리에 놓을 수 있다.
+// 놓은 뒤 DROP_FREEZE_MS 동안 제자리에 있다가 다시 커서를 따라온다.
+let pinned = false; // 드래그 중이거나 놓은 직후 정지 중이면 true (가로/세로 추종 정지)
+let dragging = false; // 실제로 끌고 있는 중
+let justDragged = false; // 드래그 종료 직후 click 반응 억제용
+let holdTimer = null; // 롱프레스 판정 타이머
+let dropTimer = null; // 놓은 뒤 3초 정지 타이머
+let dragOffsetX = 0; // 잡은 지점(커서)과 posX/posY의 간격 (놓을 때 튐 방지)
+let dragOffsetY = 0;
+let cursorX = 0; // 최신 커서 좌표(창 기준) — 드래그 위치 계산용
+let cursorY = 0;
+const HOLD_MS = 200; // 이 시간 이상 누르고 있어야 드래그로 인정
+const DROP_FREEZE_MS = 3000; // 놓은 뒤 제자리에 머무는 시간
+
 // ---------- Dock 회피 ----------
 // 메인 프로세스가 알려주는 Dock 상태. Dock이 보이고 캐릭터(보이는 그림 기준)가
 // Dock의 가로 범위와 겹치면 Dock 바로 위를, 아니면 화면 맨 아래를 목표로 잡고
@@ -80,6 +95,10 @@ window.petAPI.onDockState((state) => {
 
 function clampX(x) {
   return Math.max(0, Math.min(window.innerWidth - CHAR_SIZE, x));
+}
+
+function clampY(y) {
+  return Math.max(0, Math.min(window.innerHeight - CHAR_SIZE, y));
 }
 
 function placeCharacter() {
@@ -373,7 +392,7 @@ function initTuning() {
 }
 
 function followStep() {
-  if (!paused && !cardOpen) {
+  if (!paused && !cardOpen && !pinned) {
     let cap = MAX_SPEED;
 
     if (placement === "follow") {
@@ -419,8 +438,9 @@ function followStep() {
     posX = placement === "follow" ? clampX(posX + delta) : posX + delta;
   }
 
-  // 세로 이동(Dock 위로 올라가기/내려오기)은 걷기가 멈춰 있어도 계속 동작해야 한다
-  verticalStep();
+  // 세로 이동(Dock 위로 올라가기/내려오기)은 걷기가 멈춰 있어도 계속 동작해야 한다.
+  // 단 드래그 중·놓은 직후 정지 중(pinned)에는 놓인 자리에 그대로 둔다.
+  if (!pinned) verticalStep();
   placeCharacter();
   if (PREVIEW) applyTuneVisibility(); // 튜닝 중 대상 표시를 매 프레임 재확정
   positionBubble();
@@ -437,8 +457,15 @@ function pauseWalking(ms) {
 }
 
 // 마우스 X 좌표를 받아 캐릭터가 따라갈 목표 위치로 설정 (세로는 무시)
-window.petAPI.onCursorPosition(({ x }) => {
+// 드래그 중이면 커서(x,y)로 캐릭터 위치를 직접 끌고 온다.
+window.petAPI.onCursorPosition(({ x, y }) => {
   mouseX = x;
+  cursorX = x;
+  cursorY = y;
+  if (dragging) {
+    posX = clampX(cursorX - dragOffsetX);
+    posY = clampY(cursorY - dragOffsetY);
+  }
 });
 
 // ---------- 2. 말풍선 ----------
@@ -546,6 +573,10 @@ const clickReactions = [
 ];
 
 character.addEventListener("click", () => {
+  if (justDragged) {
+    justDragged = false; // 드래그로 옮긴 직후의 클릭은 반응 없이 무시
+    return;
+  }
   if (pendingEvolution) {
     openEvolutionCard();
     return;
@@ -562,8 +593,62 @@ character.addEventListener("mouseenter", () => {
 });
 
 character.addEventListener("mouseleave", () => {
+  // 드래그 중에는 커서가 잠깐 캐릭터를 벗어나도 클릭 통과로 돌리지 않는다
+  // (돌리면 창이 커서 이벤트를 못 받아 드래그가 끊긴다).
+  if (holdTimer || dragging) return;
   window.petAPI.setIgnoreMouseEvents(true, { forward: true });
 });
+
+// ---------- 꾸욱 눌러 드래그로 위치 옮기기 (follow 모드) ----------
+character.addEventListener("mousedown", () => {
+  justDragged = false; // 새 상호작용 시작 — 이전 드래그의 잔여 억제 플래그 해제
+  // 고정 모드·진화 카드·질문 카드 중에는 드래그하지 않는다
+  if (
+    placement !== "follow" ||
+    pendingEvolution ||
+    cardOpen ||
+    onboardingLocked
+  )
+    return;
+  // 놓은 뒤 3초 정지 중에 다시 잡으면, 남은 정지 타이머가 드래그 도중 발동하지 않게 취소
+  if (dropTimer) {
+    clearTimeout(dropTimer);
+    dropTimer = null;
+  }
+  pinned = true; // 롱프레스 판정 동안 제자리에 얼려 둔다(놓으면 해제)
+  if (holdTimer) clearTimeout(holdTimer);
+  holdTimer = setTimeout(() => {
+    holdTimer = null;
+    dragging = true;
+    // 잡은 지점(현재 커서)과 캐릭터 위치의 간격을 기억해 튐 없이 끌려오게 한다
+    dragOffsetX = cursorX - posX;
+    dragOffsetY = cursorY - posY;
+    document.body.classList.add("dragging");
+  }, HOLD_MS);
+});
+
+function endDrag() {
+  if (holdTimer) {
+    // 롱프레스 전에 뗀 경우 → 드래그 아님(클릭 반응은 click 핸들러가 처리)
+    clearTimeout(holdTimer);
+    holdTimer = null;
+    pinned = false;
+    return;
+  }
+  if (!dragging) return;
+  dragging = false;
+  justDragged = true;
+  document.body.classList.remove("dragging");
+  // 놓은 자리에 DROP_FREEZE_MS 동안 머물다가 다시 커서를 따라간다
+  if (dropTimer) clearTimeout(dropTimer);
+  dropTimer = setTimeout(() => {
+    dropTimer = null;
+    pinned = false;
+  }, DROP_FREEZE_MS);
+}
+
+// 드래그 중 커서가 캐릭터를 벗어난 채로 떼질 수 있어 window에서도 받는다
+window.addEventListener("mouseup", endDrag);
 
 // ---------- 4. 활성 앱에 따른 메시지 ----------
 
@@ -985,7 +1070,8 @@ async function initEvolution() {
     }
     applyEvolution({
       // 스킨을 착용 중이면 그 단계 형태로 표시(돌 종류·변형은 그대로 유지)
-      stage: state.activeSkinStage != null ? state.activeSkinStage : state.stage,
+      stage:
+        state.activeSkinStage != null ? state.activeSkinStage : state.stage,
       stoneType: state.stoneType,
       variant: state.variant,
     });
@@ -1336,7 +1422,15 @@ async function initSettings() {
 
 // 트레이 설정에서 위치/크기를 바꾸면 즉시 반영
 window.petAPI.onPetSettings(({ placement: p, size, sound }) => {
-  if (p) placement = p;
+  if (p) {
+    // 위치 모드가 바뀌면 드래그/정지 상태를 취소해 얼어붙지 않게 한다
+    if (holdTimer) clearTimeout(holdTimer);
+    if (dropTimer) clearTimeout(dropTimer);
+    holdTimer = dropTimer = null;
+    dragging = pinned = false;
+    document.body.classList.remove("dragging");
+    placement = p;
+  }
   if (size) applyPetSize(size);
   if (sound !== undefined) setSoundEnabled(sound);
 });

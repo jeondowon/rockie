@@ -368,21 +368,21 @@ body {
     repeating-linear-gradient(90deg, #91a45c 0 5px, transparent 5px 27px) 6px
       6px / 100% 5px no-repeat,
     /* 어두운 풀 결 1 */
-      repeating-linear-gradient(
+    repeating-linear-gradient(
         90deg,
         transparent 0 23px,
         rgba(27, 27, 22, 0.14) 23px 30px
       )
       0 20px / 100% 6px no-repeat,
     /* 어두운 풀 결 2 */
-      repeating-linear-gradient(
+    repeating-linear-gradient(
         90deg,
         rgba(27, 27, 22, 0.12) 0 9px,
         transparent 9px 34px
       )
       12px 34px / 100% 6px no-repeat,
     /* 잔디 바탕 (아래로 갈수록 짙게) */
-      linear-gradient(#5f7b42 0%, #47623b 70%, #3c5533 100%);
+    linear-gradient(#5f7b42 0%, #47623b 70%, #3c5533 100%);
 }
 
 /* 땅 위로 삐죽 솟은 풀 포기 */
@@ -1097,18 +1097,14 @@ body {
   padding-top: 18px;
 }
 
-/* 앱 한 줄 소개: 첫 화면에서만 표시. 서사 문구보다 한 톤 낮춰 은은하게 */
+/* 앱 한 줄 소개: ROCKIE 타이틀 바로 아래(intro-panel 안이라 첫 화면에서만 노출).
+   어두운 밤하늘 배경 위라 은은한 크림톤으로 낮춘다 */
 .onboarding-tagline {
-  display: none;
-}
-
-.onboarding-scene.scene-intro ~ .onboarding-dialog .onboarding-tagline {
-  display: block;
-  margin-top: 14px;
+  margin-top: 10px;
   text-align: center;
   font-size: 11px;
   letter-spacing: 0.5px;
-  color: #8d8a7a;
+  color: rgba(242, 237, 225, 0.72);
   word-break: keep-all;
 }
 
@@ -1676,8 +1672,7 @@ body {
   width: 15px;
   aspect-ratio: 1;
   image-rendering: pixelated;
-  background:
-    center / contain no-repeat
+  background: center / contain no-repeat
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='%231b1b16'%3E%3Crect x='5' y='0' width='2' height='1'/%3E%3Crect x='4' y='1' width='1' height='1'/%3E%3Crect x='7' y='1' width='1' height='1'/%3E%3Crect x='3' y='2' width='1' height='2'/%3E%3Crect x='8' y='2' width='1' height='2'/%3E%3Crect x='2' y='4' width='8' height='1'/%3E%3Crect x='1' y='5' width='10' height='2'/%3E%3Crect x='1' y='7' width='4' height='2'/%3E%3Crect x='7' y='7' width='4' height='2'/%3E%3Crect x='1' y='9' width='10' height='2'/%3E%3Crect x='2' y='11' width='8' height='1'/%3E%3C/svg%3E");
 }
 

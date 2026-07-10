@@ -41,7 +41,7 @@ const ONBOARDING_QUESTIONS = [
     id: "onboarding_02",
     category: "호기심",
     situation:
-      "운석 안쪽에서 아주 작은 소리가 계속 들립니다. ....달그락... 달그락...",
+      "운석 안쪽에서 아주 작은 소리가 계속 들립니다.\n....달그락... 달그락...",
     text: "이 소리를 들은 나는?",
     options: [
       {
@@ -69,7 +69,7 @@ const ONBOARDING_QUESTIONS = [
   {
     id: "onboarding_03",
     category: "변화 대응",
-    situation: "안쪽의 무언가가 밖으로 나오려는 것 같아요.",
+    situation: "금이 간 운석 안쪽에서 무언가가 밖으로 나오려는 것 같아요.",
     text: "나는 무엇을 준비할까요?",
     options: [
       {
@@ -97,7 +97,7 @@ const ONBOARDING_QUESTIONS = [
   {
     id: "onboarding_04",
     category: "첫 관계",
-    situation: "조약돌이 나에게 말을 건네네요. “헉! 안녕하세요, 주인님!”",
+    situation: "조약돌이 나에게 말을 건네네요.\n“헉! 안녕하세요, 주인님!”",
     text: "나는 어떻게 대답할까요?",
     options: [
       {
