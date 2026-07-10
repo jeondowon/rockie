@@ -2,6 +2,7 @@ const backBar = document.getElementById("back-bar");
 const screenTitle = document.getElementById("screen-title");
 
 const screens = {
+  onboarding: document.getElementById("onboarding-view"),
   menu: document.getElementById("menu-view"),
   pet: document.getElementById("pet-view"),
   system: document.getElementById("system-view"),
@@ -328,12 +329,167 @@ function menuWindowHeight() {
   );
 }
 
+// ---------- 온보딩 프롤로그 ----------
+const onboardingScene = document.getElementById("onboarding-scene");
+const onboardingSpeaker = document.getElementById("onboarding-speaker");
+const onboardingText = document.getElementById("onboarding-text");
+const onboardingOptions = document.getElementById("onboarding-options");
+const onboardingNext = document.getElementById("onboarding-next");
+let onboardingState = null;
+
+const ONBOARDING_FLOW = [
+  {
+    scene: "scene-intro",
+    speaker: "ROCKIE",
+    text: "어느 날, 작은 별똥별이 떨어졌습니다.",
+    button: "시작하기",
+  },
+  {
+    scene: "scene-fall",
+    speaker: "PROLOGUE",
+    text: "쿵! 갑자기 눈앞에 정체불명의 운석이 떨어졌어요!",
+  },
+  { question: 0, scene: "scene-landed", speaker: "QUESTION" },
+  {
+    scene: "scene-sound",
+    speaker: "PROLOGUE",
+    text: "어..? 운석에서 무슨 소리가 들리는 것 같아요.",
+  },
+  {
+    scene: "scene-sound",
+    speaker: "PROLOGUE",
+    text: "....달그락... 달그락...",
+  },
+  { question: 1, scene: "scene-sound", speaker: "QUESTION" },
+  {
+    scene: "scene-crack",
+    speaker: "PROLOGUE",
+    text: "쩌적... 쩌적...",
+  },
+  {
+    scene: "scene-crack",
+    speaker: "PROLOGUE",
+    text: "운석 표면에 금이 가기 시작합니다.",
+  },
+  { question: 2, scene: "scene-crack", speaker: "QUESTION" },
+  {
+    scene: "scene-pebble",
+    speaker: "PROLOGUE",
+    text: "운석이 갈라지고, 그 안에서 작은 조약돌이 나타났어요.",
+  },
+  {
+    scene: "scene-pebble",
+    speaker: "PROLOGUE",
+    text: "조약돌이 조심스럽게 당신을 바라봅니다.",
+  },
+  { question: 3, scene: "scene-pebble", speaker: "QUESTION" },
+  {
+    scene: "scene-pebble",
+    speaker: "PROLOGUE",
+    text: "왠지 이 돌을 그냥 두고 갈 수는 없을 것 같아요.",
+  },
+  {
+    scene: "scene-pebble",
+    speaker: "PROLOGUE",
+    text: "작은 조약돌이 당신의 곁에 자리를 잡았습니다.",
+  },
+  {
+    scene: "scene-pebble",
+    speaker: "ROCKIE",
+    text: "이제부터 ROCKIE와 함께 지내보세요.",
+    button: "시작하기",
+    complete: true,
+  },
+];
+
+function setOnboardingScene(scene) {
+  onboardingScene.classList.remove(
+    "scene-intro",
+    "scene-fall",
+    "scene-landed",
+    "scene-sound",
+    "scene-crack",
+    "scene-pebble",
+  );
+  if (scene) onboardingScene.classList.add(scene);
+}
+
+function renderOnboardingStep() {
+  const stepIndex = Math.min(
+    onboardingState?.step || 0,
+    ONBOARDING_FLOW.length - 1,
+  );
+  const step = ONBOARDING_FLOW[stepIndex];
+  setOnboardingScene(step.scene);
+  onboardingSpeaker.textContent = step.speaker || "PROLOGUE";
+  onboardingOptions.classList.add("hidden");
+  onboardingOptions.replaceChildren();
+  onboardingNext.classList.remove("hidden");
+  onboardingNext.textContent = step.button || "클릭하여 진행";
+
+  if (step.question != null) {
+    const q = onboardingState.questions[step.question];
+    onboardingText.textContent = `${q.situation}\n\n${q.text}`;
+    onboardingNext.classList.add("hidden");
+    onboardingOptions.classList.remove("hidden");
+    onboardingOptions.replaceChildren(
+      ...q.options.map((opt) => {
+        const btn = document.createElement("button");
+        btn.className = "onboarding-option";
+        btn.textContent = opt.label;
+        btn.addEventListener("click", async () => {
+          onboardingState = await window.trayAPI.answerOnboarding({
+            questionId: q.id,
+            value: opt.value,
+            nextStep: stepIndex + 1,
+          });
+          renderOnboardingStep();
+        });
+        return btn;
+      }),
+    );
+    return;
+  }
+
+  onboardingText.textContent = step.text;
+}
+
+async function advanceOnboarding() {
+  const stepIndex = Math.min(
+    onboardingState?.step || 0,
+    ONBOARDING_FLOW.length - 1,
+  );
+  const step = ONBOARDING_FLOW[stepIndex];
+  if (step.complete) {
+    onboardingState = await window.trayAPI.completeOnboarding();
+    if (onboardingState.completed) {
+      await showPet();
+      return;
+    }
+  } else {
+    onboardingState = await window.trayAPI.setOnboardingStep(stepIndex + 1);
+  }
+  renderOnboardingStep();
+}
+
+async function showOnboarding() {
+  onboardingState = await window.trayAPI.getOnboardingState();
+  if (onboardingState.completed) {
+    showScreen("menu");
+    return;
+  }
+  showScreen("onboarding");
+  renderOnboardingStep();
+}
+
+onboardingNext.addEventListener("click", advanceOnboarding);
+
 // ---------- 화면 전환 ----------
 function showScreen(name) {
   for (const [key, node] of Object.entries(screens)) {
     node.classList.toggle("hidden", key !== name);
   }
-  if (name === "menu") {
+  if (name === "menu" || name === "onboarding") {
     backBar.classList.add("hidden");
   } else {
     backBar.classList.remove("hidden");
@@ -661,7 +817,7 @@ petCallout.addEventListener("click", () => {
   window.trayAPI.sendAction("answer-question");
 });
 
-// 닦아주기/밥 주기 → 호감도 +2 (하루 1회). 게이지·버튼을 즉시 갱신한다.
+// 닦아주기/밥 주기 → 호감도 +3 (하루 1회). 게이지·버튼을 즉시 갱신한다.
 // 90 도달로 진화하면 펫 창이 축하 연출을 띄운다(메인의 notifyEvolved).
 cleanBtn.addEventListener("click", async () => {
   const { state } = await window.trayAPI.cleanPet();
@@ -818,8 +974,13 @@ async function refreshBadge() {
 }
 
 // 팝업이 열릴 때마다 메뉴로 초기화하고 권한 상태·배지를 갱신
-window.trayAPI.onWillShow(() => {
+window.trayAPI.onWillShow(async () => {
   hideResetConfirm(); // 이전에 열려 있던 확인창이 남지 않도록
+  const onboarding = await window.trayAPI.getOnboardingState();
+  if (!onboarding.completed) {
+    showOnboarding();
+    return;
+  }
   showScreen("menu");
   refreshPermToggle();
   refreshBadge();

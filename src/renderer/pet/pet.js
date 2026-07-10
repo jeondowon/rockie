@@ -33,6 +33,7 @@ let petSize = "medium"; // 설정 '크기'. 레벨 scale과 곱해 실제 CHAR_S
 let paused = false;
 let pauseTimer = null;
 let cardOpen = false; // 질문 카드가 열려 있으면 걷기를 멈추고 카드를 펫 옆에 고정
+let onboardingLocked = true;
 
 // ---------- Dock 회피 ----------
 // 메인 프로세스가 알려주는 Dock 상태. Dock이 보이고 캐릭터(보이는 그림 기준)가
@@ -110,12 +111,25 @@ function notifyDisplaySprite(pose) {
 // 지친 상태(배터리 부족)면 단계별 표정 gif, 아니면 바라보는 방향의 걷기 gif를 표시.
 // 표시할 파일은 현재 진화 단계에 따른 spriteLevel/spritePrefix로 결정된다.
 function applySprite() {
+  if (onboardingLocked) return;
   const name = smiling
     ? "smile"
     : tiredSprite || (facing === "left" ? "left" : "right");
   const src = spriteUrl(name);
   if (!character.src.endsWith(src)) character.src = src;
   notifyDisplaySprite(name);
+}
+
+function setOnboardingLocked(locked) {
+  onboardingLocked = locked;
+  document.body.classList.toggle("onboarding-locked", locked);
+  if (locked) {
+    hideQuestionCard();
+    window.petAPI.setIgnoreMouseEvents(true, { forward: true });
+  } else {
+    placeCharacter();
+    applySprite();
+  }
 }
 
 // 애정 표현용 하트 오버레이. level2/3은 love gif가 없어 smile + 하트로 애정을 표현한다.
@@ -960,6 +974,11 @@ async function initEvolutionPreviewKeys() {
 async function initEvolution() {
   try {
     const state = await window.petAPI.getEvolutionState();
+    if (!state.onboarding?.completed) {
+      setOnboardingLocked(true);
+      return;
+    }
+    setOnboardingLocked(false);
     if (state.pendingEvolution) {
       setPendingEvolution(state.pendingEvolution, state.userName);
       return;
@@ -974,6 +993,11 @@ async function initEvolution() {
     // 상태를 못 읽으면 기본(rockie) 유지
   }
 }
+
+window.petAPI.onOnboardingCompleted(async () => {
+  setOnboardingLocked(false);
+  await initEvolution();
+});
 
 // 트레이에서 스킨을 착용/해제하면 main이 표시할 형태를 보내온다
 window.petAPI.onSkinChange((info) => applyEvolution(info));
@@ -1126,9 +1150,40 @@ function cardEl(tag, cls, text) {
 
 function renderCard(state) {
   qcard.innerHTML = "";
+  qcard.onclick = null;
   const q = state.question;
 
   // 답하지 않고 닫기 (상태 변화 없음 — 질문은 오늘 목록에 그대로 남아 다시 열 수 있다)
+  const close = cardEl("button", "q-close", "✕");
+  close.addEventListener("click", () => hideQuestionCard());
+  qcard.appendChild(close);
+
+  if (q.situation) {
+    if (q.kind === "tiebreaker") {
+      qcard.appendChild(cardEl("p", "q-hint", "마지막 확인"));
+    } else {
+      qcard.appendChild(
+        cardEl("p", "q-hint", `상황 ${state.progress + 1} / ${state.total}`),
+      );
+    }
+    qcard.appendChild(cardEl("p", "q-situation", q.situation));
+
+    const next = cardEl("button", "q-continue", "클릭하여 진행");
+    next.addEventListener("click", () => {
+      renderQuestionContent(state, q);
+      positionCard();
+    });
+    qcard.appendChild(next);
+    return;
+  }
+
+  renderQuestionContent(state, q);
+}
+
+function renderQuestionContent(state, q) {
+  qcard.innerHTML = "";
+  qcard.onclick = null;
+
   const close = cardEl("button", "q-close", "✕");
   close.addEventListener("click", () => hideQuestionCard());
   qcard.appendChild(close);

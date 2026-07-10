@@ -1,153 +1,232 @@
-// 성향 질문 데이터 (update.md 4~5장). 판정 로직은 evolution.js가 담당한다.
-// - MAIN_QUESTIONS: 0→1 본 질문 12개 (4지선다, 돌 종류 점수)
-// - TIEBREAKERS: 본 질문 동점 시 쌍별 타이브레이커 6개 (2지선다)
-// - EI_QUESTIONS: 1→2 E/I 질문 12개 (2지선다, 외향/내향 점수)
-// - EI_TIEBREAKER: E/I 6:6 동점 시 1개
+// 성향 질문 데이터. 판정 로직은 evolution.js가 담당한다.
+// - ONBOARDING_QUESTIONS: 첫 실행 프롤로그 질문 4개. 0→1 점수에 반영한다.
+// - MAIN_QUESTIONS: 0→1 본 질문 12개. 온보딩 완료 후 일일 질문으로 보여준다.
+// - TIEBREAKERS: 본 질문 동점 시 쌍별 타이브레이커.
+// - EI_QUESTIONS: 1→2 E/I 질문. E/I만 과하게 길어지지 않도록 6개로 둔다.
+// - EI_TIEBREAKER: E/I 동점 시 1개.
 
-// 본 질문 12개. options 순서 = 화강암/현무암/대리석/편마암 (update.md 5.1)
+// options 순서 = 화강암/현무암/대리석/편마암.
+// traitTag는 카테고리별 성향 요약 태그 산정에 사용한다.
+const ONBOARDING_QUESTIONS = [
+  {
+    id: "onboarding_01",
+    category: "첫 반응",
+    situation:
+      "쿵! 갑자기 눈앞에 정체불명의 운석이 떨어졌어요. 아직 연기가 조금 피어오르고, 주변은 조용합니다.",
+    text: "가장 먼저 어떻게 할까요?",
+    options: [
+      { stone: "granite", traitTag: "안전 확인형", label: "주변이 안전한지 확인하고 천천히 다가간다" },
+      { stone: "basalt", traitTag: "직접 탐색형", label: "일단 가까이 가서 직접 살펴본다" },
+      { stone: "marble", traitTag: "보호 본능형", label: "혹시 안에 무언가 다친 건 아닌지 걱정된다" },
+      { stone: "gneiss", traitTag: "흔적 분석형", label: "떨어진 방향과 흔적을 보고 정체를 추측한다" },
+    ],
+  },
+  {
+    id: "onboarding_02",
+    category: "호기심",
+    situation:
+      "운석 안쪽에서 아주 작은 소리가 계속 들립니다. ....달그락... 달그락...",
+    text: "이 소리를 들은 나는?",
+    options: [
+      { stone: "granite", traitTag: "신중 관찰형", label: "섣불리 건드리지 않고 상태를 더 지켜본다" },
+      { stone: "basalt", traitTag: "즉시 확인형", label: "두근거려서 바로 확인해보고 싶다" },
+      { stone: "marble", traitTag: "구출 지향형", label: "안에 갇힌 존재가 있다면 꺼내주고 싶다" },
+      { stone: "gneiss", traitTag: "패턴 추론형", label: "소리의 간격과 방향을 살펴 안쪽 구조를 상상한다" },
+    ],
+  },
+  {
+    id: "onboarding_03",
+    category: "변화 대응",
+    situation:
+      "쩌적... 쩌적... 운석 표면에 금이 가기 시작합니다. 곧 안쪽의 무언가가 밖으로 나올 것 같아요.",
+    text: "나는 무엇을 준비할까요?",
+    options: [
+      { stone: "granite", traitTag: "거리 확보형", label: "조각이 튈 수 있으니 안전한 거리를 확보한다" },
+      { stone: "basalt", traitTag: "순간 대응형", label: "바로 받아낼 수 있게 가까이에서 기다린다" },
+      { stone: "marble", traitTag: "안심 유도형", label: "놀라지 않도록 조용히 말을 걸어본다" },
+      { stone: "gneiss", traitTag: "균열 관찰형", label: "금이 퍼지는 모양을 보고 어느 쪽이 열릴지 본다" },
+    ],
+  },
+  {
+    id: "onboarding_04",
+    category: "첫 관계",
+    situation:
+      "운석이 갈라지고, 그 안에서 작은 조약돌이 나타났어요. 조약돌이 조심스럽게 말합니다. “헉! 안녕하세요, 주인님!”",
+    text: "나는 어떻게 대답할까요?",
+    options: [
+      { stone: "granite", traitTag: "보호 책임형", label: "괜찮아? 우선 안전한 곳으로 가자" },
+      { stone: "basalt", traitTag: "활기 반응형", label: "우와, 너 진짜 살아있는 돌이야?" },
+      { stone: "marble", traitTag: "따뜻한 환대형", label: "많이 무서웠지? 이제 괜찮아" },
+      { stone: "gneiss", traitTag: "정체 탐구형", label: "너는 어디서 왔고, 어떻게 말할 수 있어?" },
+    ],
+  },
+];
+
 const MAIN_QUESTIONS = [
   {
     id: "main_01",
-    category: "가치관",
-    text: "누군가와 갈등이 생겼을 때 나의 대처 방식은?",
+    category: "계획/실행",
+    situation:
+      "한 달 뒤 중요한 발표가 있어요. 자료 조사, 슬라이드, 연습까지 해야 해서 할 일이 꽤 많습니다.",
+    text: "나는 준비를 어떻게 시작할까요?",
     options: [
-      { stone: "granite", label: "원칙과 규칙을 먼저 확인한다" },
-      { stone: "basalt", label: "일단 부딪히고 그 자리에서 풀어본다" },
-      { stone: "marble", label: "상대방의 마음을 먼저 헤아린다" },
-      { stone: "gneiss", label: "갈등의 원인을 논리적으로 분석한다" },
+      { stone: "granite", traitTag: "계획 완수형", label: "마감일까지의 일정을 먼저 쪼갠다" },
+      { stone: "basalt", traitTag: "시작 우선형", label: "일단 자료를 열고 손이 가는 것부터 시작한다" },
+      { stone: "marble", traitTag: "메시지 중심형", label: "듣는 사람에게 어떤 인상을 줄지 먼저 생각한다" },
+      { stone: "gneiss", traitTag: "전략 설계형", label: "핵심 주장과 근거 구조를 먼저 잡는다" },
     ],
   },
   {
     id: "main_02",
-    category: "가치관",
-    text: "어려운 목표 앞에서 나는 어떤 태도를 취하는가?",
+    category: "관계/협업",
+    situation:
+      "친구가 고민을 털어놓고 있어요. 해결책을 원하는지, 그냥 들어주길 원하는지 바로 알기 어렵습니다.",
+    text: "나는 어떻게 반응할까요?",
     options: [
-      { stone: "granite", label: "계획을 세우고 꾸준히 실행한다" },
-      { stone: "basalt", label: "일단 시작하고 부딪히며 조정한다" },
-      { stone: "marble", label: "목표가 나에게 어떤 의미인지 먼저 생각한다" },
-      { stone: "gneiss", label: "목표를 여러 단계로 쪼개서 구조화한다" },
+      { stone: "granite", traitTag: "실질 지원형", label: "필요하면 같이 해결 방법을 정리해주겠다고 말한다" },
+      { stone: "basalt", traitTag: "활력 전환형", label: "기분이 조금 풀릴 만한 일을 함께 찾아본다" },
+      { stone: "marble", traitTag: "공감 경청형", label: "먼저 충분히 들어주고 감정을 받아준다" },
+      { stone: "gneiss", traitTag: "맥락 파악형", label: "상황의 원인과 선택지를 차분히 짚어본다" },
     ],
   },
   {
     id: "main_03",
     category: "가치관",
-    text: "새로운 규칙이나 변화가 생겼을 때 나는?",
+    situation:
+      "새로운 규칙이 생겼는데, 효율은 좋아질 것 같지만 누군가에게는 꽤 불편할 수도 있어요.",
+    text: "내가 가장 먼저 확인하고 싶은 것은?",
     options: [
-      { stone: "granite", label: "이유를 이해하면 바로 따른다" },
-      { stone: "basalt", label: "일단 해보고 나서 판단한다" },
-      {
-        stone: "marble",
-        label: "이 변화가 사람들에게 어떤 영향을 줄지 생각한다",
-      },
-      { stone: "gneiss", label: "이 변화가 논리적으로 타당한지 검토한다" },
+      { stone: "granite", traitTag: "기준 신뢰형", label: "규칙이 공정하고 일관되게 적용되는지" },
+      { stone: "basalt", traitTag: "현실 대응형", label: "실제로 해봤을 때 잘 굴러가는지" },
+      { stone: "marble", traitTag: "사람 우선형", label: "불편을 겪는 사람이 얼마나 되는지" },
+      { stone: "gneiss", traitTag: "타당성 검증형", label: "규칙의 근거가 충분히 논리적인지" },
     ],
   },
   {
     id: "main_04",
     category: "일상/감정",
-    text: "오늘 하루 나를 가장 기분 좋게 만든 순간은?",
+    situation:
+      "오랜만에 아무 일정이 없는 휴일이에요. 해야 하는 일도 조금 있지만, 마음은 쉬고 싶어 합니다.",
+    text: "가장 편하게 느껴지는 선택은?",
     options: [
-      { stone: "granite", label: "계획한 일을 예정대로 끝냈을 때" },
-      { stone: "basalt", label: "예상 못한 재미있는 일이 생겼을 때" },
-      { stone: "marble", label: "누군가와 마음이 통했다고 느꼈을 때" },
-      { stone: "gneiss", label: "궁금했던 걸 이해하게 됐을 때" },
+      { stone: "granite", traitTag: "안정 루틴형", label: "정리할 일을 끝내고 마음 편히 쉰다" },
+      { stone: "basalt", traitTag: "즉흥 충전형", label: "그날 끌리는 곳이나 활동을 따라간다" },
+      { stone: "marble", traitTag: "정서 충전형", label: "좋아하는 사람이나 콘텐츠로 마음을 채운다" },
+      { stone: "gneiss", traitTag: "몰입 충전형", label: "혼자 깊이 몰입할 주제를 잡는다" },
     ],
   },
   {
     id: "main_05",
-    category: "일상/감정",
-    text: "최근 나의 머릿속을 가장 많이 차지하고 있는 생각은?",
+    category: "문제해결",
+    situation:
+      "팀 프로젝트에서 자료가 너무 많이 모였어요. 좋은 내용도 많지만, 발표 시간은 짧습니다.",
+    text: "나는 무엇부터 하자고 말할까요?",
     options: [
-      { stone: "granite", label: "해야 할 일과 일정" },
-      { stone: "basalt", label: "요즘 꽂힌 새로운 관심사" },
-      { stone: "marble", label: "사람들과의 관계와 감정" },
-      { stone: "gneiss", label: "풀리지 않는 궁금증이나 문제" },
+      { stone: "granite", traitTag: "우선순위 정리형", label: "필수 내용과 선택 내용을 나누자" },
+      { stone: "basalt", traitTag: "핵심 체감형", label: "일단 말해보면서 반응 좋은 내용을 고르자" },
+      { stone: "marble", traitTag: "청중 공감형", label: "듣는 사람이 이해하기 쉬운 흐름을 고르자" },
+      { stone: "gneiss", traitTag: "논증 구조형", label: "주장과 근거가 이어지는 구조를 만들자" },
     ],
   },
   {
     id: "main_06",
-    category: "일상/감정",
-    text: "예정에 없던 일정이 갑자기 생기면 나는?",
+    category: "계획/실행",
+    situation:
+      "친구들이 갑자기 여행을 가자고 해요. 날짜는 맞지만, 숙소나 예산은 아직 거의 정해지지 않았습니다.",
+    text: "내 마음에 가까운 반응은?",
     options: [
-      { stone: "granite", label: "원래 계획을 최대한 지키려 한다" },
-      { stone: "basalt", label: "오히려 반갑고 즉흥적으로 움직인다" },
-      { stone: "marble", label: "그 일이 관계에 미칠 영향을 먼저 생각한다" },
-      { stone: "gneiss", label: "새 일정과 기존 일정을 재구성해본다" },
+      { stone: "granite", traitTag: "준비 안정형", label: "큰 항목은 정하고 가야 마음이 편하다" },
+      { stone: "basalt", traitTag: "즉흥 실행형", label: "이런 건 타이밍이니까 일단 가보고 싶다" },
+      { stone: "marble", traitTag: "동행 조율형", label: "같이 가는 사람들이 편한지가 제일 중요하다" },
+      { stone: "gneiss", traitTag: "조건 비교형", label: "예산, 이동, 일정의 장단점을 비교해보고 싶다" },
     ],
   },
   {
     id: "main_07",
-    category: "관계/선택",
-    text: "친구가 고민을 털어놓을 때 나는 어떻게 반응하는가?",
+    category: "관계/협업",
+    situation:
+      "모임에서 의견이 둘로 갈렸고, 말수가 적은 사람들은 아직 자기 생각을 말하지 않았어요.",
+    text: "나는 어떤 역할을 하게 될 가능성이 클까요?",
     options: [
-      { stone: "granite", label: "해결할 수 있는 구체적 방법을 제안한다" },
-      { stone: "basalt", label: "같이 기분 전환할 걸 찾아본다" },
-      { stone: "marble", label: "그냥 옆에서 감정을 들어준다" },
-      { stone: "gneiss", label: "문제의 원인을 같이 짚어본다" },
+      { stone: "granite", traitTag: "진행 조율형", label: "결정해야 할 기준과 순서를 잡는다" },
+      { stone: "basalt", traitTag: "대화 촉진형", label: "어색함을 깨고 편하게 말하게 만든다" },
+      { stone: "marble", traitTag: "목소리 배려형", label: "말하지 못한 사람의 의견도 챙긴다" },
+      { stone: "gneiss", traitTag: "쟁점 정리형", label: "양쪽 의견의 핵심 차이를 정리한다" },
     ],
   },
   {
     id: "main_08",
-    category: "관계/선택",
-    text: "여러 선택지 중 내가 결정을 내리는 기준은?",
+    category: "가치관",
+    situation:
+      "누군가 빠르게 성공하는 모습을 봤어요. 멋져 보이지만, 그 과정이 조금 불안정해 보이기도 합니다.",
+    text: "나는 어떤 성공이 더 마음에 드나요?",
     options: [
-      { stone: "granite", label: "기존에 검증된 안전한 방법" },
-      { stone: "basalt", label: "그 순간 가장 끌리는 것" },
-      { stone: "marble", label: "마음이 편한 쪽" },
-      { stone: "gneiss", label: "가장 합리적인 근거가 있는 것" },
+      { stone: "granite", traitTag: "꾸준 성장형", label: "느려도 오래 갈 수 있는 안정적인 성공" },
+      { stone: "basalt", traitTag: "기회 포착형", label: "순간을 잡아 크게 도약하는 성공" },
+      { stone: "marble", traitTag: "가치 실현형", label: "내가 중요하게 여기는 의미를 지키는 성공" },
+      { stone: "gneiss", traitTag: "체계 구축형", label: "원리와 시스템을 만들어내는 성공" },
     ],
   },
   {
     id: "main_09",
-    category: "관계/선택",
-    text: "모임에서 나의 역할은 대체로?",
+    category: "일상/감정",
+    situation:
+      "하루 종일 여러 사람을 만나고 돌아왔어요. 즐거웠지만 은근히 피곤함도 남아 있습니다.",
+    text: "집에 도착한 뒤 가장 먼저 하고 싶은 것은?",
     options: [
-      { stone: "granite", label: "일정과 진행을 챙기는 사람" },
-      { stone: "basalt", label: "분위기를 띄우고 즉흥적으로 이끄는 사람" },
-      { stone: "marble", label: "사람들 감정을 살피는 사람" },
-      { stone: "gneiss", label: "논의 내용을 정리하는 사람" },
+      { stone: "granite", traitTag: "생활 정돈형", label: "씻고 정리하며 원래 리듬으로 돌아온다" },
+      { stone: "basalt", traitTag: "여운 확장형", label: "오늘 있었던 재미있는 일을 더 떠올린다" },
+      { stone: "marble", traitTag: "감정 음미형", label: "좋았던 말과 마음을 천천히 곱씹는다" },
+      { stone: "gneiss", traitTag: "내면 정리형", label: "혼자 있으면서 생각을 차분히 정리한다" },
     ],
   },
   {
     id: "main_10",
-    category: "자기인식",
-    text: "나는 스스로를 어떤 사람이라고 생각하는가?",
+    category: "문제해결",
+    situation:
+      "처음 보는 장비를 써야 합니다. 설명서는 길고, 옆 사람은 그냥 눌러보면 된다고 해요.",
+    text: "나는 어떻게 익히는 편인가요?",
     options: [
-      { stone: "granite", label: "책임감 있고 신뢰할 수 있는 사람" },
-      { stone: "basalt", label: "유연하고 적응 잘하는 사람" },
-      { stone: "marble", label: "공감 잘하고 따뜻한 사람" },
-      { stone: "gneiss", label: "논리적이고 분석적인 사람" },
+      { stone: "granite", traitTag: "매뉴얼 확인형", label: "기본 사용법을 먼저 읽고 따라 한다" },
+      { stone: "basalt", traitTag: "체험 학습형", label: "직접 만져보며 감을 잡는다" },
+      { stone: "marble", traitTag: "사용자 관찰형", label: "다른 사람이 어디서 어려워하는지 보며 배운다" },
+      { stone: "gneiss", traitTag: "원리 이해형", label: "왜 그렇게 작동하는지 구조를 이해한다" },
     ],
   },
   {
     id: "main_11",
-    category: "자기인식",
-    text: "남들이 나에 대해 자주 하는 말은?",
+    category: "계획/실행",
+    situation:
+      "해야 할 일이 세 개나 겹쳤어요. 하나는 급하고, 하나는 중요하고, 하나는 하고 싶은 일입니다.",
+    text: "내 선택 기준에 가장 가까운 것은?",
     options: [
-      { stone: "granite", label: "꼼꼼하다, 성실하다" },
-      { stone: "basalt", label: "재밌다, 에너지 넘친다" },
-      { stone: "marble", label: "다정하다, 배려심 있다" },
-      { stone: "gneiss", label: "똑똑하다, 냉철하다" },
+      { stone: "granite", traitTag: "책임 우선형", label: "마감과 책임이 분명한 일부터 한다" },
+      { stone: "basalt", traitTag: "에너지 우선형", label: "지금 가장 탄력 받을 수 있는 일부터 한다" },
+      { stone: "marble", traitTag: "마음 균형형", label: "내 마음이 무너지지 않을 순서를 고른다" },
+      { stone: "gneiss", traitTag: "효율 최적형", label: "전체 결과가 가장 좋아지는 순서를 계산한다" },
     ],
   },
   {
     id: "main_12",
-    category: "회복/스트레스",
-    text: "지치면 나는 무엇으로 회복하는가?",
+    category: "자기인식",
+    situation:
+      "가까운 사람이 나의 장점을 한 문장으로 말해준다고 해요. 어떤 말을 들으면 가장 나답다고 느낄까요?",
+    text: "내가 가장 고개를 끄덕일 말은?",
     options: [
-      { stone: "granite", label: "정해진 루틴을 지키며 안정을 찾는다" },
-      { stone: "basalt", label: "몸을 움직이거나 새로운 자극을 찾는다" },
-      { stone: "marble", label: "마음을 나눌 사람과 대화한다" },
-      { stone: "gneiss", label: "혼자 생각을 정리할 시간을 갖는다" },
+      { stone: "granite", traitTag: "신뢰형", label: "너는 맡은 일을 끝까지 해내는 사람이야" },
+      { stone: "basalt", traitTag: "SP 감각형", label: "너는 상황을 즐기고 빠르게 움직이는 사람이야" },
+      { stone: "marble", traitTag: "NF 공감형", label: "너는 사람의 마음과 의미를 잘 보는 사람이야" },
+      { stone: "gneiss", traitTag: "NJ 전략형", label: "너는 흐름을 읽고 구조를 세우는 사람이야" },
     ],
   },
 ];
 
-// 본 질문 타이브레이커 6쌍 (2지선다). id/pair는 STONE_ORDER 순서로 정규화 (update.md 5.1)
 const TIEBREAKERS = [
   {
     id: "tb_granite_basalt",
-    text: "급하게 결정해야 하는 순간, 나는?",
+    category: "타이브레이커",
+    situation: "결정 시간이 거의 남지 않았고, 둘 중 하나를 바로 골라야 합니다.",
+    text: "나는 어느 쪽에 더 가까울까요?",
     options: [
       { stone: "granite", label: "원칙대로 신중하게 판단한다" },
       { stone: "basalt", label: "일단 감으로 빠르게 움직인다" },
@@ -155,7 +234,9 @@ const TIEBREAKERS = [
   },
   {
     id: "tb_granite_marble",
-    text: "중요한 일을 앞두고 나는?",
+    category: "타이브레이커",
+    situation: "중요한 일을 앞두고 계획과 마음의 편안함이 서로 부딪히고 있어요.",
+    text: "나는 무엇을 먼저 챙길까요?",
     options: [
       { stone: "granite", label: "계획과 순서를 먼저 정리한다" },
       { stone: "marble", label: "내 마음이 편한지를 먼저 살핀다" },
@@ -163,7 +244,9 @@ const TIEBREAKERS = [
   },
   {
     id: "tb_granite_gneiss",
-    text: "문제가 생기면 나는?",
+    category: "타이브레이커",
+    situation: "문제가 생겼고, 기존 절차도 있지만 더 깊은 원인도 궁금합니다.",
+    text: "내가 먼저 붙잡는 쪽은?",
     options: [
       { stone: "granite", label: "정해진 절차와 원칙을 따른다" },
       { stone: "gneiss", label: "문제의 구조와 원인을 파고든다" },
@@ -171,7 +254,9 @@ const TIEBREAKERS = [
   },
   {
     id: "tb_basalt_marble",
-    text: "감정이 격해지는 순간, 나는?",
+    category: "타이브레이커",
+    situation: "감정이 크게 움직이는 순간이에요. 바로 표현할 수도, 안쪽에서 살필 수도 있습니다.",
+    text: "나는 어느 쪽에 더 가까울까요?",
     options: [
       { stone: "basalt", label: "바로 표현하고 행동으로 옮긴다" },
       { stone: "marble", label: "마음속으로 삭이며 헤아려본다" },
@@ -179,7 +264,9 @@ const TIEBREAKERS = [
   },
   {
     id: "tb_basalt_gneiss",
-    text: "새로운 도전 앞에서 나는?",
+    category: "타이브레이커",
+    situation: "새로운 도전이 눈앞에 있어요. 해보며 배울 수도, 원리를 먼저 볼 수도 있습니다.",
+    text: "나는 어떻게 시작할까요?",
     options: [
       { stone: "basalt", label: "일단 뛰어들고 본다" },
       { stone: "gneiss", label: "먼저 원리를 이해하고 시작한다" },
@@ -187,7 +274,9 @@ const TIEBREAKERS = [
   },
   {
     id: "tb_marble_gneiss",
-    text: "어려운 문제를 마주하면 나는?",
+    category: "타이브레이커",
+    situation: "어려운 문제에 사람들의 마음과 논리적인 판단이 함께 얽혀 있어요.",
+    text: "나는 무엇을 더 먼저 볼까요?",
     options: [
       { stone: "marble", label: "관련된 사람들의 마음을 먼저 생각한다" },
       { stone: "gneiss", label: "감정을 배제하고 논리로 접근한다" },
@@ -195,123 +284,81 @@ const TIEBREAKERS = [
   },
 ];
 
-// E/I 질문 12개 (update.md 4.1~4.2). options 순서 = 외향/내향.
 const EI_QUESTIONS = [
   {
     id: "ei_01",
-    category: "힘든 하루",
-    text: "힘든 하루를 보낸 날, 나는 주로?",
+    category: "에너지",
+    situation:
+      "힘든 하루가 끝났어요. 몸은 피곤하지만 마음을 회복할 방법은 필요합니다.",
+    text: "나는 어떤 방식으로 에너지를 되찾나요?",
     options: [
-      { axis: "외향", label: "친구를 만나거나 연락해서 푼다" },
-      { axis: "내향", label: "혼자 조용히 시간을 보내며 정리한다" },
+      { axis: "외향", traitTag: "사람 충전형", label: "좋아하는 사람과 이야기하며 풀어낸다" },
+      { axis: "내향", traitTag: "혼자 충전형", label: "혼자 조용히 시간을 보내며 정리한다" },
     ],
   },
   {
     id: "ei_02",
-    category: "새로운 사람들",
-    text: "새로운 사람들 사이에 있을 때 나는?",
+    category: "관계 시작",
+    situation:
+      "처음 보는 사람들이 모인 자리입니다. 대화는 아직 시작되지 않았고 다들 눈치를 보고 있어요.",
+    text: "나는 보통 어떻게 움직이나요?",
     options: [
-      { axis: "외향", label: "먼저 말을 걸고 분위기를 만든다" },
-      { axis: "내향", label: "상황을 지켜보다 편해지면 다가간다" },
+      { axis: "외향", traitTag: "먼저 연결형", label: "먼저 말을 걸고 분위기를 만든다" },
+      { axis: "내향", traitTag: "관찰 진입형", label: "상황을 지켜보다 편해지면 다가간다" },
     ],
   },
   {
     id: "ei_03",
     category: "생각 정리",
-    text: "생각이 많아질 때 나는?",
+    situation:
+      "머릿속에 생각이 많아져서 정리가 필요합니다. 혼자 붙잡을 수도, 밖으로 꺼낼 수도 있어요.",
+    text: "내게 더 자연스러운 정리 방식은?",
     options: [
-      { axis: "외향", label: "누군가에게 이야기하며 정리한다" },
-      { axis: "내향", label: "글로 쓰거나 혼자 되짚어본다" },
+      { axis: "외향", traitTag: "대화 정리형", label: "누군가에게 이야기하며 정리한다" },
+      { axis: "내향", traitTag: "내면 정리형", label: "글로 쓰거나 혼자 되짚어본다" },
     ],
   },
   {
     id: "ei_04",
-    category: "에너지 충전",
-    text: "에너지가 채워지는 순간은?",
+    category: "작업 환경",
+    situation:
+      "집중해서 작업해야 합니다. 주변에 사람이 있는 공간과 완전히 조용한 공간 중 고를 수 있어요.",
+    text: "나는 어디서 더 집중이 잘 되나요?",
     options: [
-      { axis: "외향", label: "사람들과 함께 있을 때" },
-      { axis: "내향", label: "혼자만의 시간을 가질 때" },
+      { axis: "외향", traitTag: "활기 집중형", label: "카페처럼 적당히 사람이 있는 곳" },
+      { axis: "내향", traitTag: "고요 집중형", label: "방해받지 않는 조용한 곳" },
     ],
   },
   {
     id: "ei_05",
-    category: "휴일 계획",
-    text: "오랜만에 아무 일정 없는 하루, 나는?",
+    category: "표현 방식",
+    situation:
+      "좋은 일이 생겼어요. 아직 아무에게도 말하지 않았지만 기분이 꽤 좋습니다.",
+    text: "나는 이 기쁨을 어떻게 다루나요?",
     options: [
-      { axis: "외향", label: "누군가에게 연락해서 약속을 잡는다" },
-      { axis: "내향", label: "집에서 혼자만의 시간을 보낸다" },
+      { axis: "외향", traitTag: "표현 확장형", label: "바로 누군가에게 알리고 함께 기뻐한다" },
+      { axis: "내향", traitTag: "감정 음미형", label: "혼자 조용히 그 순간을 음미한다" },
     ],
   },
   {
     id: "ei_06",
-    category: "정보 수집 방식",
-    text: "관심 있는 주제를 알아볼 때 나는?",
+    category: "낯선 상황",
+    situation:
+      "여행지에서 길을 잃었어요. 주변에는 사람이 있고, 휴대폰 지도도 켤 수 있습니다.",
+    text: "나는 먼저 무엇을 할까요?",
     options: [
-      { axis: "외향", label: "관련된 사람에게 물어보며 배운다" },
-      { axis: "내향", label: "자료를 찾아 혼자 파고든다" },
-    ],
-  },
-  {
-    id: "ei_07",
-    category: "감정 표현 방식",
-    text: "좋은 일이 생겼을 때 나는?",
-    options: [
-      { axis: "외향", label: "바로 누군가에게 알리고 함께 기뻐한다" },
-      { axis: "내향", label: "혼자 조용히 그 순간을 음미한다" },
-    ],
-  },
-  {
-    id: "ei_08",
-    category: "회복 방식",
-    text: "큰 실수나 실패를 겪은 후 나는?",
-    options: [
-      { axis: "외향", label: "가까운 사람과 이야기하며 털어낸다" },
-      { axis: "내향", label: "조용한 곳에서 스스로 정리한다" },
-    ],
-  },
-  {
-    id: "ei_09",
-    category: "작업 환경 선호",
-    text: "집중해서 일해야 할 때 나는?",
-    options: [
-      { axis: "외향", label: "카페처럼 사람이 있는 곳이 편하다" },
-      { axis: "내향", label: "조용하고 방해받지 않는 곳이 편하다" },
-    ],
-  },
-  {
-    id: "ei_10",
-    category: "대화 스타일",
-    text: "대화 중 자연스러운 나의 역할은?",
-    options: [
-      { axis: "외향", label: "말을 이어가며 화제를 넓힌다" },
-      { axis: "내향", label: "상대의 이야기를 듣고 깊이 반응한다" },
-    ],
-  },
-  {
-    id: "ei_11",
-    category: "낯선 상황 대응",
-    text: "여행지에서 길을 잃었을 때 나는?",
-    options: [
-      { axis: "외향", label: "근처 사람에게 바로 물어본다" },
-      { axis: "내향", label: "지도를 보며 직접 방향을 찾는다" },
-    ],
-  },
-  {
-    id: "ei_12",
-    category: "주말 저녁",
-    text: "금요일 밤이 되면 나는?",
-    options: [
-      { axis: "외향", label: "사람들과 함께 있는 자리가 그립다" },
-      { axis: "내향", label: "혼자 편하게 쉬는 시간이 좋다" },
+      { axis: "외향", traitTag: "외부 연결형", label: "근처 사람에게 바로 물어본다" },
+      { axis: "내향", traitTag: "자체 탐색형", label: "지도를 보며 직접 방향을 찾는다" },
     ],
   },
 ];
 
-// E/I 타이브레이커 (6:6 동점 시 1개만 노출, update.md 4.3)
 const EI_TIEBREAKER = {
   id: "eitb_01",
   category: "타이브레이커",
-  text: "하루가 끝나갈 무렵, 진짜 내가 원하는 마무리는?",
+  situation:
+    "하루가 거의 끝났습니다. 오늘의 마지막 시간을 어떻게 보낼지 고를 수 있어요.",
+  text: "진짜 내가 원하는 마무리는?",
   options: [
     { axis: "외향", label: "좋아하는 사람과 시간을 보내는 것" },
     { axis: "내향", label: "혼자만의 시간을 갖는 것" },
@@ -319,6 +366,7 @@ const EI_TIEBREAKER = {
 };
 
 module.exports = {
+  ONBOARDING_QUESTIONS,
   MAIN_QUESTIONS,
   TIEBREAKERS,
   EI_QUESTIONS,

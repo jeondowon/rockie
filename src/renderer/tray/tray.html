@@ -25,6 +25,62 @@
 
       <!-- ============ 본문 (내부 스크롤) ============ -->
       <div class="body">
+        <!-- ############ ONBOARDING ############ -->
+        <div id="onboarding-view" class="screen hidden">
+          <div class="onboarding-scene" id="onboarding-scene">
+            <div class="star-field"></div>
+            <!-- 첫 화면(scene-intro) 전용: 타이틀 + 돌들이 노는 장면 -->
+            <div class="intro-panel">
+              <div class="intro-title">ROCKIE</div>
+              <div class="intro-stones">
+                <img src="../../../assets/img/moonstone_left.png" alt="" />
+                <img src="../../../assets/img/granite_smile.png" alt="" />
+                <img src="../../../assets/img/basalt_left.png" alt="" />
+                <img
+                  src="../../../assets/img/rockie_left.png"
+                  alt=""
+                  class="intro-rockie"
+                />
+                <img src="../../../assets/img/marble_smile.png" alt="" />
+                <img src="../../../assets/img/gneiss_right.png" alt="" />
+                <img src="../../../assets/img/topaz_sleepy.png" alt="" />
+              </div>
+            </div>
+            <!-- 조약돌: ground보다 앞(DOM상 위)에 두어 땅 뒤에서 솟아오르게 -->
+            <img
+              class="pebble"
+              id="onboarding-pebble"
+              src="../../../assets/gif/level0/rockie_left.gif"
+              alt="조약돌"
+            />
+            <div class="ground"></div>
+            <div class="impact-mark"></div>
+            <div class="crack crack-a"></div>
+            <div class="crack crack-b"></div>
+            <div class="meteor" id="onboarding-meteor">
+              <span class="m-crack c1"></span>
+              <span class="m-crack c2"></span>
+            </div>
+            <div class="shard shard-left"></div>
+            <div class="shard shard-right"></div>
+            <div class="rattle-marks"></div>
+            <div class="impact-dust"></div>
+          </div>
+          <div class="onboarding-dialog">
+            <div class="onboarding-speaker" id="onboarding-speaker">
+              PROLOGUE
+            </div>
+            <div class="onboarding-text" id="onboarding-text"></div>
+            <div
+              class="onboarding-options hidden"
+              id="onboarding-options"
+            ></div>
+            <button id="onboarding-next" class="onboarding-next">
+              클릭하여 진행
+            </button>
+          </div>
+        </div>
+
         <!-- ############ MENU ############ -->
         <div id="menu-view" class="screen">
           <div class="menu-head">
@@ -172,7 +228,7 @@
           <section class="panel">
             <div class="panel-label">
               돌보기
-              <span class="panel-label-sub">· 하루 한 번, 호감도 +2</span>
+              <span class="panel-label-sub">· 하루 한 번, 호감도 +3</span>
             </div>
             <div class="care-grid">
               <button id="clean-btn" class="care-btn">닦아주기</button>

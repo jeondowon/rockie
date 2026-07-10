@@ -20,6 +20,11 @@ contextBridge.exposeInMainWorld("trayAPI", {
     ipcRenderer.on("pet:display-sprite", (_event, data) => callback(data));
   },
   getEvolutionState: () => ipcRenderer.invoke("evolution:get-state"),
+  getOnboardingState: () => ipcRenderer.invoke("onboarding:get-state"),
+  setOnboardingStep: (step) => ipcRenderer.invoke("onboarding:set-step", step),
+  answerOnboarding: (payload) =>
+    ipcRenderer.invoke("onboarding:answer", payload),
+  completeOnboarding: () => ipcRenderer.invoke("onboarding:complete"),
   setName: (target, value) =>
     ipcRenderer.invoke("evolution:set-name", { target, value }),
   cleanPet: () => ipcRenderer.invoke("evolution:clean"),

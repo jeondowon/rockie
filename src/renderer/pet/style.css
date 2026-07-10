@@ -13,6 +13,13 @@ body {
   overflow: hidden;
 }
 
+body.onboarding-locked .character,
+body.onboarding-locked .heart,
+body.onboarding-locked .bubble,
+body.onboarding-locked .qcard {
+  display: none !important;
+}
+
 .character {
   position: absolute;
   width: 128px;
@@ -141,6 +148,14 @@ body {
   border-bottom: 2px dashed #cbc4b1;
 }
 
+.qcard .q-situation {
+  padding: 10px 12px 12px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: #1b1b16;
+  border-bottom: 2px dashed #cbc4b1;
+}
+
 .qcard .q-options {
   display: flex;
   flex-direction: column;
@@ -180,6 +195,22 @@ body {
 
 .qcard .q-opt:hover::before {
   visibility: visible;
+}
+
+.qcard .q-continue {
+  width: 100%;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 10px;
+  line-height: 1.4;
+  color: #6a4d00;
+  background: #c9a12e;
+  border: none;
+  cursor: pointer;
+}
+
+.qcard .q-continue:hover {
+  background: #d9b13a;
 }
 
 .qcard.evolution-card {

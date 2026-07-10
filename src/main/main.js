@@ -423,6 +423,34 @@ function startDailyResetTimer() {
 ipcMain.handle("evolution:get-state", () => evolution.getState(store.get()));
 ipcMain.handle("app:is-dev", () => isDev);
 
+ipcMain.handle("onboarding:get-state", () =>
+  evolution.getOnboardingState(store.get()),
+);
+ipcMain.handle("onboarding:set-step", (_event, step) => {
+  const data = store.get();
+  const state = evolution.setOnboardingStep(data, step);
+  store.save();
+  return state;
+});
+ipcMain.handle("onboarding:answer", (_event, payload) => {
+  const data = store.get();
+  const state = evolution.answerOnboarding(data, payload);
+  store.save();
+  refreshTrayIcon();
+  return state;
+});
+ipcMain.handle("onboarding:complete", () => {
+  const data = store.get();
+  const before = data.onboarding.completed;
+  const state = evolution.completeOnboarding(data);
+  store.save();
+  refreshTrayIcon();
+  if (!before && data.onboarding.completed && mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("onboarding:completed");
+  }
+  return state;
+});
+
 // 단계가 올랐을 때 펫 오버레이가 해당 GIF로 전환하도록 진화 정보를 보낸다.
 function notifyEvolved(data) {
   if (!mainWindow || mainWindow.isDestroyed()) return;

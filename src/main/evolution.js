@@ -1,12 +1,13 @@
 // 진화 판정 엔진 (update.md 기준 v2).
-// - 0→1: 본 질문 12개 → 돌 종류 확정 (동점 시 타이브레이커)
-// - 1→2: E/I 질문 12개 → 변성체 변형(extrovert/introvert) 확정 (동점 시 타이브레이커)
+// - 0→1: 본 질문 → 돌 종류 확정 (동점 시 타이브레이커)
+// - 1→2: E/I 질문 → 변성체 변형(extrovert/introvert) 확정 (동점 시 타이브레이커)
 // - 2→3: 호감도 90 도달 → 보석 확정 (질문 없음, 호감도 트리거)
 // 질문은 매일 오전 8시에 최대 2개를 뽑아 todaysQuestions에 채우고, 사용자가
 // 트레이 버튼으로 능동적으로 답한다(정기 알림/강제 노출 없음).
 // 순수 데이터 + 계산만 담당하고, 저장은 호출부(main)에서 store로 처리한다.
 
 const {
+  ONBOARDING_QUESTIONS,
   MAIN_QUESTIONS,
   TIEBREAKERS,
   EI_QUESTIONS,
@@ -14,12 +15,11 @@ const {
 } = require("./questions");
 
 // ---------- 상수 (update.md 2장) ----------
-const MAIN_QUESTION_COUNT = MAIN_QUESTIONS.length; // 0→1 본 질문 총 개수 (12)
-const EI_QUESTION_COUNT = EI_QUESTIONS.length; // 1→2 E/I 질문 총 개수 (12)
-const MAX_DAILY_QUESTIONS = 2; // 하루 최대 답변 가능 수
+const MAIN_QUESTION_COUNT = MAIN_QUESTIONS.length; // 0→1 본 질문 총 개수
+const EI_QUESTION_COUNT = EI_QUESTIONS.length; // 1→2 E/I 질문 총 개수
 const AFFINITY_TARGET = 90; // 2→3 진화 필요 호감도
-const CLEAN_POINTS = 2; // 닦아주기 획득 점수
-const FEED_POINTS = 2; // 밥주기 획득 점수
+const CLEAN_POINTS = 3; // 닦아주기 획득 점수
+const FEED_POINTS = 3; // 밥주기 획득 점수
 const AFFINITY_MAX = 100; // 호감도 상한
 
 // 돌 종류: 영문 key는 pet.stoneType/GIF 접두어, ko는 traitScores 키.
@@ -36,9 +36,13 @@ const TB_BY_ID = Object.fromEntries(TIEBREAKERS.map((t) => [t.id, t]));
 
 // 답변 히스토리 복원용: id → 질문(모든 종류).
 const QUESTION_BY_ID = Object.fromEntries(
-  [...MAIN_QUESTIONS, ...TIEBREAKERS, ...EI_QUESTIONS, EI_TIEBREAKER].map(
-    (q) => [q.id, q],
-  ),
+  [
+    ...ONBOARDING_QUESTIONS,
+    ...MAIN_QUESTIONS,
+    ...TIEBREAKERS,
+    ...EI_QUESTIONS,
+    EI_TIEBREAKER,
+  ].map((q) => [q.id, q]),
 );
 
 // 옵션이 담고 있는 판정 값(돌 종류 또는 E/I 축)을 반환. 저장·판정·복원에서 공통 사용.
@@ -46,21 +50,13 @@ function optValue(o) {
   return o.stone ?? o.axis;
 }
 
-// 돌 종류별 성향 태그.
-const STONE_TRAIT = {
-  granite: {
-    tags: ["원칙주의", "안정 지향", "책임감"],
-  },
-  basalt: {
-    tags: ["즉흥적", "행동 지향", "현재 중심"],
-  },
-  marble: {
-    tags: ["이상주의", "공감", "감성 중심"],
-  },
-  gneiss: {
-    tags: ["논리", "전략", "구조적 사고"],
-  },
-};
+const TAG_CATEGORY_ORDER = [
+  ...new Set(
+    [...ONBOARDING_QUESTIONS, ...MAIN_QUESTIONS, ...EI_QUESTIONS].map(
+      (q) => q.category,
+    ),
+  ),
+];
 
 // 저장된 답변 기록을 트레이 히스토리용으로 복원 (최근 답변이 먼저).
 function buildHistory(data) {
@@ -79,6 +75,29 @@ function buildHistory(data) {
     .reverse();
 }
 
+function categoryTraitTags(data) {
+  const scoresByCategory = new Map();
+  for (const answer of data.questions.answeredQuestions) {
+    const q = QUESTION_BY_ID[answer.questionId];
+    if (!q || !q.category || q.category === "타이브레이커") continue;
+    const opt = q.options.find((o) => optValue(o) === answer.selectedOption);
+    if (!opt?.traitTag) continue;
+
+    if (!scoresByCategory.has(q.category)) scoresByCategory.set(q.category, {});
+    const scores = scoresByCategory.get(q.category);
+    scores[opt.traitTag] = (scores[opt.traitTag] || 0) + 1;
+  }
+
+  return TAG_CATEGORY_ORDER.map((category) => {
+    const scores = scoresByCategory.get(category);
+    if (!scores) return null;
+    const [tag] = Object.entries(scores).sort(
+      (a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ko"),
+    )[0];
+    return tag;
+  }).filter(Boolean);
+}
+
 // ---------- 질문 종류 판별 (id 접두어 기준) ----------
 function isMainTiebreaker(id) {
   return id.startsWith("tb_");
@@ -88,6 +107,19 @@ function isEiTiebreaker(id) {
 }
 function isEiQuestion(id) {
   return id.startsWith("ei_");
+}
+function isOnboardingQuestion(id) {
+  return id.startsWith("onboarding_");
+}
+
+function onboardingCompleted(data) {
+  return !!data.onboarding?.completed;
+}
+
+function maxDailyQuestions(stage) {
+  if (stage === 0) return 3;
+  if (stage === 1) return 2;
+  return 0;
 }
 
 // ---------- 질문 풀에서 다음 질문 뽑기 (update.md 8.2) ----------
@@ -106,6 +138,11 @@ function pickUnanswered(data, pool, count) {
   return picked;
 }
 
+function validTodayQuestions(data) {
+  if (!onboardingCompleted(data)) return [];
+  return data.questions.todaysQuestions.filter((id) => QUESTION_BY_ID[id]);
+}
+
 function pickNextQuestions(data, count) {
   if (count <= 0) return [];
   if (data.pet.evolutionStage === 0)
@@ -119,11 +156,21 @@ function pickNextQuestions(data, count) {
 // 어제 안 답한 질문은 유지하고, 부족분(2 - 남은 개수)만 새로 채운다.
 // 반환: { showBanner } — 갱신 후 답할 질문이 있으면 배너 알림 대상.
 function onDailyReset(data, nowIso) {
+  if (!onboardingCompleted(data)) {
+    data.questions.todaysQuestions = [];
+    data.affinity.dailyCleanDone = false;
+    data.affinity.dailyFeedDone = false;
+    data.notifications.hasUnreadBadge = false;
+    data.questions.dailyResetAt = nowIso;
+    return { showBanner: false };
+  }
   if (data.pet.evolutionStage >= 2) {
     data.questions.todaysQuestions = [];
+  } else {
+    data.questions.todaysQuestions = validTodayQuestions(data);
   }
   const remaining = data.questions.todaysQuestions;
-  const need = MAX_DAILY_QUESTIONS - remaining.length;
+  const need = maxDailyQuestions(data.pet.evolutionStage) - remaining.length;
   if (need > 0) {
     data.questions.todaysQuestions = remaining.concat(
       pickNextQuestions(data, need),
@@ -132,9 +179,9 @@ function onDailyReset(data, nowIso) {
   data.affinity.dailyCleanDone = false;
   data.affinity.dailyFeedDone = false;
   data.notifications.hasUnreadBadge =
-    data.pet.evolutionStage < 2 && data.questions.todaysQuestions.length > 0;
+    data.pet.evolutionStage < 2 && validTodayQuestions(data).length > 0;
   data.questions.dailyResetAt = nowIso;
-  return { showBanner: data.questions.todaysQuestions.length > 0 };
+  return { showBanner: validTodayQuestions(data).length > 0 };
 }
 
 // ---------- 판정 보조 (본 질문 동점 처리) ----------
@@ -217,7 +264,9 @@ function confirmStage1(data, nowIso, stone) {
   const n = data.questions.todaysQuestions.length;
   if (n > 0) {
     data.questions.todaysQuestions = [];
-    data.questions.todaysQuestions.push(...pickNextQuestions(data, n));
+    data.questions.todaysQuestions.push(
+      ...pickNextQuestions(data, Math.min(n, maxDailyQuestions(1))),
+    );
   }
 }
 
@@ -256,6 +305,7 @@ function completePendingEvolution(data) {
 function tryEvaluate(data, nowIso) {
   if (
     data.pet.evolutionStage === 0 &&
+    onboardingCompleted(data) &&
     data.questions.mainQuestionProgress >= MAIN_QUESTION_COUNT
   ) {
     const tb = nextMainTiebreaker(data);
@@ -319,7 +369,8 @@ function feedPet(data) {
 // { evolved, state } 반환. evolved는 이번 답변으로 올라간 단계 번호(없으면 null).
 function answer(data, { questionId, value }) {
   const q = QUESTION_BY_ID[questionId];
-  if (!q) return { evolved: null, state: getState(data) };
+  if (!q || isOnboardingQuestion(questionId))
+    return { evolved: null, state: getState(data) };
   const now = new Date().toISOString();
 
   // 1. 점수 반영 + 진행 수 증가 (종류별 트랙 분리)
@@ -368,6 +419,78 @@ function answer(data, { questionId, value }) {
   return { evolved, state: getState(data) };
 }
 
+function fillTodayAfterOnboarding(data) {
+  const remaining = validTodayQuestions(data);
+  const need = maxDailyQuestions(data.pet.evolutionStage) - remaining.length;
+  if (need > 0) {
+    data.questions.todaysQuestions = remaining.concat(
+      pickNextQuestions(data, need),
+    );
+  }
+  data.notifications.hasUnreadBadge = validTodayQuestions(data).length > 0;
+}
+
+function getOnboardingState(data) {
+  return {
+    completed: onboardingCompleted(data),
+    step: data.onboarding?.step || 0,
+    questions: ONBOARDING_QUESTIONS.map((q) => serialize(q.id)),
+  };
+}
+
+function setOnboardingStep(data, step) {
+  if (!onboardingCompleted(data)) {
+    data.onboarding.step = Math.max(data.onboarding.step || 0, step);
+  }
+  return getOnboardingState(data);
+}
+
+function answerOnboarding(data, { questionId, value, nextStep }) {
+  const q = QUESTION_BY_ID[questionId];
+  if (!q || !isOnboardingQuestion(questionId) || onboardingCompleted(data)) {
+    return getOnboardingState(data);
+  }
+
+  const alreadyAnswered = data.questions.answeredQuestions.some(
+    (a) => a.questionId === questionId,
+  );
+  if (!alreadyAnswered) {
+    const now = new Date().toISOString();
+    data.traits.traitScores[KO_BY_KEY[value]] += 1;
+    data.questions.answeredQuestions.push({
+      questionId,
+      category: q.category ?? null,
+      selectedOption: value,
+      answeredAt: now,
+    });
+  }
+
+  const answeredCount = ONBOARDING_QUESTIONS.filter((oq) =>
+    data.questions.answeredQuestions.some((a) => a.questionId === oq.id),
+  ).length;
+  data.onboarding.step =
+    nextStep != null
+      ? nextStep
+      : Math.max(data.onboarding.step || 0, answeredCount);
+
+  return getOnboardingState(data);
+}
+
+function completeOnboarding(data) {
+  if (onboardingCompleted(data)) return getOnboardingState(data);
+  const answeredCount = ONBOARDING_QUESTIONS.filter((oq) =>
+    data.questions.answeredQuestions.some((a) => a.questionId === oq.id),
+  ).length;
+  if (answeredCount < ONBOARDING_QUESTIONS.length) {
+    return getOnboardingState(data);
+  }
+  data.onboarding.completed = true;
+  data.onboarding.step = 999;
+  data.onboarding.completedAt = new Date().toISOString();
+  fillTodayAfterOnboarding(data);
+  return getOnboardingState(data);
+}
+
 // ---------- 상태 직렬화 ----------
 function serialize(id) {
   if (!id) return null;
@@ -378,10 +501,14 @@ function serialize(id) {
       ? "tiebreaker"
       : isEiQuestion(id)
         ? "ei"
-        : "main";
+        : isOnboardingQuestion(id)
+          ? "onboarding"
+          : "main";
   return {
     id,
     kind,
+    category: q.category ?? null,
+    situation: q.situation ?? null,
     text: q.text,
     options: q.options.map((o) => ({ value: optValue(o), label: o.label })),
   };
@@ -389,10 +516,13 @@ function serialize(id) {
 
 // "새로운 질문에 답하기" 버튼 상태 (update.md 9.1)
 function answerButtonState(data) {
+  if (!onboardingCompleted(data)) {
+    return { enabled: false, note: "프롤로그를 먼저 완료해 주세요." };
+  }
   if (data.pet.evolutionStage >= 2) {
     return { enabled: false, note: "질문을 모두 마쳤어요." };
   }
-  if (data.questions.todaysQuestions.length > 0) {
+  if (validTodayQuestions(data).length > 0) {
     return { enabled: true, note: null };
   }
   return {
@@ -420,9 +550,10 @@ function getState(data) {
     variant: data.pet.evolutionVariant,
     progress,
     total,
-    question: serialize(data.questions.todaysQuestions[0]),
+    question: serialize(validTodayQuestions(data)[0]),
     answerButton: answerButtonState(data),
-    hasBadge: data.notifications.hasUnreadBadge,
+    hasBadge:
+      data.pet.evolutionStage < 2 && validTodayQuestions(data).length > 0,
     userName: data.user.userName,
     petName: data.pet.petName,
     affinityPoints: data.affinity.affinityPoints,
@@ -430,7 +561,8 @@ function getState(data) {
     dailyFeedDone: data.affinity.dailyFeedDone,
     pendingEvolution: data.pet.pendingEvolution,
     activeSkinStage: data.pet.activeSkinStage ?? null,
-    tags: stoneType ? STONE_TRAIT[stoneType].tags : [],
+    onboarding: getOnboardingState(data),
+    tags: categoryTraitTags(data),
     history: buildHistory(data),
   };
 }
@@ -446,6 +578,10 @@ function setActiveSkin(data, stage) {
 
 module.exports = {
   getState,
+  getOnboardingState,
+  setOnboardingStep,
+  answerOnboarding,
+  completeOnboarding,
   setActiveSkin,
   answer,
   cleanPet,

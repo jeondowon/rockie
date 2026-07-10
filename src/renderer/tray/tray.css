@@ -254,6 +254,898 @@ body {
   visibility: visible;
 }
 
+/* ---------- ONBOARDING ---------- */
+#onboarding-view {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #151711;
+}
+
+/* 씬(밤하늘+풀밭). 요소 겹침 순서는 DOM 순서로 결정:
+   star-field < intro-panel/pebble < ground < impact-mark/crack < meteor < shard < rattle/dust */
+.onboarding-scene {
+  position: relative;
+  height: 180px;
+  overflow: hidden;
+  background: linear-gradient(
+    #141a24 0%,
+    #1e2630 48%,
+    #2c3438 73%,
+    #3d4a3a 100%
+  );
+  border-bottom: 3px solid #1b1b16;
+}
+
+/* 질문 선택지가 보이는 단계에서는 씬을 낮춰 질문 카드가 스크롤 없이 들어가게.
+   씬 요소들이 전부 bottom 기준이라 높이가 줄어도 지면 구도가 유지된다 */
+#onboarding-view:has(.onboarding-options:not(.hidden)) .onboarding-scene {
+  height: 150px;
+}
+
+/* 흰색 픽셀 별 (2px 잔별 + 3px 큰별, 서로 다른 박자로 깜빡임) */
+.star-field {
+  position: absolute;
+  inset: 0;
+}
+
+.star-field::before,
+.star-field::after {
+  content: "";
+  position: absolute;
+  background: #f2ede1;
+  animation: star-twinkle 2.8s steps(1, end) infinite;
+}
+
+.star-field::before {
+  left: 10px;
+  top: 12px;
+  width: 2px;
+  height: 2px;
+  box-shadow:
+    34px 26px 0 #f2ede1,
+    68px 8px 0 rgba(242, 237, 225, 0.6),
+    96px 40px 0 #f2ede1,
+    128px 14px 0 rgba(242, 237, 225, 0.6),
+    158px 52px 0 #f2ede1,
+    188px 6px 0 #f2ede1,
+    214px 30px 0 rgba(242, 237, 225, 0.6),
+    246px 16px 0 #f2ede1,
+    276px 44px 0 rgba(242, 237, 225, 0.6),
+    306px 10px 0 #f2ede1,
+    52px 58px 0 rgba(242, 237, 225, 0.6),
+    140px 72px 0 #f2ede1,
+    232px 64px 0 rgba(242, 237, 225, 0.6),
+    300px 70px 0 #f2ede1;
+}
+
+.star-field::after {
+  left: 26px;
+  top: 34px;
+  width: 3px;
+  height: 3px;
+  box-shadow:
+    74px -16px 0 #f2ede1,
+    150px 24px 0 #f2ede1,
+    222px -8px 0 #f2ede1,
+    288px 30px 0 #f2ede1;
+  animation-delay: 1.4s;
+}
+
+@keyframes star-twinkle {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* ----- 풀밭 바닥 (흙 없이 잔디만) ----- */
+.ground {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 48px;
+  border-top: 3px solid #1b1b16;
+  background:
+    /* 밝은 풀 픽셀 */
+    repeating-linear-gradient(90deg, #91a45c 0 5px, transparent 5px 27px) 6px
+      6px / 100% 5px no-repeat,
+    /* 어두운 풀 결 1 */
+      repeating-linear-gradient(
+        90deg,
+        transparent 0 23px,
+        rgba(27, 27, 22, 0.14) 23px 30px
+      )
+      0 20px / 100% 6px no-repeat,
+    /* 어두운 풀 결 2 */
+      repeating-linear-gradient(
+        90deg,
+        rgba(27, 27, 22, 0.12) 0 9px,
+        transparent 9px 34px
+      )
+      12px 34px / 100% 6px no-repeat,
+    /* 잔디 바탕 (아래로 갈수록 짙게) */
+      linear-gradient(#5f7b42 0%, #47623b 70%, #3c5533 100%);
+}
+
+/* 땅 위로 삐죽 솟은 풀 포기 */
+.ground::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -8px;
+  height: 8px;
+  background:
+    repeating-linear-gradient(
+        90deg,
+        transparent 0 30px,
+        #5f7b42 30px 34px,
+        transparent 34px 67px
+      )
+      0 0 / 100% 8px no-repeat,
+    repeating-linear-gradient(
+        90deg,
+        transparent 0 51px,
+        #6d8a4a 51px 54px,
+        transparent 54px 89px
+      )
+      0 3px / 100% 5px no-repeat;
+}
+
+/* 잔디 위 작은 돌 조각·그림자 픽셀 */
+.ground::after {
+  content: "";
+  position: absolute;
+  left: 24px;
+  top: 6px;
+  width: 5px;
+  height: 5px;
+  background: #8d8a7a;
+  box-shadow:
+    5px 0 0 #6a6452,
+    246px 3px 0 #8d8a7a,
+    251px 3px 0 #6a6452,
+    120px 18px 0 rgba(27, 27, 22, 0.22),
+    60px 30px 0 rgba(27, 27, 22, 0.18),
+    200px 36px 0 rgba(27, 27, 22, 0.2);
+}
+
+/* ----- 첫 화면: 타이틀 + 돌들 ----- */
+.intro-panel {
+  position: absolute;
+  inset: 0;
+  display: none;
+}
+
+.onboarding-scene.scene-intro .intro-panel {
+  display: block;
+}
+
+.intro-title {
+  position: relative;
+  margin-top: 18px;
+  text-align: center;
+  font-family: "Galmuri14", monospace;
+  font-size: 34px;
+  letter-spacing: 6px;
+  text-indent: 6px; /* letter-spacing이 마지막 글자 뒤에도 붙어 중심이 왼쪽으로 쏠리는 것 보정 */
+  color: #f2ede1;
+  text-shadow:
+    3px 3px 0 #a8432b,
+    6px 6px 0 rgba(27, 27, 22, 0.65);
+}
+
+/* 타이틀 옆 십자 반짝이 픽셀 */
+.intro-title::before,
+.intro-title::after {
+  content: "";
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  background: #c9a12e;
+  box-shadow:
+    0 -5px 0 #c9a12e,
+    0 5px 0 #c9a12e,
+    -5px 0 0 #c9a12e,
+    5px 0 0 #c9a12e;
+  animation: star-twinkle 1.9s steps(1, end) infinite;
+}
+
+.intro-title::before {
+  left: 36px;
+  top: -12px;
+}
+
+.intro-title::after {
+  right: 40px;
+  top: 30px;
+  animation-delay: 0.9s;
+}
+
+.intro-stones {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 40px; /* ground(48px) 윗선에 발이 살짝 걸치게 */
+  height: 64px;
+}
+
+.intro-stones img {
+  position: absolute;
+  bottom: 0;
+  image-rendering: pixelated;
+  animation: stone-bob 1.6s steps(1, end) infinite;
+}
+
+.intro-stones img:nth-child(1) {
+  left: 5%;
+  width: 30px;
+  animation-delay: 0.2s;
+}
+
+.intro-stones img:nth-child(2) {
+  left: 17%;
+  width: 40px;
+  animation-delay: 0.5s;
+}
+
+.intro-stones img:nth-child(3) {
+  left: 33%;
+  width: 36px;
+  animation-delay: 0.9s;
+}
+
+.intro-stones img.intro-rockie {
+  left: 47%;
+  width: 54px;
+  animation: rockie-hop 2.2s steps(2, end) infinite;
+}
+
+.intro-stones img:nth-child(5) {
+  left: 66%;
+  width: 40px;
+  animation-delay: 0.35s;
+}
+
+.intro-stones img:nth-child(6) {
+  left: 80%;
+  width: 36px;
+  animation-delay: 0.7s;
+}
+
+.intro-stones img:nth-child(7) {
+  left: 91%;
+  width: 28px;
+  animation: none; /* 자는 돌은 가만히 */
+}
+
+@keyframes stone-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes rockie-hop {
+  0%,
+  40%,
+  100% {
+    transform: translateY(0);
+  }
+  10% {
+    transform: translateY(-6px);
+  }
+  25% {
+    transform: translateY(-2px);
+  }
+}
+
+/* ----- 운석 ----- */
+.meteor {
+  position: absolute;
+  left: 156px;
+  bottom: 30px; /* 착지점: 잔디(높이 48px)에 아랫부분이 파묻힌 위치 */
+  width: 48px;
+  height: 44px;
+  background: #6e6553;
+  border: 3px solid #1b1b16;
+  border-radius: 14px 18px 10px 12px;
+  box-shadow:
+    inset -7px -7px 0 rgba(27, 27, 22, 0.28),
+    inset 5px 5px 0 rgba(242, 237, 225, 0.14);
+  opacity: 0;
+}
+
+/* 낙하 중 불꽃 꼬리 (진행 반대 방향 = 오른쪽 위) */
+.meteor::before {
+  content: "";
+  position: absolute;
+  display: none;
+  left: 17px;
+  top: -64px;
+  width: 14px;
+  height: 86px;
+  transform: rotate(25deg);
+  transform-origin: 50% 100%;
+  background: linear-gradient(
+    180deg,
+    rgba(168, 67, 43, 0) 0 16%,
+    rgba(168, 67, 43, 0.85) 16% 42%,
+    #c9a12e 42% 72%,
+    #f2ede1 72% 100%
+  );
+  clip-path: polygon(
+    36% 0,
+    64% 0,
+    64% 22%,
+    82% 22%,
+    82% 48%,
+    100% 48%,
+    100% 100%,
+    0 100%,
+    0 48%,
+    18% 48%,
+    18% 22%,
+    36% 22%
+  );
+}
+
+/* 표면 크레이터 픽셀 */
+.meteor::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  top: 8px;
+  width: 5px;
+  height: 5px;
+  background: rgba(27, 27, 22, 0.35);
+  box-shadow:
+    16px 6px 0 rgba(27, 27, 22, 0.3),
+    6px 18px 0 rgba(27, 27, 22, 0.28),
+    22px 20px 0 rgba(27, 27, 22, 0.22);
+}
+
+/* 낙하 (1회성): 오른쪽 위 → 대각선 착지 + 착지 순간 화면 흔들림/먼지 */
+.onboarding-scene.scene-fall {
+  animation: scene-shake 0.3s steps(1, end) 0.8s;
+}
+
+.onboarding-scene.scene-fall .meteor {
+  opacity: 1;
+  animation: meteor-fall 0.8s steps(14, end) both;
+}
+
+.onboarding-scene.scene-fall .meteor::before {
+  display: block;
+  animation: tail-fade 0.8s steps(6, end) both;
+}
+
+@keyframes meteor-fall {
+  from {
+    left: 266px;
+    bottom: 270px;
+  }
+  to {
+    left: 156px;
+    bottom: 30px;
+  }
+}
+
+@keyframes tail-fade {
+  0%,
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes scene-shake {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  20% {
+    transform: translate(-3px, 2px);
+  }
+  40% {
+    transform: translate(3px, -2px);
+  }
+  60% {
+    transform: translate(-2px, 1px);
+  }
+  80% {
+    transform: translate(1px, -1px);
+  }
+}
+
+/* 충돌 먼지 파편 (1회성, 착지 시점에 맞춰 지연) */
+.impact-dust {
+  position: absolute;
+  left: 178px;
+  bottom: 46px;
+  width: 5px;
+  height: 5px;
+  opacity: 0;
+}
+
+.onboarding-scene.scene-fall .impact-dust {
+  animation: dust-burst 0.55s steps(4, end) 0.8s both;
+}
+
+@keyframes dust-burst {
+  0% {
+    opacity: 1;
+    box-shadow:
+      -10px -6px 0 #cbc4b1,
+      10px -8px 0 #a89f8a,
+      -6px -14px 0 #c9a12e,
+      8px -16px 0 #cbc4b1,
+      0 -10px 0 #a89f8a;
+  }
+  100% {
+    opacity: 0;
+    box-shadow:
+      -36px -22px 0 #cbc4b1,
+      36px -26px 0 #a89f8a,
+      -20px -42px 0 #c9a12e,
+      26px -46px 0 #cbc4b1,
+      2px -38px 0 #a89f8a;
+  }
+}
+
+/* 충돌 흔적: 눌린 잔디·돌 부스러기 (착지 이후 모든 장면에서 유지) */
+.impact-mark {
+  position: absolute;
+  left: 150px;
+  bottom: 44px;
+  width: 5px;
+  height: 5px;
+  background: #3a4a2c;
+  opacity: 0;
+  box-shadow:
+    -12px 6px 0 #3a4a2c,
+    -6px 11px 0 #2f4026,
+    -17px 2px 0 #8d8a7a,
+    55px 4px 0 #3a4a2c,
+    63px 9px 0 #2f4026,
+    68px 1px 0 #6a6452,
+    24px 15px 0 #2f4026,
+    40px 17px 0 #3a4a2c;
+}
+
+.onboarding-scene.scene-fall .impact-mark {
+  animation: appear-hold 0.05s steps(1, end) 0.82s both;
+}
+
+.onboarding-scene.scene-landed .impact-mark,
+.onboarding-scene.scene-sound .impact-mark,
+.onboarding-scene.scene-crack .impact-mark,
+.onboarding-scene.scene-pebble .impact-mark {
+  opacity: 1;
+}
+
+@keyframes appear-hold {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* 착지 이후 정지 상태 */
+.onboarding-scene.scene-landed .meteor,
+.onboarding-scene.scene-sound .meteor,
+.onboarding-scene.scene-crack .meteor {
+  opacity: 1;
+}
+
+/* ----- 운석 소리 장면: 달그락 흔들림 + 진동선 ----- */
+.onboarding-scene.scene-sound .meteor {
+  animation: meteor-rattle 0.4s steps(1, end) infinite;
+}
+
+@keyframes meteor-rattle {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  30% {
+    transform: translate(-2px, 0);
+  }
+  65% {
+    transform: translate(2px, -1px);
+  }
+}
+
+.rattle-marks {
+  position: absolute;
+  left: 146px;
+  bottom: 60px;
+  width: 68px;
+  height: 40px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.rattle-marks::before,
+.rattle-marks::after {
+  content: "";
+  position: absolute;
+  top: 12px;
+  width: 3px;
+  height: 3px;
+  background: #f2ede1;
+}
+
+.rattle-marks::before {
+  left: -10px;
+  box-shadow:
+    -4px -6px 0 #f2ede1,
+    -8px -12px 0 rgba(242, 237, 225, 0.55);
+}
+
+.rattle-marks::after {
+  right: -10px;
+  box-shadow:
+    4px -6px 0 #f2ede1,
+    8px -12px 0 rgba(242, 237, 225, 0.55);
+}
+
+.onboarding-scene.scene-sound .rattle-marks {
+  animation: rattle-blink 0.5s steps(1, end) infinite;
+}
+
+@keyframes rattle-blink {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ----- 균열 장면: 운석 표면 균열 + 바닥 균열 ----- */
+.m-crack {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  background: #1b1b16;
+  opacity: 0;
+}
+
+/* 위 중앙 → 왼쪽 아래로 내려가는 본 균열 */
+.m-crack.c1 {
+  left: 22px;
+  top: 2px;
+  box-shadow:
+    -3px 3px 0 #1b1b16,
+    -3px 6px 0 #1b1b16,
+    -6px 9px 0 #1b1b16,
+    -6px 12px 0 #1b1b16,
+    -3px 15px 0 #1b1b16,
+    -3px 18px 0 #1b1b16,
+    -6px 21px 0 #1b1b16,
+    -6px 24px 0 #1b1b16,
+    -9px 27px 0 #1b1b16;
+}
+
+/* 오른쪽 아래로 갈라져 나가는 곁가지 */
+.m-crack.c2 {
+  left: 25px;
+  top: 14px;
+  box-shadow:
+    3px 3px 0 #1b1b16,
+    6px 6px 0 #1b1b16,
+    6px 9px 0 #1b1b16,
+    9px 12px 0 #1b1b16;
+}
+
+.onboarding-scene.scene-crack .m-crack.c1 {
+  animation: appear-hold 0.3s steps(2, end) both;
+}
+
+.onboarding-scene.scene-crack .m-crack.c2 {
+  animation: appear-hold 0.3s steps(2, end) 0.5s both;
+}
+
+/* 쩌적거릴 때 간헐적으로 움찔 */
+.onboarding-scene.scene-crack .meteor {
+  animation: meteor-twitch 1.6s steps(1, end) infinite;
+}
+
+@keyframes meteor-twitch {
+  0%,
+  86%,
+  100% {
+    transform: translate(0, 0);
+  }
+  89% {
+    transform: translate(-2px, 0) rotate(-2deg);
+  }
+  94% {
+    transform: translate(2px, 0);
+  }
+}
+
+/* 바닥 균열: 운석 주변 잔디로 뻗는 픽셀 지그재그 */
+.crack {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: #26301f;
+  opacity: 0;
+}
+
+.crack-a {
+  left: 148px;
+  bottom: 38px;
+  box-shadow:
+    -4px 2px 0 #26301f,
+    -8px 2px 0 #26301f,
+    -12px 4px 0 #26301f,
+    -16px 4px 0 rgba(38, 48, 31, 0.7),
+    -22px 6px 0 rgba(38, 48, 31, 0.55);
+}
+
+.crack-b {
+  left: 210px;
+  bottom: 36px;
+  box-shadow:
+    4px 2px 0 #26301f,
+    8px 2px 0 #26301f,
+    12px 4px 0 #26301f,
+    16px 6px 0 rgba(38, 48, 31, 0.7),
+    22px 6px 0 rgba(38, 48, 31, 0.55);
+}
+
+.onboarding-scene.scene-crack .crack {
+  animation: appear-hold 0.4s steps(3, end) 0.2s both;
+}
+
+.onboarding-scene.scene-pebble .crack {
+  opacity: 1;
+}
+
+/* ----- 조약돌 등장 장면 ----- */
+/* 운석이 갈라져 사라지고 */
+.onboarding-scene.scene-pebble .meteor {
+  animation: meteor-open 0.45s steps(3, end) both;
+}
+
+@keyframes meteor-open {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-4px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-2px) scale(1.06);
+  }
+}
+
+/* 껍데기 파편이 양옆으로 떨어져 남고 */
+.shard {
+  position: absolute;
+  width: 18px;
+  height: 14px;
+  background: #6e6553;
+  border: 2px solid #1b1b16;
+  box-shadow: inset -3px -3px 0 rgba(27, 27, 22, 0.28);
+  opacity: 0;
+}
+
+.shard-left {
+  left: 132px;
+  bottom: 42px;
+  border-radius: 6px 8px 3px 5px;
+}
+
+.shard-right {
+  left: 212px;
+  bottom: 40px;
+  border-radius: 8px 6px 4px 3px;
+}
+
+.onboarding-scene.scene-pebble .shard-left {
+  animation: shard-pop-l 0.5s steps(4, end) 0.1s both;
+}
+
+.onboarding-scene.scene-pebble .shard-right {
+  animation: shard-pop-r 0.5s steps(4, end) 0.1s both;
+}
+
+@keyframes shard-pop-l {
+  0% {
+    opacity: 1;
+    transform: translate(24px, -18px) rotate(20deg);
+  }
+  55% {
+    opacity: 1;
+    transform: translate(10px, -12px) rotate(8deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+}
+
+@keyframes shard-pop-r {
+  0% {
+    opacity: 1;
+    transform: translate(-24px, -18px) rotate(-20deg);
+  }
+  55% {
+    opacity: 1;
+    transform: translate(-10px, -12px) rotate(-8deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+}
+
+/* 조약돌(rockie_left.gif)이 땅 뒤에서 고개를 내밀며 올라온다 */
+.pebble {
+  position: absolute;
+  left: 150px;
+  bottom: 40px;
+  width: 60px;
+  image-rendering: pixelated;
+  opacity: 0;
+}
+
+.onboarding-scene.scene-pebble .pebble {
+  opacity: 1;
+  animation: pebble-rise 0.8s steps(7, end) 0.35s both;
+}
+
+@keyframes pebble-rise {
+  0% {
+    transform: translateY(46px);
+  }
+  55% {
+    transform: translateY(-6px);
+  }
+  75% {
+    transform: translateY(2px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+/* ----- 대화창 ----- */
+.onboarding-dialog {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 12px;
+  background: #f2ede1;
+}
+
+.onboarding-speaker {
+  width: fit-content;
+  margin-bottom: 8px;
+  padding: 4px 8px;
+  background: #1b1b16;
+  color: #f2ede1;
+  font-family: "Galmuri14", monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+
+.onboarding-text {
+  min-height: 44px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #1b1b16;
+  white-space: pre-line;
+  word-break: keep-all;
+}
+
+/* 첫 화면(scene-intro)에서는 타이틀이 이미 ROCKIE를 보여주므로
+   화자 칩을 숨기고 설명 문구를 가운데 정렬한다 */
+.onboarding-scene.scene-intro ~ .onboarding-dialog .onboarding-speaker {
+  display: none;
+}
+
+.onboarding-scene.scene-intro ~ .onboarding-dialog .onboarding-text {
+  text-align: center;
+  font-size: 13px;
+  padding-top: 18px;
+}
+
+/* 질문 단계: 질문 텍스트 + 선택지를 펫 창 질문 카드(qcard)와 같은
+   한 장의 카드로 묶고, 항목은 점선으로 구분한다 */
+.onboarding-dialog:has(.onboarding-options:not(.hidden)) .onboarding-text {
+  min-height: 0;
+  padding: 10px 12px;
+  border: 2px solid #1b1b16;
+  border-bottom: 2px dashed #cbc4b1;
+  background: #faf7ef;
+}
+
+.onboarding-options {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 10px;
+  border: 2px solid #1b1b16;
+  border-top: none;
+  background: #faf7ef;
+}
+
+.onboarding-option {
+  all: unset;
+  box-sizing: border-box;
+  position: relative;
+  cursor: pointer;
+  padding: 9px 12px 9px 26px;
+  border-top: 2px dashed #cbc4b1;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #1b1b16;
+  word-break: keep-all;
+}
+
+.onboarding-option:first-child {
+  border-top: none;
+}
+
+.onboarding-option::before {
+  content: "▶";
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  font-size: 8px;
+  visibility: hidden;
+}
+
+.onboarding-option:hover {
+  background: #e7e1d2;
+}
+
+.onboarding-option:hover::before {
+  visibility: visible;
+}
+
+/* 진행 버튼: 타이틀바와 같은 잉크 반전 톤 */
+.onboarding-next {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  display: block;
+  width: 100%;
+  margin-top: auto;
+  padding: 10px;
+  border: 2px solid #1b1b16;
+  background: #1b1b16;
+  color: #f2ede1;
+  text-align: center;
+  font-size: 11px;
+  word-break: keep-all;
+}
+
+.onboarding-next:hover {
+  background: #3a382e;
+}
+
 /* ---------- 공용 패널 ---------- */
 .panel {
   padding: 14px 16px;

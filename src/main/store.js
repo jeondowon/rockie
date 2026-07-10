@@ -12,6 +12,11 @@ function defaultData() {
   const now = new Date().toISOString();
   return {
     user: { userName: null, userNameSetAt: null, installedAt: now },
+    onboarding: {
+      completed: false,
+      step: 0,
+      completedAt: null,
+    },
     pet: {
       petName: null,
       petNameSetAt: null,
@@ -82,6 +87,21 @@ function load() {
             data[key][field] = defaults[key][field];
         }
       }
+    }
+    // 업데이트 전부터 이미 키우던 사용자는 온보딩 없이 기존 상태를 유지한다.
+    // reset()으로 새로 시작한 데이터는 answeredQuestions/progress가 비어 있으므로
+    // defaultData의 completed:false 상태로 온보딩을 보게 된다.
+    if (
+      !data.onboarding.completed &&
+      (data.pet.evolutionStage > 0 ||
+        data.questions.mainQuestionProgress > 0 ||
+        data.questions.eiQuestionProgress > 0 ||
+        data.questions.answeredQuestions.length > 0)
+    ) {
+      data.onboarding.completed = true;
+      data.onboarding.step = Math.max(data.onboarding.step || 0, 999);
+      data.onboarding.completedAt =
+        data.onboarding.completedAt || new Date().toISOString();
     }
   } catch (_err) {
     // 파일이 없거나 깨졌으면 기본값으로 새로 만든다
