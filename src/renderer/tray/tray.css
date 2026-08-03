@@ -239,9 +239,15 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+.mode-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
 .mode-banner-exit {
   all: unset;
-  margin-left: auto;
   cursor: pointer;
   font-family: "Galmuri11", monospace;
   font-size: 11px;
@@ -253,6 +259,25 @@ body {
 
 .mode-banner-exit:hover {
   background: #d9b13a;
+}
+
+.mode-banner-pause {
+  all: unset;
+  cursor: pointer;
+  font-family: "Galmuri11", monospace;
+  font-size: 11px;
+  color: #1b1b16;
+  background: #f2ede1;
+  padding: 5px 10px;
+  border: 2px solid #1b1b16;
+}
+
+.mode-banner-pause:hover {
+  background: #fff;
+}
+
+.mode-banner-pause.hidden {
+  display: none;
 }
 
 .menu-head {
@@ -2106,6 +2131,66 @@ body {
 .chip.on {
   background: #1b1b16;
   color: #f2ede1;
+}
+
+/* ---------- 쪽잠 시간 슬라이더 ---------- */
+/* 네이티브 range는 둥근 기본 모양이라, 트랙·손잡이를 각지게 새로 그린다. */
+/* 현재 값은 진행도·호감도 패널과 같은 .panel-row + .panel-value 자리에 붙는다. */
+#nap-minutes-value {
+  font-variant-numeric: tabular-nums; /* 자릿수가 바뀌어도 좌우로 흔들리지 않게 */
+}
+
+.nap-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nap-slider-cap {
+  font-size: 10px;
+  color: #6a6452;
+  font-variant-numeric: tabular-nums;
+}
+
+.nap-range {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  min-width: 0;
+  height: 14px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.nap-range::-webkit-slider-runnable-track {
+  height: 10px;
+  border: 2px solid #1b1b16;
+  background: #faf7ef;
+}
+
+/* 손잡이는 트랙(10px)보다 크므로 위로 끌어올려 세로 중앙을 맞춘다 */
+.nap-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 18px;
+  margin-top: -6px;
+  border: 2px solid #1b1b16;
+  background: #4f7a3f;
+}
+
+.nap-range:active::-webkit-slider-thumb {
+  background: #1b1b16;
+}
+
+.nap-range:focus-visible::-webkit-slider-thumb {
+  background: #1b1b16;
+}
+
+/* 키보드로 조작할 때 슬라이더를 감싸는 강조 테두리 (브라우저 기본 파란 링 대체) */
+.nap-range:focus-visible {
+  outline: 2px solid #c9a12e;
+  outline-offset: 2px;
 }
 
 .reset-btn {

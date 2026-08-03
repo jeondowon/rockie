@@ -63,6 +63,7 @@ function defaultData() {
       petPlacement: "follow", // "follow" | "bottom-left" | "bottom-right"
       petSize: "medium", // "small" | "medium" | "large"
       focusMinutes: 25,
+      napMinutes: 20,
     },
   };
 }

@@ -6,9 +6,9 @@ contextBridge.exposeInMainWorld("petAPI", {
   },
   // 모드용: 방해금지(배너 알림 억제)
   setDnd: (on) => ipcRenderer.send("pet:set-dnd", on),
-  setSystemDnd: (on) => ipcRenderer.send("focus:set-system-dnd", on),
   // 청소 모드: 네이티브 헬퍼로 키보드 전역 차단 진입/해제 + 상태 수신
-  cleanEnter: () => ipcRenderer.send("clean:enter"),
+  // maxMs: 이 시간이 지나면 메인이 잠금을 자동 해제한다(모드별 상한). 생략하면 기본값.
+  cleanEnter: (maxMs) => ipcRenderer.send("clean:enter", maxMs),
   cleanExit: () => ipcRenderer.send("clean:exit"),
   onCleanStatus: (callback) => {
     ipcRenderer.on("clean:status", (_event, status) => callback(status));
@@ -18,6 +18,9 @@ contextBridge.exposeInMainWorld("petAPI", {
   togglePet: () => ipcRenderer.send("pet:toggle-visibility"),
   onModeExitRequest: (callback) => {
     ipcRenderer.on("mode:exit-request", () => callback());
+  },
+  onModePauseRequest: (callback) => {
+    ipcRenderer.on("mode:pause-request", () => callback());
   },
   onActiveWindowInfo: (callback) => {
     ipcRenderer.on("active-window-info", (_event, data) => callback(data));

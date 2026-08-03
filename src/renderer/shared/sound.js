@@ -104,3 +104,26 @@ function playSound(name) {
     // 오디오 컨텍스트 생성 실패 등은 조용히 무시 (효과음은 부가 기능)
   }
 }
+
+// 쪽잠 알람: 효과음 설정과 무관하게 울린다(꺼져 있다고 안 깨우면 알람이 아니다).
+// 삐-삐-삐 3연타. 출력 장치는 지정하지 않아 시스템 기본 출력(=지금 듣는 곳)으로 나간다.
+function playAlarm() {
+  try {
+    const ctx = getAudioContext();
+    for (const t of [0, 0.22, 0.44]) {
+      blip(ctx, 880, t, 0.16, { type: "square", gain: 0.11 });
+      blip(ctx, 1318.51, t + 0.08, 0.14, { type: "square", gain: 0.09 });
+    }
+  } catch (_err) {
+    // 소리를 못 내도 화면 알람(오버레이)은 그대로 뜬다
+  }
+}
+
+// 알람이 울릴 시점엔 클릭이 없으므로, 모드 진입(클릭) 시 미리 컨텍스트를 깨워 둔다.
+function primeAudio() {
+  try {
+    getAudioContext();
+  } catch (_err) {
+    // 무시 — 알람 시점에 한 번 더 시도한다
+  }
+}

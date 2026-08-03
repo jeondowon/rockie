@@ -78,6 +78,41 @@ body.dragging .character {
   opacity: 0;
 }
 
+/* 집중 모드 컨트롤이 떠 있는 동안만 말풍선이 클릭을 받는다.
+   버튼 두 개가 한 줄에 들어가도록 이때만 최대 폭을 넓힌다. */
+.bubble.interactive {
+  pointer-events: auto;
+  max-width: 260px;
+}
+
+.focus-ctrl {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.focus-ctrl.hidden {
+  display: none;
+}
+
+.focus-btn {
+  all: unset;
+  cursor: pointer;
+  flex: 1;
+  white-space: nowrap; /* 없으면 flex-basis:0 탓에 "일시정지"가 글자마다 접힌다 */
+  text-align: center;
+  font-family: "Galmuri11", "Galmuri14", monospace;
+  font-size: 11px;
+  color: #1b1b16;
+  background: #e2d9c3;
+  padding: 5px 8px;
+  border: 2px solid #1b1b16;
+}
+
+.focus-btn:hover {
+  background: #fff;
+}
+
 .bubble::after {
   content: "";
   position: absolute;
@@ -423,6 +458,7 @@ body.dragging .character {
   font-size: 11px;
   line-height: 1.6;
   color: #8fca7a;
+  white-space: pre-line; /* 상태 문구의 \n을 줄바꿈으로 살린다 */
 }
 
 .clean-status.warn {
@@ -446,6 +482,102 @@ body.dragging .character {
 
 .clean-unlock:active {
   transform: scale(0.96);
+}
+
+/* ---------- 쪽잠 모드 오버레이 ---------- */
+/* 청소 모드와 같은 전체화면 잠금 레이어를 쓰되, 잠들기 좋게 더 어둡게 깐다 */
+.nap-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 10, 8, 0.97);
+}
+
+.nap-overlay.hidden {
+  display: none;
+}
+
+.nap-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 40px;
+  text-align: center;
+  font-family: "Galmuri11", "Galmuri14", monospace;
+  color: #f2ede1;
+}
+
+.nap-title {
+  font-size: 16px;
+  letter-spacing: 1px;
+}
+
+.nap-time {
+  font-family: "Galmuri14", "Galmuri11", monospace;
+  font-size: 52px;
+  line-height: 1.1;
+  color: #c9a12e;
+  font-variant-numeric: tabular-nums;
+}
+
+.nap-desc {
+  font-size: 12px;
+  color: #cfc9ba;
+}
+
+.nap-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.nap-actions.hidden {
+  display: none;
+}
+
+.nap-btn {
+  all: unset;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  color: #f2ede1;
+  background: transparent;
+  border: 2px solid #6f6a5c;
+  padding: 10px 18px;
+}
+
+.nap-btn:hover {
+  border-color: #f2ede1;
+}
+
+.nap-btn:active {
+  transform: scale(0.96);
+}
+
+/* 알람 끄기: 지금 눌러야 할 버튼이라 강조 */
+.nap-btn.primary {
+  color: #1b1b16;
+  background: #c9a12e;
+  border-color: #c9a12e;
+}
+
+.nap-btn.primary:hover {
+  background: #d9b13a;
+}
+
+/* 알람이 울리는 동안 문구를 깜빡여 소리를 못 들어도 알아채게 한다 */
+.nap-overlay.ringing .nap-title {
+  animation: nap-blink 1s steps(2, end) infinite;
+}
+
+@keyframes nap-blink {
+  50% {
+    opacity: 0.25;
+  }
 }
 
 /* 발표 모드: 펫·말풍선·카드를 숨겨 화면공유에 안 나오게 한다 (pill만 남김) */

@@ -160,27 +160,13 @@ ipcMain.on("pet:set-dnd", (_event, on) => {
   dndActive = !!on;
 });
 
-function setMacFocusMode(on) {
-  if (process.platform !== "darwin") return;
-  const shortcutName = on ? "Rockie Focus On" : "Rockie Focus Off";
-  execFile("/usr/bin/shortcuts", ["run", shortcutName], (err) => {
-    if (err) {
-      console.error(`[focus] macOS Focus shortcut failed: ${shortcutName}`);
-    }
-  });
-}
-
-ipcMain.on("focus:set-system-dnd", (_event, on) => {
-  setMacFocusMode(!!on);
-});
-
 // ---------- 키보드 청소 모드: 키보드 완전 차단 (CGEventTap 헬퍼) ----------
 // 네이티브 Swift 헬퍼(KeyBlocker.app)가 CGEventTap으로 모든 키 이벤트를
 // 삼킨다. WindowServer가 단축키를 처리하기 전 단계라 Cmd+Space(Spotlight)·Cmd+Tab까지
 // 막힌다(hidutil·globalShortcut로는 불가). 마우스는 살아 있어 해제 버튼을 누를 수 있다.
 // 헬퍼는 stop 파일 또는 부모 프로세스 종료를 감지하면 스스로 탭을 풀고 종료한다.
 // 손쉬운 사용 권한 필요. 없으면 헬퍼가 시스템 요청창을 띄우고 상태를 보고.
-const { spawn, execFile } = require("child_process");
+const { spawn } = require("child_process");
 
 let cleanHelper = null;
 let cleanAutoStopTimer = null;
@@ -227,14 +213,21 @@ function handleKeyBlockerStatus(helper, status) {
   }
 }
 
-function startKeyBlocker() {
-  if (process.platform !== "darwin") return; // 헬퍼는 macOS 전용
-  stopKeyBlocker();
+// 앱이 멈춰도 키보드가 영영 잠기지 않도록 두는 최후 안전장치.
+// 상한은 모드가 정한다(청소는 짧게, 쪽잠은 설정한 수면 시간만큼).
+function armCleanAutoStop(maxMs) {
+  if (cleanAutoStopTimer) clearTimeout(cleanAutoStopTimer);
   cleanAutoStopTimer = setTimeout(() => {
     console.error("[clean] 자동 해제: 최대 잠금 시간을 초과했습니다.");
     stopKeyBlocker();
     sendCleanStatus("error");
-  }, CLEAN_MAX_DURATION_MS);
+  }, maxMs);
+}
+
+function startKeyBlocker(maxMs) {
+  if (process.platform !== "darwin") return; // 헬퍼는 macOS 전용
+  stopKeyBlocker();
+  armCleanAutoStop(maxMs);
 
   const sessionDir = fs.mkdtempSync(
     path.join(app.getPath("temp"), "deskpet-keyblocker-"),
@@ -364,9 +357,15 @@ function openPermissionSettings(kind) {
   openSettings();
 }
 
-ipcMain.on("clean:enter", () => {
+ipcMain.on("clean:enter", (_event, maxMs) => {
+  const limit = Number(maxMs) > 0 ? Number(maxMs) : CLEAN_MAX_DURATION_MS;
+  // 이미 잠금 중이면(쪽잠의 스누즈·재개) 헬퍼는 그대로 두고 상한만 늘린다.
+  if (cleanHelper) {
+    armCleanAutoStop(limit);
+    return;
+  }
   // 권한 판단은 헬퍼가 실제 CGEventTap 생성 결과로 한다.
-  startKeyBlocker();
+  startKeyBlocker(limit);
 });
 
 ipcMain.on("clean:exit", () => {
@@ -615,6 +614,12 @@ ipcMain.on("tray-menu-action", (_event, action) => {
         mainWindow.webContents.send("mode:exit-request");
       }
       break;
+    case "pause-mode":
+      // 트레이 배너의 "일시정지 / 계속하기" → 펫 렌더러가 집중 타이머를 멈추거나 재개한다.
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send("mode:pause-request");
+      }
+      break;
     case "quit":
       app.quit();
       break;
@@ -833,6 +838,7 @@ function sendPetSettings() {
     size: s.petSize,
     sound: s.soundEnabled,
     focusMinutes: s.focusMinutes,
+    napMinutes: s.napMinutes,
   });
 }
 
@@ -878,6 +884,11 @@ ipcMain.on("settings:set", (_event, { key, value }) => {
       break;
     case "focusMinutes":
       data.settings.focusMinutes = Math.max(1, Number(value) || 25);
+      sendPetSettings();
+      break;
+    case "napMinutes":
+      // 슬라이더 범위(1~120분) 밖의 값이 들어와도 저장 단계에서 잘라낸다
+      data.settings.napMinutes = Math.min(120, Math.max(1, Number(value) || 20));
       sendPetSettings();
       break;
     default:

@@ -28,7 +28,12 @@
         <span id="mode-banner-ic" class="mode-banner-ic"></span>
         <span id="mode-banner-label" class="mode-banner-label">집중 모드</span>
         <span id="mode-banner-time" class="mode-banner-time hidden">25:00</span>
-        <button id="mode-banner-exit" class="mode-banner-exit">종료</button>
+        <span class="mode-banner-actions">
+          <button id="mode-banner-pause" class="mode-banner-pause hidden">
+            일시정지
+          </button>
+          <button id="mode-banner-exit" class="mode-banner-exit">종료</button>
+        </span>
       </div>
 
       <!-- ============ 본문 (내부 스크롤) ============ -->
@@ -673,8 +678,7 @@
               <button class="chip" data-place="bottom-right">우하단</button>
             </div>
             <div class="panel-note">
-              따라오기 모드에서는 드래그로 애완돌의 위치를 원하는 곳에 잠시 동안
-              둘 수 있어요.
+              드래그로 애완돌을 잠시동안 원하는 위치에 둘 수 있어요.
             </div>
           </section>
 
@@ -696,6 +700,29 @@
               <button class="chip" data-focus-minutes="25">25분</button>
               <button class="chip" data-focus-minutes="45">45분</button>
               <button class="chip" data-focus-minutes="60">60분</button>
+            </div>
+          </section>
+
+          <!-- 쪽잠 모드 -->
+          <section class="panel">
+            <div class="panel-row">
+              <span class="panel-label">쪽잠 모드 시간</span>
+              <span class="panel-value"
+                ><span id="nap-minutes-value">20</span>분</span
+              >
+            </div>
+            <div class="nap-slider-row">
+              <span class="nap-slider-cap">1</span>
+              <input
+                id="nap-minutes-range"
+                class="nap-range"
+                type="range"
+                min="1"
+                max="120"
+                step="1"
+                value="20"
+              />
+              <span class="nap-slider-cap">120</span>
             </div>
           </section>
 

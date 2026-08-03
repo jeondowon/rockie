@@ -21,6 +21,7 @@ const modeBannerIc = document.getElementById("mode-banner-ic");
 const modeBannerLabel = document.getElementById("mode-banner-label");
 const modeBannerTime = document.getElementById("mode-banner-time");
 const modeBannerExit = document.getElementById("mode-banner-exit");
+const modeBannerPause = document.getElementById("mode-banner-pause");
 
 // STONE_NAMES/resolveSprite/spriteGifUrl은 공용 ../shared/sprites.js에서 로드된다.
 
@@ -350,11 +351,14 @@ function stopModeCountdown() {
   }
 }
 
-function tickModeCountdown(focusEndAt) {
-  const remain = Math.max(0, focusEndAt - Date.now());
+function renderModeRemain(remain) {
   const mm = String(Math.floor(remain / 60000)).padStart(2, "0");
   const ss = String(Math.floor((remain % 60000) / 1000)).padStart(2, "0");
   modeBannerTime.textContent = `${mm}:${ss}`;
+}
+
+function tickModeCountdown(focusEndAt) {
+  renderModeRemain(Math.max(0, focusEndAt - Date.now()));
 }
 
 const MODE_ICON_TARGET =
@@ -384,8 +388,13 @@ function renderModeBanner(status) {
   );
   modeBannerLabel.textContent = isFocus ? "집중 모드" : "발표 모드";
   modeBannerTime.classList.toggle("hidden", !isFocus);
+  modeBannerPause.classList.toggle("hidden", !isFocus);
+  modeBannerPause.textContent = status.paused ? "계속하기" : "일시정지";
   modeBanner.classList.remove("hidden");
-  if (isFocus && status.focusEndAt) {
+  if (isFocus && status.paused) {
+    // 일시정지 중엔 남은 시간을 멈춘 채로 표시한다(초당 갱신 없음)
+    renderModeRemain(Math.max(0, status.remainMs || 0));
+  } else if (isFocus && status.focusEndAt) {
     tickModeCountdown(status.focusEndAt);
     // 팝업이 보이는 동안만 초당 갱신한다(숨은 창에서 돌지 않게)
     if (popupVisible) {
@@ -407,6 +416,10 @@ function resizeMenuIfActive() {
 
 modeBannerExit.addEventListener("click", () => {
   window.trayAPI.sendAction("exit-mode");
+});
+
+modeBannerPause.addEventListener("click", () => {
+  window.trayAPI.sendAction("pause-mode");
 });
 
 // 모드가 바뀌면(진입/해제/만료) 메인이 push → 팝업이 열려 있으면 즉시 반영
@@ -972,6 +985,8 @@ const settingToggles = document.querySelectorAll(".set-row[data-setting]");
 const placeChips = document.querySelectorAll(".chip[data-place]");
 const sizeChips = document.querySelectorAll(".chip[data-size]");
 const focusMinuteChips = document.querySelectorAll(".chip[data-focus-minutes]");
+const napRange = document.getElementById("nap-minutes-range");
+const napValueEl = document.getElementById("nap-minutes-value");
 const resetBtn = document.getElementById("reset-btn");
 const confirmOverlay = document.getElementById("confirm-overlay");
 const confirmCancel = document.getElementById("confirm-cancel");
@@ -1004,6 +1019,8 @@ async function refreshSettings() {
       Number(chip.dataset.focusMinutes) === Number(s.focusMinutes || 25),
     ),
   );
+  napRange.value = String(Number(s.napMinutes) || 20);
+  napValueEl.textContent = napRange.value; // 슬라이더가 값을 범위 안으로 다듬은 뒤 읽는다
 }
 
 settingToggles.forEach((btn) => {
@@ -1036,6 +1053,39 @@ focusMinuteChips.forEach((chip) => {
       Number(chip.dataset.focusMinutes),
     );
   });
+});
+
+// 10분 배수 근처(±2분)에 오면 끌어당기는 자석 효과.
+// 끌 때만 걸어서, 방향키로는 1분 단위 미세 조정이 그대로 되게 둔다.
+const NAP_SNAP_STEP = 10;
+const NAP_SNAP_PULL = 2;
+let napDragging = false;
+
+function snapNapMinutes(v) {
+  const nearest = Math.round(v / NAP_SNAP_STEP) * NAP_SNAP_STEP;
+  // 배수가 범위 밖이면(예: 1~4분의 0) 끌어당기지 않는다
+  if (nearest < Number(napRange.min) || nearest > Number(napRange.max)) return v;
+  return Math.abs(v - nearest) <= NAP_SNAP_PULL ? nearest : v;
+}
+
+napRange.addEventListener("pointerdown", () => {
+  napDragging = true;
+});
+// 슬라이더 밖에서 손을 떼도 풀리도록 window에 건다
+window.addEventListener("pointerup", () => {
+  napDragging = false;
+});
+
+// 끄는 동안엔 숫자만 따라 움직이고, 손을 뗄 때(change) 한 번만 저장한다.
+napRange.addEventListener("input", () => {
+  if (napDragging) {
+    napRange.value = String(snapNapMinutes(Number(napRange.value)));
+  }
+  napValueEl.textContent = napRange.value;
+});
+
+napRange.addEventListener("change", () => {
+  window.trayAPI.setSetting("napMinutes", Number(napRange.value));
 });
 
 // 초기화는 되돌릴 수 없으므로 인앱 확인창을 먼저 띄운다 (기본 macOS 알림창 대신)
