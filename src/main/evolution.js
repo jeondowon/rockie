@@ -536,7 +536,7 @@ function answerButtonState(data) {
   }
   return {
     enabled: false,
-    note: "오늘의 질문을 모두 마쳤어요. 내일 오전 8시에 새 질문을 준비해둘게요.",
+    note: "오늘의 질문을 모두 마쳤어요. \n내일 오전 8시에 새로운 질문을 준비해둘게요.",
   };
 }
 

@@ -249,7 +249,7 @@
             </div>
           </section>
 
-          <!-- 인벤토리 (스타일만) -->
+          <!-- 인벤토리: 다음 버전으로 보류 (스타일은 tray.css에 남아 있음)
           <section class="panel">
             <div class="panel-label">
               인벤토리 <span class="panel-label-sub">· 눌러서 장착/해제</span>
@@ -277,6 +277,7 @@
               </div>
             </div>
           </section>
+          -->
 
           <!-- 스킨 (스타일만) -->
           <section class="panel">
@@ -326,9 +327,22 @@
           </section>
 
           <!-- 답변 히스토리 -->
-          <section class="panel panel-last">
+          <section class="panel">
             <div class="panel-label">답변 히스토리</div>
             <div id="pet-history" class="history"></div>
+          </section>
+
+          <!-- 후원 유도 -->
+          <section class="panel panel-last">
+            <button id="support-btn" class="support-btn">
+              <span class="support-icon">♡</span>
+              <div>
+                <div class="support-title">Rockie가 마음에 드시나요?</div>
+                <div class="support-sub">
+                  홈페이지 방문하고 개발자 응원하기 ▶
+                </div>
+              </div>
+            </button>
           </section>
         </div>
 
@@ -689,6 +703,9 @@
           <section class="panel panel-last">
             <button id="reset-btn" class="reset-btn">
               ↻ 처음부터 다시 키우기
+            </button>
+            <button id="homepage-btn" class="info-link">
+              홈페이지 방문하기
             </button>
             <div class="app-info">
               Rockie v1 · 나의 애완돌<br />© 2026 · jeondowon

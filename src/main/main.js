@@ -604,6 +604,11 @@ ipcMain.on("tray-menu-action", (_event, action) => {
     case "close-popup":
       if (trayPopup && !trayPopup.isDestroyed()) trayPopup.hide();
       break;
+    case "homepage":
+      // 트레이 홈페이지 링크 → 기본 브라우저로 열고 팝업은 닫는다
+      shell.openExternal("https://jeondowon.com/rockie/");
+      if (trayPopup && !trayPopup.isDestroyed()) trayPopup.hide();
+      break;
     case "exit-mode":
       // 트레이 배너의 "종료" → 펫 렌더러가 현재 모드를 해제한다(팝업은 열어 둠).
       if (mainWindow && !mainWindow.isDestroyed()) {

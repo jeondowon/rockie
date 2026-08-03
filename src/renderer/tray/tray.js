@@ -1031,7 +1031,10 @@ sizeChips.forEach((chip) => {
 focusMinuteChips.forEach((chip) => {
   chip.addEventListener("click", () => {
     focusMinuteChips.forEach((c) => c.classList.toggle("on", c === chip));
-    window.trayAPI.setSetting("focusMinutes", Number(chip.dataset.focusMinutes));
+    window.trayAPI.setSetting(
+      "focusMinutes",
+      Number(chip.dataset.focusMinutes),
+    );
   });
 });
 
@@ -1044,6 +1047,14 @@ function hideResetConfirm() {
 }
 
 resetBtn.addEventListener("click", showResetConfirm);
+
+// ---------- 홈페이지 방문 (펫 화면 후원 카드 · 설정 하단 링크) ----------
+document.getElementById("support-btn").addEventListener("click", () => {
+  window.trayAPI.sendAction("homepage");
+});
+document.getElementById("homepage-btn").addEventListener("click", () => {
+  window.trayAPI.sendAction("homepage");
+});
 confirmCancel.addEventListener("click", hideResetConfirm);
 confirmOk.addEventListener("click", async () => {
   hideResetConfirm();

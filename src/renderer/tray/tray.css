@@ -1489,6 +1489,7 @@ body {
   font-size: 9px;
   color: #5a4a12;
   margin-top: 3px;
+  white-space: pre-line;
 }
 
 /* ---------- PET: 이름 ---------- */
@@ -1828,6 +1829,41 @@ body {
   text-align: center;
 }
 
+/* ---------- PET: 후원 유도 ---------- */
+.support-btn {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 2px solid #1b1b16;
+  background: #e7e1d2;
+}
+
+.support-btn:hover {
+  background: #ece5d5;
+}
+
+.support-icon {
+  font-size: 15px;
+  color: #a8432b;
+  flex: none;
+}
+
+.support-title {
+  font-size: 11px;
+  color: #1b1b16;
+}
+
+.support-sub {
+  font-size: 9px;
+  color: #6a6452;
+  margin-top: 4px;
+}
+
 /* ---------- SYSTEM ---------- */
 .sys-head {
   padding: 15px 16px;
@@ -2089,6 +2125,22 @@ body {
 .reset-btn:hover {
   background: #a8432b;
   color: #f2ede1;
+}
+
+.info-link {
+  all: unset;
+  cursor: pointer;
+  display: block;
+  width: 100%;
+  text-align: center;
+  font-size: 10px;
+  color: #4f7a3f;
+  text-decoration: underline;
+  margin-bottom: 12px;
+}
+
+.info-link:hover {
+  color: #1b1b16;
 }
 
 .app-info {
