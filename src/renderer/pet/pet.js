@@ -37,9 +37,16 @@ let pauseTimer = null;
 let cardOpen = false; // 질문 카드가 열려 있으면 걷기를 멈추고 카드를 펫 옆에 고정
 let onboardingLocked = true;
 
-// ---------- 드래그로 위치 옮기기 (follow 모드) ----------
+// ---------- 모드 상태 (더블클릭 옵션창: 청소 / 집중 / 발표) ----------
+let activeMode = null; // null | "clean" | "focus" | "presentation"
+let modePanelOpen = false; // 옵션창이 열려 있는 동안 걷기를 멈추고 패널을 펫 옆에 고정
+let dndActive = false; // 방해금지: showBubble·배너 알림을 억제
+let focusMinutes = 25;
+
+// ---------- 드래그로 위치 옮기기 (모든 모드) ----------
 // 캐릭터를 꾸욱 눌렀다가(롱프레스) 끌면 원하는 자리에 놓을 수 있다.
-// 놓은 뒤 DROP_FREEZE_MS 동안 제자리에 있다가 다시 커서를 따라온다.
+// 놓은 뒤 DROP_FREEZE_MS 동안 제자리에 있다가, follow 모드는 다시 커서를,
+// 고정 모드는 지정된 하단 모서리로 되돌아간다.
 let pinned = false; // 드래그 중이거나 놓은 직후 정지 중이면 true (가로/세로 추종 정지)
 let dragging = false; // 실제로 끌고 있는 중
 let justDragged = false; // 드래그 종료 직후 click 반응 억제용
@@ -447,7 +454,7 @@ function initTuning() {
 }
 
 function followStep() {
-  if (!paused && !cardOpen && !pinned) {
+  if (!paused && !cardOpen && !pinned && !modePanelOpen) {
     let cap = MAX_SPEED;
 
     if (placement === "follow") {
@@ -500,6 +507,7 @@ function followStep() {
   if (PREVIEW) applyTuneVisibility(); // 튜닝 중 대상 표시를 매 프레임 재확정
   positionBubble();
   if (cardOpen) positionCard();
+  if (modePanelOpen) positionModePanel();
   requestAnimationFrame(followStep);
 }
 
@@ -528,6 +536,7 @@ window.petAPI.onCursorPosition(({ x, y }) => {
 let bubbleTimeout;
 
 function showBubble(text, duration = 3500) {
+  if (dndActive) return; // 집중/발표 모드 중엔 말풍선을 띄우지 않는다
   bubble.textContent = text;
   bubble.classList.remove("hidden");
   positionBubble();
@@ -714,7 +723,14 @@ function formatMessage(message) {
   return message.replaceAll("{owner}", ownerDisplayName());
 }
 
-character.addEventListener("click", () => {
+// 더블클릭이 옵션창을 여는 동안 말풍선이 같이 뜨지 않도록, 클릭 반응은
+// 두 번째 클릭을 기다렸다가(DOUBLE_CLICK_MS) 실행한다. dblclick이 오면 취소된다.
+const DOUBLE_CLICK_MS = 250;
+let clickReactionTimer = null;
+
+character.addEventListener("click", (e) => {
+  if (activeMode || modePanelOpen) return; // 모드 진행 중엔 클릭 반응 없음
+  if (e.detail > 1) return; // 더블클릭의 두 번째 클릭은 옵션창으로 넘긴다
   if (justDragged) {
     justDragged = false; // 드래그로 옮긴 직후의 클릭은 반응 없이 무시
     return;
@@ -723,33 +739,48 @@ character.addEventListener("click", () => {
     openEvolutionCard();
     return;
   }
-  const reactions = currentClickReactions();
-  const msg = formatMessage(
-    reactions[Math.floor(Math.random() * reactions.length)],
-  );
-  playSound("click");
-  showBubble(msg);
-  pauseWalking(1500);
+  clearTimeout(clickReactionTimer);
+  clickReactionTimer = setTimeout(() => {
+    const reactions = currentClickReactions();
+    const msg = formatMessage(
+      reactions[Math.floor(Math.random() * reactions.length)],
+    );
+    playSound("click");
+    showBubble(msg);
+    pauseWalking(1500);
+  }, DOUBLE_CLICK_MS);
 });
 
 // 마우스가 캐릭터 위에 있을 때만 클릭을 받고, 나머지 영역은 클릭 통과
 character.addEventListener("mouseenter", () => {
+  if (activeMode && activeMode !== "focus") return; // 청소/발표 중엔 모드 UI가 마우스 상태를 관리한다
   window.petAPI.setIgnoreMouseEvents(false);
 });
 
 character.addEventListener("mouseleave", () => {
+  // 청소 모드에선 오버레이가 캐릭터를 덮어 뒤늦게 mouseleave가 발동할 수 있는데,
+  // 그때 클릭 통과로 되돌리면 마우스 차단이 풀린다. 모드 중엔 손대지 않는다.
+  if (activeMode && activeMode !== "focus") return;
   // 드래그 중에는 커서가 잠깐 캐릭터를 벗어나도 클릭 통과로 돌리지 않는다
   // (돌리면 창이 커서 이벤트를 못 받아 드래그가 끊긴다).
   if (holdTimer || dragging) return;
   window.petAPI.setIgnoreMouseEvents(true, { forward: true });
 });
 
-// ---------- 꾸욱 눌러 드래그로 위치 옮기기 (follow 모드) ----------
+// 더블클릭 → 모드 선택 옵션창
+character.addEventListener("dblclick", () => {
+  clearTimeout(clickReactionTimer); // 대기 중이던 단일 클릭 반응 취소
+  if (activeMode || onboardingLocked || pendingEvolution || cardOpen) return;
+  openModePanel();
+});
+
+// ---------- 꾸욱 눌러 드래그로 위치 옮기기 (모든 모드) ----------
 character.addEventListener("mousedown", () => {
   justDragged = false; // 새 상호작용 시작 — 이전 드래그의 잔여 억제 플래그 해제
-  // 고정 모드·진화 카드·질문 카드 중에는 드래그하지 않는다
+  // 모드 진행 중·진화 카드·질문 카드 중에는 드래그하지 않는다
   if (
-    placement !== "follow" ||
+    (activeMode && activeMode !== "focus") ||
+    modePanelOpen ||
     pendingEvolution ||
     cardOpen ||
     onboardingLocked
@@ -830,7 +861,10 @@ const WINDOW_RULES = [
   {
     id: "github-actions",
     pattern: /github.*actions|actions.*github|workflow runs|checks/,
-    messages: ["초록 체크 기다리는 시간이네요.", "빌드가 얌전히 통과하길 빌게요."],
+    messages: [
+      "초록 체크 기다리는 시간이네요.",
+      "빌드가 얌전히 통과하길 빌게요.",
+    ],
   },
   {
     id: "github-pr",
@@ -872,7 +906,10 @@ const WINDOW_RULES = [
   {
     id: "ai-assistant",
     pattern: /chatgpt|claude|perplexity|gemini|copilot/,
-    messages: ["생각을 정리하는 중이시군요.", "질문을 잘게 쪼개면 더 잘 굴러가요."],
+    messages: [
+      "생각을 정리하는 중이시군요.",
+      "질문을 잘게 쪼개면 더 잘 굴러가요.",
+    ],
   },
   {
     id: "research",
@@ -910,8 +947,12 @@ const WINDOW_RULES = [
   },
   {
     id: "game",
-    pattern: /steam|battle\.net|riot client|league of legends|valorant|epic games|minecraft/,
-    messages: ["잠깐 쉬는 시간인가요?", "한 판만... 이라는 말은 조심해야 해요."],
+    pattern:
+      /steam|battle\.net|riot client|league of legends|valorant|epic games|minecraft/,
+    messages: [
+      "잠깐 쉬는 시간인가요?",
+      "한 판만... 이라는 말은 조심해야 해요.",
+    ],
   },
 
   // --- SNS/쇼핑 (체류 시간에 따라 톤이 세짐) ---
@@ -971,7 +1012,10 @@ const WINDOW_RULES = [
   {
     id: "maps",
     pattern: /google maps|naver map|카카오맵|maps/,
-    messages: ["어디론가 가실 준비인가요?", "길 찾기는 미리 해두면 마음이 편해요."],
+    messages: [
+      "어디론가 가실 준비인가요?",
+      "길 찾기는 미리 해두면 마음이 편해요.",
+    ],
   },
 
   // --- 일반 브라우저 (가장 마지막 폴백) ---
@@ -1626,6 +1670,7 @@ async function initSettings() {
     placement = s.petPlacement || "follow";
     applyPetSize(s.petSize || "medium");
     setSoundEnabled(s.soundEnabled);
+    focusMinutes = Number(s.focusMinutes) || 25;
   } catch (_err) {
     // 설정을 못 읽으면 기본값(따라오기 · 보통)을 유지
   } finally {
@@ -1640,7 +1685,7 @@ async function initSettings() {
 }
 
 // 트레이 설정에서 위치/크기를 바꾸면 즉시 반영
-window.petAPI.onPetSettings(({ placement: p, size, sound }) => {
+window.petAPI.onPetSettings(({ placement: p, size, sound, focusMinutes: fm }) => {
   if (p) {
     // 위치 모드가 바뀌면 드래그/정지 상태를 취소해 얼어붙지 않게 한다
     if (holdTimer) clearTimeout(holdTimer);
@@ -1652,9 +1697,316 @@ window.petAPI.onPetSettings(({ placement: p, size, sound }) => {
   }
   if (size) applyPetSize(size);
   if (sound !== undefined) setSoundEnabled(sound);
+  if (fm) focusMinutes = Number(fm) || 25;
 });
 
-// ---------- 7. 초기화 ----------
+// ---------- 7. 모드 (더블클릭 옵션창: 청소 / 집중 / 발표) ----------
+// 모든 모드 UI는 펫 창 안에서 자족적으로 처리한다(별도 창·트레이 배선 없음).
+// - 청소 모드: 화면 전체를 덮는 오버레이가 모든 클릭을 가로채고, 창 포커스를 잡아
+//   마우스 클릭으로만 해제할 수 있게 한다. 키보드 입력은 네이티브 헬퍼가 차단한다.
+// - 집중/발표 모드: 방해금지(말풍선·배너 알림 억제). 상단 pill의 "종료"로 나간다.
+const modePanel = document.getElementById("mode-panel");
+const cleanOverlay = document.getElementById("clean-overlay");
+
+// 옵션창 행 아이콘. 트레이(sys-glyph)와 같은 라인 SVG 규칙을 따른다.
+function iconEl(paths) {
+  const span = cardEl("span", "mode-ic", null);
+  span.innerHTML =
+    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ` +
+    `stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
+  return span;
+}
+
+const ICON_KEYBOARD =
+  '<rect x="2" y="5" width="20" height="14" rx="2" />' +
+  '<path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M6 13h.01M18 13h.01M9 13h6" />';
+const ICON_TARGET =
+  '<circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5" />' +
+  '<circle cx="12" cy="12" r="1" />';
+const ICON_SCREEN =
+  '<rect x="3" y="4" width="18" height="12" rx="2" />' +
+  '<path d="M12 16v4M8 20h8" />';
+const ICON_EYE =
+  '<path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z" />' +
+  '<circle cx="12" cy="12" r="2.5" />';
+
+const MODES = [
+  {
+    id: "clean",
+    icon: ICON_KEYBOARD,
+    label: "키보드 청소 모드",
+    desc: "키보드·클릭 잠금 · 닦을 때",
+  },
+  {
+    id: "focus",
+    icon: ICON_TARGET,
+    label: "집중 모드",
+    desc: "설정 시간 · 알림 없이 조용히",
+  },
+  {
+    id: "presentation",
+    icon: ICON_SCREEN,
+    label: "발표 모드",
+    desc: "펫·알림 숨김 · 화면공유",
+  },
+];
+
+// 방해금지 on/off: 렌더러(말풍선)와 메인(배너 알림) 양쪽을 함께 제어한다.
+function setDnd(on) {
+  dndActive = on;
+  window.petAPI.setDnd(on);
+}
+
+// 집중/발표 모드의 상태 표시는 화면이 아니라 메뉴바 트레이 팝업에서 한다.
+// 진입/해제 시 활성 모드(+집중 종료 시각)를 메인으로 보내 트레이에 미러링한다.
+function setModeStatus(status) {
+  window.petAPI.setModeStatus(status);
+}
+
+// 오버레이가 아닌 작은 요소(패널·pill)는 마우스가 올라온 동안만 클릭을 받는다.
+// (평소 펫 창은 클릭 통과라, 안 그러면 버튼을 못 누른다 — 질문 카드와 같은 방식)
+function captureOnHover(el) {
+  el.addEventListener("mouseenter", () => {
+    window.petAPI.setIgnoreMouseEvents(false);
+  });
+  el.addEventListener("mouseleave", () => {
+    window.petAPI.setIgnoreMouseEvents(true, { forward: true });
+  });
+}
+captureOnHover(modePanel);
+
+// ── 옵션 패널 ─────────────────────────────────────────────
+function openModePanel() {
+  if (activeMode || modePanelOpen) return;
+  modePanelOpen = true;
+  modePanel.innerHTML = "";
+  modePanel.appendChild(cardEl("div", "mode-title", "모드 선택"));
+
+  for (const m of MODES) {
+    const row = cardEl("button", "mode-row", null);
+    row.appendChild(iconEl(m.icon));
+    const txt = cardEl("span", "mode-txt", null);
+    txt.appendChild(cardEl("span", "mode-name", m.label));
+    txt.appendChild(cardEl("span", "mode-desc", m.desc));
+    row.appendChild(txt);
+    row.addEventListener("click", () => {
+      closeModePanel();
+      enterMode(m.id);
+    });
+    modePanel.appendChild(row);
+  }
+
+  // 트레이 메뉴의 "애완돌 숨기기/보이기"를 옵션창에도 둔다.
+  const toggle = cardEl("button", "mode-row", null);
+  toggle.appendChild(iconEl(ICON_EYE));
+  const toggleTxt = cardEl("span", "mode-txt", null);
+  toggleTxt.appendChild(cardEl("span", "mode-name", "애완돌 숨기기 / 보이기"));
+  toggleTxt.appendChild(
+    cardEl("span", "mode-desc", "잠깐 안 보이게 · 트레이에서 다시 켜기"),
+  );
+  toggle.appendChild(toggleTxt);
+  toggle.addEventListener("click", () => {
+    closeModePanel();
+    window.petAPI.togglePet();
+  });
+  modePanel.appendChild(toggle);
+
+  const close = cardEl("button", "mode-close-row", "닫기");
+  close.addEventListener("click", closeModePanel);
+  modePanel.appendChild(close);
+
+  modePanel.classList.remove("hidden");
+  positionModePanel();
+  playSound("click");
+}
+
+function closeModePanel() {
+  modePanelOpen = false;
+  modePanel.classList.add("hidden");
+  modePanel.innerHTML = "";
+  window.petAPI.setIgnoreMouseEvents(true, { forward: true });
+}
+
+// 펫 머리 위(공간이 부족하면 발밑)에 패널을 붙인다. overlayLeft로 좌우는 화면 안에 클램프.
+function positionModePanel() {
+  const w = modePanel.offsetWidth;
+  const h = modePanel.offsetHeight;
+  modePanel.style.left = overlayLeft(w, 8) + "px";
+  let top = posY + SPRITE_MARGIN - h - 12;
+  if (top < 8) top = posY + CHAR_SIZE - SPRITE_MARGIN + 12;
+  modePanel.style.top = top + "px";
+}
+
+// ── 모드 진입/해제 ─────────────────────────────────────────
+function enterMode(mode) {
+  activeMode = mode;
+  if (mode === "clean") enterCleanMode();
+  else if (mode === "focus") enterFocusMode();
+  else if (mode === "presentation") enterPresentationMode();
+}
+
+function exitMode() {
+  const mode = activeMode;
+  activeMode = null;
+  if (mode === "clean") exitCleanMode();
+  else if (mode === "focus") exitFocusMode();
+  else if (mode === "presentation") exitPresentationMode();
+}
+
+// 트레이 배너의 "종료"가 눌리면 메인이 이 신호를 보낸다(집중/발표만 해당).
+window.petAPI.onModeExitRequest(() => {
+  if (activeMode === "focus" || activeMode === "presentation") exitMode();
+});
+
+// ── 키보드 청소 모드 ───────────────────────────────────────
+let cleanStatusEl = null; // 오버레이의 차단 상태 표시 줄
+
+// 메인(네이티브 헬퍼)이 알려주는 차단 상태를 오버레이에 반영한다.
+window.petAPI.onCleanStatus((status) => {
+  if (!cleanStatusEl) return;
+  if (status === "blocked") {
+    cleanStatusEl.textContent = "🔒 키보드가 완전히 잠겼어요";
+    cleanStatusEl.classList.remove("warn");
+  } else if (status === "blocked-partial") {
+    cleanStatusEl.textContent =
+      "⚠️ 키 입력과 macOS 단축키 차단을 시도 중이에요. 일부 하드웨어 키는 macOS가 허용할 수 있어요.";
+    cleanStatusEl.classList.add("warn");
+  } else if (status === "no-input-monitoring") {
+    cleanStatusEl.textContent =
+      "⚠️ 모든 키와 단축키를 잠그려면 '입력 모니터링'에서 'KeyBlocker'를 켠 뒤 앱을 재시작해주세요.";
+    cleanStatusEl.classList.add("warn");
+  } else if (status === "no-accessibility") {
+    cleanStatusEl.textContent =
+      "⚠️ 모든 키와 단축키를 잠그려면 '손쉬운 사용'에서 'KeyBlocker'를 켠 뒤 앱을 재시작해주세요.";
+    cleanStatusEl.classList.add("warn");
+  } else if (status === "hid-seize-failed") {
+    cleanStatusEl.textContent =
+      "⚠️ 키보드 디바이스를 독점하지 못했어요. Karabiner 같은 키보드 유틸을 종료하고 다시 시도해주세요.";
+    cleanStatusEl.classList.add("warn");
+  } else if (status === "hid-manager-failed") {
+    cleanStatusEl.textContent =
+      "⚠️ 키보드 디바이스 목록을 열지 못했어요. 입력 모니터링 권한과 키보드 유틸을 확인해주세요.";
+    cleanStatusEl.classList.add("warn");
+  } else if (status === "event-tap-failed") {
+    cleanStatusEl.textContent =
+      "⚠️ 시스템 키 이벤트 차단을 시작하지 못했어요. 권한을 다시 확인한 뒤 앱을 재시작해주세요.";
+    cleanStatusEl.classList.add("warn");
+  } else {
+    cleanStatusEl.textContent = "⚠️ 키보드 차단을 시작하지 못했어요.";
+    cleanStatusEl.classList.add("warn");
+  }
+});
+
+function enterCleanMode() {
+  buildCleanOverlay();
+  cleanOverlay.classList.remove("hidden");
+  // 전체 창이 클릭을 받도록(뒤 앱으로 통과 X). 키보드는 메인이 네이티브 헬퍼(CGEventTap)로 삼킨다.
+  window.petAPI.setIgnoreMouseEvents(false);
+  window.petAPI.cleanEnter();
+}
+
+function exitCleanMode() {
+  cleanOverlay.classList.add("hidden");
+  cleanOverlay.innerHTML = "";
+  window.petAPI.setIgnoreMouseEvents(true, { forward: true });
+  window.petAPI.cleanExit(); // 키보드 원복
+}
+
+function buildCleanOverlay() {
+  cleanOverlay.innerHTML = "";
+  const box = cardEl("div", "clean-box", null);
+  const icon = cardEl("img", "clean-icon", null);
+  icon.src = "../../../assets/icon.png";
+  icon.alt = "";
+  box.appendChild(icon);
+  box.appendChild(cardEl("div", "clean-title", "키보드 청소 모드"));
+  box.appendChild(cardEl("div", "clean-desc", "키보드를 마음껏 닦으세요!"));
+
+  // 차단 상태 줄. 메인의 clean:status로 갱신된다(준비 중 → 잠김 / 권한 필요).
+  cleanStatusEl = cardEl("div", "clean-status", "키보드 차단 준비 중…");
+  box.appendChild(cleanStatusEl);
+
+  const btn = cardEl("button", "clean-unlock", "닫기");
+  btn.tabIndex = -1; // 키보드 포커스 대상에서 제외(Space/Enter로 눌리는 것 방지)
+  btn.addEventListener("click", (e) => {
+    // 키보드로 활성화된 클릭(detail===0)은 무시하고 실제 마우스 클릭만 센다.
+    if (e.detail === 0) return;
+    e.stopPropagation();
+    exitMode();
+  });
+  box.appendChild(btn);
+  cleanOverlay.appendChild(box);
+}
+
+// ── 집중 모드 (설정 시간 + 방해금지) ────────────────────────
+// 남은 시간 카운트다운은 트레이 팝업이 focusEndAt으로 직접 표시한다.
+let focusTimeout = null;
+let focusBubbleTimer = null;
+let focusEndAt = null;
+
+function focusDurationMs() {
+  return Math.max(1, Number(focusMinutes) || 25) * 60 * 1000;
+}
+
+function renderFocusBubble() {
+  if (activeMode !== "focus" || !focusEndAt) return;
+  const remain = Math.max(0, focusEndAt - Date.now());
+  const mm = String(Math.floor(remain / 60000)).padStart(2, "0");
+  const ss = String(Math.floor((remain % 60000) / 1000)).padStart(2, "0");
+  bubble.textContent = `집중 중 ${mm}:${ss}`;
+  bubble.classList.remove("hidden");
+  positionBubble();
+}
+
+function stopFocusBubble() {
+  if (focusBubbleTimer) {
+    clearInterval(focusBubbleTimer);
+    focusBubbleTimer = null;
+  }
+  focusEndAt = null;
+  bubble.classList.add("hidden");
+}
+
+function enterFocusMode() {
+  setDnd(true);
+  window.petAPI.setSystemDnd(true);
+  focusEndAt = Date.now() + focusDurationMs();
+  setModeStatus({ mode: "focus", focusEndAt });
+  renderFocusBubble();
+  focusBubbleTimer = setInterval(renderFocusBubble, 1000);
+  focusTimeout = setTimeout(finishFocus, focusDurationMs());
+}
+
+function exitFocusMode() {
+  if (focusTimeout) {
+    clearTimeout(focusTimeout);
+    focusTimeout = null;
+  }
+  setModeStatus(null);
+  window.petAPI.setSystemDnd(false);
+  stopFocusBubble();
+  setDnd(false);
+}
+
+function finishFocus() {
+  exitMode(); // activeMode 해제 + 타이머/방해금지 정리
+  showBubble("집중 시간이 끝났어요! 잠깐 쉬어가요 ☕", 6000);
+}
+
+// ── 발표 모드 (펫·알림 숨김) ────────────────────────────────
+function enterPresentationMode() {
+  setDnd(true);
+  document.body.classList.add("presenting");
+  setModeStatus({ mode: "presentation", focusEndAt: null });
+}
+
+function exitPresentationMode() {
+  document.body.classList.remove("presenting");
+  setModeStatus(null);
+  setDnd(false);
+}
+
+// ---------- 8. 초기화 ----------
 
 // 시작 위치(설정에 맞는 코너)가 정해질 때까지 숨겨 둔다. initSettings에서 표시.
 character.style.visibility = "hidden";

@@ -43,7 +43,7 @@ function defaultData() {
     affinity: {
       affinityPoints: 0,
       dailyCleanDone: false,
-      dailyFeedDone: false,
+      dailyPetDone: false,
       dailyChatCount: 0,
       dailyInteractionCount: 0,
       lastChatAt: null,
@@ -62,6 +62,7 @@ function defaultData() {
       soundEnabled: true,
       petPlacement: "follow", // "follow" | "bottom-left" | "bottom-right"
       petSize: "medium", // "small" | "medium" | "large"
+      focusMinutes: 25,
     },
   };
 }

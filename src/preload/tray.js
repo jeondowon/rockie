@@ -28,9 +28,14 @@ contextBridge.exposeInMainWorld("trayAPI", {
   setName: (target, value) =>
     ipcRenderer.invoke("evolution:set-name", { target, value }),
   cleanPet: () => ipcRenderer.invoke("evolution:clean"),
-  feedPet: () => ipcRenderer.invoke("evolution:feed"),
+  petPet: () => ipcRenderer.invoke("evolution:pet"),
   setActiveSkin: (stage) => ipcRenderer.invoke("evolution:set-skin", stage),
   getSettings: () => ipcRenderer.invoke("settings:get"),
   setSetting: (key, value) => ipcRenderer.send("settings:set", { key, value }),
   resetPet: () => ipcRenderer.invoke("settings:reset"),
+  // 집중/발표 모드 상태(트레이 배너 표시용)
+  getModeStatus: () => ipcRenderer.invoke("mode:get-status"),
+  onModeStatus: (callback) => {
+    ipcRenderer.on("mode:status", (_event, status) => callback(status));
+  },
 });

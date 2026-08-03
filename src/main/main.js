@@ -10,6 +10,7 @@ const {
   Notification,
   nativeTheme,
   powerMonitor,
+  shell,
 } = require("electron");
 const path = require("path");
 const fs = require("fs");
@@ -151,6 +152,248 @@ ipcMain.on("set-ignore-mouse-events", (_event, ignore, options) => {
   if (!mainWindow) return;
   mainWindow.setIgnoreMouseEvents(ignore, options);
 });
+
+// 방해금지 모드(집중/발표) 동안 배너 알림을 억제하기 위한 플래그. 렌더러가 켜고 끈다.
+let dndActive = false;
+ipcMain.on("pet:set-dnd", (_event, on) => {
+  dndActive = !!on;
+});
+
+function setMacFocusMode(on) {
+  if (process.platform !== "darwin") return;
+  const shortcutName = on ? "Rockie Focus On" : "Rockie Focus Off";
+  execFile("/usr/bin/shortcuts", ["run", shortcutName], (err) => {
+    if (err) {
+      console.error(`[focus] macOS Focus shortcut failed: ${shortcutName}`);
+    }
+  });
+}
+
+ipcMain.on("focus:set-system-dnd", (_event, on) => {
+  setMacFocusMode(!!on);
+});
+
+// ---------- 키보드 청소 모드: 키보드 완전 차단 (CGEventTap 헬퍼) ----------
+// 네이티브 Swift 헬퍼(KeyBlocker.app)가 CGEventTap으로 모든 키 이벤트를
+// 삼킨다. WindowServer가 단축키를 처리하기 전 단계라 Cmd+Space(Spotlight)·Cmd+Tab까지
+// 막힌다(hidutil·globalShortcut로는 불가). 마우스는 살아 있어 해제 버튼을 누를 수 있다.
+// 헬퍼는 stop 파일 또는 부모 프로세스 종료를 감지하면 스스로 탭을 풀고 종료한다.
+// 손쉬운 사용 권한 필요. 없으면 헬퍼가 시스템 요청창을 띄우고 상태를 보고.
+const { spawn, execFile } = require("child_process");
+
+let cleanHelper = null;
+let cleanAutoStopTimer = null;
+const CLEAN_MAX_DURATION_MS = 60 * 1000;
+const CLEAN_START_TIMEOUT_MS = 3000;
+const KEYBLOCKER_APP_PATH = path.join(
+  __dirname,
+  "../../assets/helper/KeyBlocker.app",
+);
+const KEYBLOCKER_EXEC_PATH = path.join(
+  KEYBLOCKER_APP_PATH,
+  "Contents/MacOS/keyblocker",
+);
+
+// 렌더러 오버레이가 차단 상태를 표시하도록 알린다.
+function sendCleanStatus(status) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("clean:status", status);
+  }
+}
+
+function handleKeyBlockerStatus(helper, status) {
+  if (!status || status === helper.status) return;
+  helper.status = status;
+  console.error("[clean] keyblocker:", status);
+  if (status === "READY" || status === "READY_HID_ONLY") {
+    sendCleanStatus("blocked");
+  } else if (status === "READY_TAP_ONLY") {
+    sendCleanStatus("blocked-partial");
+  } else if (status === "NO_INPUT_MONITORING") {
+    sendCleanStatus("no-input-monitoring");
+    openPermissionSettings("input-monitoring");
+  } else if (status === "NO_ACCESSIBILITY") {
+    sendCleanStatus("no-accessibility");
+    openPermissionSettings("accessibility");
+  } else if (status.startsWith("NO_HID_SEIZE:")) {
+    sendCleanStatus("hid-seize-failed");
+  } else if (status.startsWith("NO_HID_MANAGER:")) {
+    sendCleanStatus("hid-manager-failed");
+  } else if (status === "NO_EVENT_TAP") {
+    sendCleanStatus("event-tap-failed");
+  } else {
+    sendCleanStatus("error");
+  }
+}
+
+function startKeyBlocker() {
+  if (process.platform !== "darwin") return; // 헬퍼는 macOS 전용
+  stopKeyBlocker();
+  cleanAutoStopTimer = setTimeout(() => {
+    console.error("[clean] 자동 해제: 최대 잠금 시간을 초과했습니다.");
+    stopKeyBlocker();
+    sendCleanStatus("error");
+  }, CLEAN_MAX_DURATION_MS);
+
+  const sessionDir = fs.mkdtempSync(
+    path.join(app.getPath("temp"), "deskpet-keyblocker-"),
+  );
+  const statusPath = path.join(sessionDir, "status");
+  const stopPath = path.join(sessionDir, "stop");
+
+  let child;
+  try {
+    child = spawn(
+      "/usr/bin/open",
+      [
+        "-n",
+        "-W",
+        KEYBLOCKER_APP_PATH,
+        "--args",
+        statusPath,
+        stopPath,
+        String(process.pid),
+      ],
+      { stdio: "ignore" },
+    );
+    cleanHelper = {
+      child,
+      sessionDir,
+      statusPath,
+      stopPath,
+      status: null,
+      statusTimer: null,
+      startTimer: null,
+    };
+  } catch (err) {
+    console.error("[clean] keyblocker 실행 실패:", err.message);
+    sendCleanStatus("error");
+    return;
+  }
+
+  cleanHelper.statusTimer = setInterval(() => {
+    if (!cleanHelper || cleanHelper.statusPath !== statusPath) return;
+    try {
+      handleKeyBlockerStatus(
+        cleanHelper,
+        fs.readFileSync(statusPath, "utf8").trim(),
+      );
+    } catch (_err) {
+    }
+  }, 100);
+
+  cleanHelper.startTimer = setTimeout(() => {
+    if (!cleanHelper || cleanHelper.statusPath !== statusPath || cleanHelper.status) {
+      return;
+    }
+    console.error("[clean] keyblocker 시작 시간 초과");
+    stopKeyBlocker();
+    sendCleanStatus("error");
+  }, CLEAN_START_TIMEOUT_MS);
+
+  cleanHelper.child.on("error", (err) => {
+    console.error("[clean] keyblocker 오류:", err.message);
+    stopKeyBlocker();
+    sendCleanStatus("error");
+  });
+  cleanHelper.child.on("exit", (code, signal) => {
+    const helper =
+      cleanHelper && cleanHelper.child === child ? cleanHelper : null;
+    if (helper) {
+      try {
+        handleKeyBlockerStatus(
+          helper,
+          fs.readFileSync(statusPath, "utf8").trim(),
+        );
+      } catch (_err) {
+      }
+    }
+    if (code !== 0) {
+      console.error("[clean] keyblocker 종료:", { code, signal });
+    }
+    if (helper) {
+      clearInterval(helper.statusTimer);
+      clearTimeout(helper.startTimer);
+      if (cleanAutoStopTimer) {
+        clearTimeout(cleanAutoStopTimer);
+        cleanAutoStopTimer = null;
+      }
+      cleanHelper = null;
+    }
+  });
+}
+
+function stopKeyBlocker() {
+  if (cleanAutoStopTimer) {
+    clearTimeout(cleanAutoStopTimer);
+    cleanAutoStopTimer = null;
+  }
+  if (!cleanHelper) return;
+  const helper = cleanHelper;
+  cleanHelper = null;
+  clearInterval(helper.statusTimer);
+  clearTimeout(helper.startTimer);
+  try {
+    fs.writeFileSync(helper.stopPath, "stop");
+    helper.child.kill();
+    spawn("/usr/bin/pkill", ["-f", KEYBLOCKER_EXEC_PATH], { stdio: "ignore" });
+  } catch (_e) {
+    // 이미 죽었으면 무시
+  }
+}
+
+// 권한 설정창을 연다(프롬프트는 앱당 한 번만 떠서 신뢰 불가 → 설정창으로 직접 안내).
+function openAccessibilitySettings() {
+  shell.openExternal(
+    "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
+  );
+}
+function openInputMonitoringSettings() {
+  shell.openExternal(
+    "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent",
+  );
+}
+
+// 권한이 없을 때 해당 개인정보 보호 설정 창을 바로 연다.
+function openPermissionSettings(kind) {
+  const isInput = kind === "input-monitoring";
+  const openSettings = isInput
+    ? openInputMonitoringSettings
+    : openAccessibilitySettings;
+  openSettings();
+}
+
+ipcMain.on("clean:enter", () => {
+  // 권한 판단은 헬퍼가 실제 CGEventTap 생성 결과로 한다.
+  startKeyBlocker();
+});
+
+ipcMain.on("clean:exit", () => {
+  stopKeyBlocker();
+});
+
+// 종료 경로에서 헬퍼를 정리(헬퍼는 stdin EOF로도 자멸하지만 이중 안전).
+app.on("will-quit", stopKeyBlocker);
+process.on("exit", stopKeyBlocker);
+process.on("uncaughtException", (err) => {
+  stopKeyBlocker();
+  console.error("[fatal] uncaughtException:", err);
+  app.quit();
+});
+
+// 옵션창의 "애완돌 숨기기/보이기" (트레이 메뉴와 동일 동작)
+ipcMain.on("pet:toggle-visibility", () => togglePet());
+
+// 집중/발표 모드 상태를 트레이 팝업에 미러링한다.
+// 펫 렌더러가 진입/해제 시 보내고(null=없음), 트레이는 이 값으로 배너를 그린다.
+let currentModeStatus = null;
+ipcMain.on("mode:set-status", (_event, status) => {
+  currentModeStatus = status || null;
+  if (trayPopup && !trayPopup.isDestroyed()) {
+    trayPopup.webContents.send("mode:status", currentModeStatus);
+  }
+});
+ipcMain.handle("mode:get-status", () => currentModeStatus);
 
 ipcMain.on("pet:display-sprite", (_event, sprite) => {
   if (!sprite || !sprite.level || !sprite.prefix || !sprite.pose) return;
@@ -360,6 +603,12 @@ ipcMain.on("tray-menu-action", (_event, action) => {
     case "close-popup":
       if (trayPopup && !trayPopup.isDestroyed()) trayPopup.hide();
       break;
+    case "exit-mode":
+      // 트레이 배너의 "종료" → 펫 렌더러가 현재 모드를 해제한다(팝업은 열어 둠).
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send("mode:exit-request");
+      }
+      break;
     case "quit":
       app.quit();
       break;
@@ -382,6 +631,7 @@ function lastResetBoundary(nowMs) {
 // 매일 오전 8시 배너 알림 (설정 '질문 알림'이 켜져 있을 때만). update.md 9.3
 function showQuestionBanner() {
   if (!Notification.isSupported()) return;
+  if (dndActive) return; // 집중/발표 모드 중엔 알림을 띄우지 않는다
   const banner = new Notification({
     title: "오늘도 나에 대해 알려주세요",
     body: "새 질문을 준비해뒀어요. 메뉴바에서 답해 주세요!",
@@ -395,6 +645,7 @@ function showQuestionBanner() {
 // 설정에서 '질문 알림'을 켠 순간, 실제 배너가 어떻게 보이는지 미리보기로 한 번 띄운다.
 function showBannerPreview() {
   if (!Notification.isSupported()) return;
+  if (dndActive) return; // 집중/발표 모드 중엔 알림을 띄우지 않는다
   new Notification({
     title: "오늘도 나에 대해 알려주세요",
     body: "이렇게 표시됩니다",
@@ -485,13 +736,13 @@ ipcMain.handle("evolution:answer", (_event, payload) => {
 });
 
 // 애정을 준 직후 펫 창에 애정 표현(하트/웃음)을 잠깐 띄우도록 신호를 보낸다.
-// 밥 주기는 하트, 닦아주기는 웃는 얼굴(smile gif)로 구분한다.
+// 쓰다듬기는 하트, 닦아주기는 웃는 얼굴(smile gif)로 구분한다.
 function notifyAffection(channel) {
   if (!mainWindow || mainWindow.isDestroyed()) return;
   mainWindow.webContents.send(channel);
 }
 
-// 호감도 획득. 트레이 "돌보기" 버튼(닦아주기/밥 주기)에서 호출된다.
+// 호감도 획득. 트레이 "돌보기" 버튼(닦아주기/쓰다듬기)에서 호출된다.
 ipcMain.handle("evolution:clean", () => {
   const data = store.get();
   const result = evolution.cleanPet(data);
@@ -500,9 +751,9 @@ ipcMain.handle("evolution:clean", () => {
   if (result.evolved) notifyEvolved(data);
   return result;
 });
-ipcMain.handle("evolution:feed", () => {
+ipcMain.handle("evolution:pet", () => {
   const data = store.get();
-  const result = evolution.feedPet(data);
+  const result = evolution.petPet(data);
   store.save();
   notifyAffection("pet:show-heart");
   if (result.evolved) notifyEvolved(data);
@@ -575,6 +826,7 @@ function sendPetSettings() {
     placement: s.petPlacement,
     size: s.petSize,
     sound: s.soundEnabled,
+    focusMinutes: s.focusMinutes,
   });
 }
 
@@ -616,6 +868,10 @@ ipcMain.on("settings:set", (_event, { key, value }) => {
       break;
     case "petSize":
       data.settings.petSize = value;
+      sendPetSettings();
+      break;
+    case "focusMinutes":
+      data.settings.focusMinutes = Math.max(1, Number(value) || 25);
       sendPetSettings();
       break;
     default:

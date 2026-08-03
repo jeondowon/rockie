@@ -45,7 +45,7 @@ function makeData({ onboardingCompleted = true } = {}) {
     affinity: {
       affinityPoints: 0,
       dailyCleanDone: false,
-      dailyFeedDone: false,
+      dailyPetDone: false,
       dailyChatCount: 0,
       dailyInteractionCount: 0,
       lastChatAt: null,
@@ -228,7 +228,7 @@ test("2단계 진입 시 이미 호감도 90 이상이면 즉시 3단계로 오�
   assert.equal(data.pet.evolutionVariant, "introvert");
 });
 
-test("2단계에서 닦기와 밥 주기로 호감도 90에 도달하면 3단계로 오른다", () => {
+test("2단계에서 닦기와 쓰다듬기로 호감도 90에 도달하면 3단계로 오른다", () => {
   const data = makeData();
   data.pet.evolutionStage = 2;
   data.pet.stoneType = "granite";
@@ -239,8 +239,8 @@ test("2단계에서 닦기와 밥 주기로 호감도 90에 도달하면 3단계
   assert.equal(cleanResult.evolved, null);
   assert.equal(data.affinity.affinityPoints, 89);
 
-  const feedResult = evolution.feedPet(data);
-  assert.equal(feedResult.evolved, 3);
+  const petResult = evolution.petPet(data);
+  assert.equal(petResult.evolved, 3);
   assert.equal(data.affinity.affinityPoints, 92);
   assert.equal(data.pet.evolutionStage, 3);
 });

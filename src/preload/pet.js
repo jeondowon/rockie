@@ -4,6 +4,21 @@ contextBridge.exposeInMainWorld("petAPI", {
   setIgnoreMouseEvents: (ignore, options) => {
     ipcRenderer.send("set-ignore-mouse-events", ignore, options);
   },
+  // 모드용: 방해금지(배너 알림 억제)
+  setDnd: (on) => ipcRenderer.send("pet:set-dnd", on),
+  setSystemDnd: (on) => ipcRenderer.send("focus:set-system-dnd", on),
+  // 청소 모드: 네이티브 헬퍼로 키보드 전역 차단 진입/해제 + 상태 수신
+  cleanEnter: () => ipcRenderer.send("clean:enter"),
+  cleanExit: () => ipcRenderer.send("clean:exit"),
+  onCleanStatus: (callback) => {
+    ipcRenderer.on("clean:status", (_event, status) => callback(status));
+  },
+  // 집중/발표 모드 상태를 트레이에 미러링 + 트레이 "종료" 신호 수신 + 펫 표시 토글
+  setModeStatus: (status) => ipcRenderer.send("mode:set-status", status),
+  togglePet: () => ipcRenderer.send("pet:toggle-visibility"),
+  onModeExitRequest: (callback) => {
+    ipcRenderer.on("mode:exit-request", () => callback());
+  },
   onActiveWindowInfo: (callback) => {
     ipcRenderer.on("active-window-info", (_event, data) => callback(data));
   },

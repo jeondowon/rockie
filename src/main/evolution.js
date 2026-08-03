@@ -21,7 +21,7 @@ const STAGE1_DISPLAY_COUNT = ONBOARDING_QUESTIONS.length + MAIN_QUESTION_COUNT;
 const QUESTION_DISPLAY_TOTAL = STAGE1_DISPLAY_COUNT + EI_QUESTION_COUNT;
 const AFFINITY_TARGET = 90; // 2→3 진화 필요 호감도
 const CLEAN_POINTS = 3; // 닦아주기 획득 점수
-const FEED_POINTS = 3; // 밥주기 획득 점수
+const PET_POINTS = 3; // 쓰다듬기 획득 점수
 const AFFINITY_MAX = 100; // 호감도 상한
 
 // 돌 종류: 영문 key는 pet.stoneType/GIF 접두어, ko는 traitScores 키.
@@ -161,7 +161,7 @@ function onDailyReset(data, nowIso) {
   if (!onboardingCompleted(data)) {
     data.questions.todaysQuestions = [];
     data.affinity.dailyCleanDone = false;
-    data.affinity.dailyFeedDone = false;
+    data.affinity.dailyPetDone = false;
     data.notifications.hasUnreadBadge = false;
     data.questions.dailyResetAt = nowIso;
     return { showBanner: false };
@@ -179,7 +179,7 @@ function onDailyReset(data, nowIso) {
     );
   }
   data.affinity.dailyCleanDone = false;
-  data.affinity.dailyFeedDone = false;
+  data.affinity.dailyPetDone = false;
   data.notifications.hasUnreadBadge =
     data.pet.evolutionStage < 2 && validTodayQuestions(data).length > 0;
   data.questions.dailyResetAt = nowIso;
@@ -344,7 +344,7 @@ function awardAffinity(data, amount) {
   );
 }
 
-// 닦아주기/밥주기 공통: 하루 1회 제한. 진화가 일어났으면 evolved에 새 단계 번호.
+// 닦아주기/쓰다듬기 공통: 하루 1회 제한. 진화가 일어났으면 evolved에 새 단계 번호.
 function carePet(data, doneFlag, points) {
   const before = data.pet.evolutionStage;
   if (!data.affinity[doneFlag]) {
@@ -363,8 +363,8 @@ function cleanPet(data) {
   return carePet(data, "dailyCleanDone", CLEAN_POINTS);
 }
 
-function feedPet(data) {
-  return carePet(data, "dailyFeedDone", FEED_POINTS);
+function petPet(data) {
+  return carePet(data, "dailyPetDone", PET_POINTS);
 }
 
 // ---------- 답변 제출 (update.md 8.3) ----------
@@ -565,7 +565,7 @@ function getState(data) {
     petName: data.pet.petName,
     affinityPoints: data.affinity.affinityPoints,
     dailyCleanDone: data.affinity.dailyCleanDone,
-    dailyFeedDone: data.affinity.dailyFeedDone,
+    dailyPetDone: data.affinity.dailyPetDone,
     pendingEvolution: data.pet.pendingEvolution,
     activeSkinStage: data.pet.activeSkinStage ?? null,
     onboarding: getOnboardingState(data),
@@ -592,7 +592,7 @@ module.exports = {
   setActiveSkin,
   answer,
   cleanPet,
-  feedPet,
+  petPet,
   completePendingEvolution,
   onDailyReset,
 };

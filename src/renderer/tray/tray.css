@@ -199,18 +199,77 @@ body {
   flex-direction: column;
 }
 
+/* 진행 중 모드 배너 (집중/발표). 헤더 아래 별도 상태 라인으로 표시 */
+.mode-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 12px;
+  background: #efe8d6;
+  color: #1b1b16;
+  border-bottom: 2px solid #d7c89f;
+}
+
+.mode-banner-ic {
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  color: inherit;
+}
+
+.mode-banner-ic svg {
+  width: 18px;
+  height: 18px;
+}
+
+.mode-banner-label {
+  font-family: "Galmuri14", monospace;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+}
+
+.mode-banner-time {
+  font-family: "Galmuri14", monospace;
+  font-size: 12px;
+  color: #c9a12e;
+  font-variant-numeric: tabular-nums;
+}
+
+.mode-banner-exit {
+  all: unset;
+  margin-left: auto;
+  cursor: pointer;
+  font-family: "Galmuri11", monospace;
+  font-size: 11px;
+  color: #1b1b16;
+  background: #c9a12e;
+  padding: 5px 10px;
+  border: 2px solid #1b1b16;
+}
+
+.mode-banner-exit:hover {
+  background: #d9b13a;
+}
+
 .menu-head {
-  padding: 8px 18px;
+  height: 34px;
+  padding: 0 18px;
   flex: none;
   border-bottom: 2px dashed #cbc4b1;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
 }
 
 .menu-head-label {
+  display: block;
   font-family: "Galmuri14", monospace;
   font-size: 12px;
+  line-height: 1;
   letter-spacing: 1px;
   color: #1b1b16;
 }
@@ -1223,6 +1282,12 @@ body {
   line-height: 1.6;
 }
 
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
 .panel-note-tight {
   font-size: 9px;
   color: #6a6452;
@@ -1513,7 +1578,7 @@ body {
   color: #1b1b16;
 }
 
-/* ---------- PET: 돌보기 (닦아주기 · 밥 주기) ---------- */
+/* ---------- PET: 돌보기 (닦아주기 · 쓰다듬기) ---------- */
 .care-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

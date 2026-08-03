@@ -282,3 +282,176 @@ body.dragging .character {
     opacity: 1;
   }
 }
+
+/* ---------- 모드: 옵션 패널 / 상태 pill / 청소 오버레이 ---------- */
+/* 트레이·질문 카드와 같은 흑백 도트 톤으로 통일 */
+.mode-panel {
+  position: absolute;
+  width: 224px;
+  background: #f2ede1;
+  border: 3px solid #1b1b16;
+  box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.45);
+  color: #1b1b16;
+  font-family: "Galmuri11", "Galmuri14", monospace;
+  z-index: 5;
+}
+
+.mode-panel.hidden {
+  display: none;
+}
+
+.mode-title {
+  padding: 8px 12px;
+  font-size: 11px;
+  border-bottom: 2px dashed #cbc4b1;
+}
+
+.mode-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  background: #f2ede1;
+  border: none;
+  border-top: 2px dashed #cbc4b1;
+  padding: 9px 12px;
+  cursor: pointer;
+  font-family: inherit;
+  color: #1b1b16;
+}
+
+.mode-row:first-of-type {
+  border-top: none;
+}
+
+.mode-row:hover {
+  background: #e7e1d2;
+}
+
+.mode-ic {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: #6a6452;
+}
+
+.mode-ic svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+.mode-txt {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mode-name {
+  font-size: 11px;
+}
+
+.mode-desc {
+  font-size: 9px;
+  color: #6a6452;
+}
+
+.mode-close-row {
+  width: 100%;
+  padding: 8px 12px;
+  font-family: inherit;
+  font-size: 10px;
+  color: #6a6452;
+  background: #e7e1d2;
+  border: none;
+  border-top: 2px dashed #cbc4b1;
+  cursor: pointer;
+}
+
+.mode-close-row:hover {
+  color: #1b1b16;
+}
+
+/* 청소 모드: 화면 전체를 덮어 모든 클릭을 가로채는 불투명 오버레이 */
+.clean-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(18, 17, 13, 0.94);
+}
+
+.clean-overlay.hidden {
+  display: none;
+}
+
+.clean-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 32px 40px;
+  text-align: center;
+  font-family: "Galmuri11", "Galmuri14", monospace;
+  color: #f2ede1;
+}
+
+.clean-icon {
+  width: 64px;
+  height: 64px;
+  image-rendering: pixelated;
+}
+
+.clean-title {
+  font-size: 20px;
+  letter-spacing: 1px;
+}
+
+.clean-desc {
+  font-size: 12px;
+  line-height: 1.7;
+  color: #cfc9ba;
+  white-space: pre-line;
+}
+
+/* 차단 상태 줄: 기본은 잠김(초록 톤), 권한 필요·오류는 warn(경고 톤) */
+.clean-status {
+  max-width: 360px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #8fca7a;
+}
+
+.clean-status.warn {
+  color: #e6b34b;
+}
+
+.clean-unlock {
+  margin-top: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  color: #1b1b16;
+  background: #c9a12e;
+  border: 3px solid #f2ede1;
+  padding: 12px 22px;
+  cursor: pointer;
+}
+
+.clean-unlock:hover {
+  background: #d9b13a;
+}
+
+.clean-unlock:active {
+  transform: scale(0.96);
+}
+
+/* 발표 모드: 펫·말풍선·카드를 숨겨 화면공유에 안 나오게 한다 (pill만 남김) */
+body.presenting .character,
+body.presenting .heart,
+body.presenting .bubble,
+body.presenting .qcard {
+  display: none !important;
+}

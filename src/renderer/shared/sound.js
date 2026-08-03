@@ -81,7 +81,7 @@ const SOUND_PATTERNS = {
     stoneTap(ctx, 0);
     stoneTap(ctx, 0.09);
   },
-  // 밥 주기·닦기(돌보기): 낮은 2음 상승
+  // 쓰다듬기·닦기(돌보기): 낮은 2음 상승
   care: (ctx) => {
     blip(ctx, 174.61, 0, 0.13, { gain: 0.075 });
     blip(ctx, 261.63, 0.12, 0.18, { gain: 0.075 });

@@ -15,6 +15,13 @@ const SCREEN_TITLES = {
   settings: "설정",
 };
 
+// 진행 중 모드 배너 (집중/발표)
+const modeBanner = document.getElementById("mode-banner");
+const modeBannerIc = document.getElementById("mode-banner-ic");
+const modeBannerLabel = document.getElementById("mode-banner-label");
+const modeBannerTime = document.getElementById("mode-banner-time");
+const modeBannerExit = document.getElementById("mode-banner-exit");
+
 // STONE_NAMES/resolveSprite/spriteGifUrl은 공용 ../shared/sprites.js에서 로드된다.
 
 const VARIANT_NAMES = {
@@ -312,7 +319,7 @@ const affValue = document.getElementById("aff-value");
 const affFill = document.getElementById("aff-fill");
 const affLevel = document.getElementById("aff-level");
 const cleanBtn = document.getElementById("clean-btn");
-const feedBtn = document.getElementById("feed-btn");
+const petBtn = document.getElementById("pet-btn");
 let editingName = false;
 let currentUserName = "";
 let currentPetName = "";
@@ -322,12 +329,90 @@ let currentPetDisplaySprite = null;
 function menuWindowHeight() {
   return (
     document.querySelector(".titlebar").offsetHeight +
+    modeBanner.offsetHeight + // 모드 배너(숨김 시 0)
     document.querySelector(".menu-head").offsetHeight +
     document.querySelector(".menu-list").offsetHeight +
     6 + // #popup 상하 테두리(3px×2)
     10 // 창 = #popup + 10px (하드 섀도우 여백)
   );
 }
+
+// ---------- 진행 중 모드 배너 (집중/발표) ----------
+// 상태는 메인이 관리하고(펫 렌더러가 갱신), 여기선 표시만 한다.
+// 집중 모드는 focusEndAt으로 남은 시간을 초당 갱신한다.
+let modeCountdown = null;
+let popupVisible = false;
+
+function stopModeCountdown() {
+  if (modeCountdown) {
+    clearInterval(modeCountdown);
+    modeCountdown = null;
+  }
+}
+
+function tickModeCountdown(focusEndAt) {
+  const remain = Math.max(0, focusEndAt - Date.now());
+  const mm = String(Math.floor(remain / 60000)).padStart(2, "0");
+  const ss = String(Math.floor((remain % 60000) / 1000)).padStart(2, "0");
+  modeBannerTime.textContent = `${mm}:${ss}`;
+}
+
+const MODE_ICON_TARGET =
+  '<circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5" />' +
+  '<circle cx="12" cy="12" r="1" />';
+const MODE_ICON_SCREEN =
+  '<rect x="3" y="4" width="18" height="12" rx="2" />' +
+  '<path d="M12 16v4M8 20h8" />';
+
+function modeIconSvg(paths) {
+  return (
+    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ` +
+    `stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`
+  );
+}
+
+function renderModeBanner(status) {
+  stopModeCountdown();
+  if (!status) {
+    modeBanner.classList.add("hidden");
+    resizeMenuIfActive();
+    return;
+  }
+  const isFocus = status.mode === "focus";
+  modeBannerIc.innerHTML = modeIconSvg(
+    isFocus ? MODE_ICON_TARGET : MODE_ICON_SCREEN,
+  );
+  modeBannerLabel.textContent = isFocus ? "집중 모드" : "발표 모드";
+  modeBannerTime.classList.toggle("hidden", !isFocus);
+  modeBanner.classList.remove("hidden");
+  if (isFocus && status.focusEndAt) {
+    tickModeCountdown(status.focusEndAt);
+    // 팝업이 보이는 동안만 초당 갱신한다(숨은 창에서 돌지 않게)
+    if (popupVisible) {
+      modeCountdown = setInterval(
+        () => tickModeCountdown(status.focusEndAt),
+        1000,
+      );
+    }
+  }
+  resizeMenuIfActive();
+}
+
+// 메뉴 화면이 떠 있을 때만 배너 높이 변화에 맞춰 창을 다시 맞춘다.
+function resizeMenuIfActive() {
+  if (!screens.menu.classList.contains("hidden")) {
+    window.trayAPI.resizePopup(menuWindowHeight());
+  }
+}
+
+modeBannerExit.addEventListener("click", () => {
+  window.trayAPI.sendAction("exit-mode");
+});
+
+// 모드가 바뀌면(진입/해제/만료) 메인이 push → 팝업이 열려 있으면 즉시 반영
+window.trayAPI.onModeStatus((status) => {
+  if (popupVisible) renderModeBanner(status);
+});
 
 // ---------- 온보딩 프롤로그 ----------
 const onboardingScene = document.getElementById("onboarding-scene");
@@ -599,7 +684,7 @@ function renderPet(state) {
   renderHeroText(state);
 
   renderAffinity(state.affinityPoints);
-  renderCareButtons(state.dailyCleanDone, state.dailyFeedDone);
+  renderCareButtons(state.dailyCleanDone, state.dailyPetDone);
 
   renderHistory(state.history || []);
 
@@ -823,12 +908,12 @@ function renderAffinity(points) {
   affLevel.textContent = name;
 }
 
-// 닦아주기/밥 주기 버튼 상태 (update.md 9.4). 오늘 완료했으면 비활성 + 완료 문구.
-function renderCareButtons(cleanDone, feedDone) {
+// 닦아주기/쓰다듬기 버튼 상태 (update.md 9.4). 오늘 완료했으면 비활성 + 완료 문구.
+function renderCareButtons(cleanDone, petDone) {
   cleanBtn.disabled = !!cleanDone;
   cleanBtn.textContent = cleanDone ? "깨끗해졌어요!" : "닦아주기";
-  feedBtn.disabled = !!feedDone;
-  feedBtn.textContent = feedDone ? "맛있었어요!" : "밥 주기";
+  petBtn.disabled = !!petDone;
+  petBtn.textContent = petDone ? "행복해요!" : "쓰다듬기";
 }
 
 // "이름 수정" ↔ "저장" 토글. 저장 시에만 store에 반영한다.
@@ -851,17 +936,17 @@ petCallout.addEventListener("click", () => {
   window.trayAPI.sendAction("answer-question");
 });
 
-// 닦아주기/밥 주기 → 호감도 +3 (하루 1회). 게이지·버튼을 즉시 갱신한다.
+// 닦아주기/쓰다듬기 → 호감도 +3 (하루 1회). 게이지·버튼을 즉시 갱신한다.
 // 90 도달로 진화하면 펫 창이 축하 연출을 띄운다(메인의 notifyEvolved).
 cleanBtn.addEventListener("click", async () => {
   const { state } = await window.trayAPI.cleanPet();
   renderAffinity(state.affinityPoints);
-  renderCareButtons(state.dailyCleanDone, state.dailyFeedDone);
+  renderCareButtons(state.dailyCleanDone, state.dailyPetDone);
 });
-feedBtn.addEventListener("click", async () => {
-  const { state } = await window.trayAPI.feedPet();
+petBtn.addEventListener("click", async () => {
+  const { state } = await window.trayAPI.petPet();
   renderAffinity(state.affinityPoints);
-  renderCareButtons(state.dailyCleanDone, state.dailyFeedDone);
+  renderCareButtons(state.dailyCleanDone, state.dailyPetDone);
 });
 
 // ---------- 설정 · 화면 기록 권한 ----------
@@ -886,6 +971,7 @@ async function showSettings() {
 const settingToggles = document.querySelectorAll(".set-row[data-setting]");
 const placeChips = document.querySelectorAll(".chip[data-place]");
 const sizeChips = document.querySelectorAll(".chip[data-size]");
+const focusMinuteChips = document.querySelectorAll(".chip[data-focus-minutes]");
 const resetBtn = document.getElementById("reset-btn");
 const confirmOverlay = document.getElementById("confirm-overlay");
 const confirmCancel = document.getElementById("confirm-cancel");
@@ -912,6 +998,12 @@ async function refreshSettings() {
   sizeChips.forEach((chip) =>
     chip.classList.toggle("on", chip.dataset.size === s.petSize),
   );
+  focusMinuteChips.forEach((chip) =>
+    chip.classList.toggle(
+      "on",
+      Number(chip.dataset.focusMinutes) === Number(s.focusMinutes || 25),
+    ),
+  );
 }
 
 settingToggles.forEach((btn) => {
@@ -933,6 +1025,13 @@ sizeChips.forEach((chip) => {
   chip.addEventListener("click", () => {
     sizeChips.forEach((c) => c.classList.toggle("on", c === chip));
     window.trayAPI.setSetting("petSize", chip.dataset.size);
+  });
+});
+
+focusMinuteChips.forEach((chip) => {
+  chip.addEventListener("click", () => {
+    focusMinuteChips.forEach((c) => c.classList.toggle("on", c === chip));
+    window.trayAPI.setSetting("focusMinutes", Number(chip.dataset.focusMinutes));
   });
 });
 
@@ -1010,6 +1109,7 @@ async function refreshBadge() {
 
 // 팝업이 열릴 때마다 메뉴로 초기화하고 권한 상태·배지를 갱신
 window.trayAPI.onWillShow(async () => {
+  popupVisible = true;
   hideResetConfirm(); // 이전에 열려 있던 확인창이 남지 않도록
   const onboarding = await window.trayAPI.getOnboardingState();
   if (!onboarding.completed) {
@@ -1019,10 +1119,15 @@ window.trayAPI.onWillShow(async () => {
   showScreen("menu");
   refreshPermToggle();
   refreshBadge();
+  renderModeBanner(await window.trayAPI.getModeStatus()); // 진행 중 모드 배너
 });
 
-// 팝업이 닫히면 시스템 모니터 폴링을 멈춘다 (숨은 창에서 계속 도는 것 방지)
-window.trayAPI.onWillHide(() => stopSystemMonitor());
+// 팝업이 닫히면 시스템 모니터 폴링·모드 카운트다운을 멈춘다 (숨은 창에서 계속 도는 것 방지)
+window.trayAPI.onWillHide(() => {
+  popupVisible = false;
+  stopSystemMonitor();
+  stopModeCountdown();
+});
 
 // ---------- 시스템 모니터 (SYSTEM 화면) ----------
 const SYS_POLL_MS = 2000;

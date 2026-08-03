@@ -23,6 +23,14 @@
         <span id="screen-title" class="back-title"></span>
       </button>
 
+      <!-- 진행 중 모드 배너 (집중/발표). 활성일 때만 표시 -->
+      <div id="mode-banner" class="mode-banner hidden">
+        <span id="mode-banner-ic" class="mode-banner-ic"></span>
+        <span id="mode-banner-label" class="mode-banner-label">집중 모드</span>
+        <span id="mode-banner-time" class="mode-banner-time hidden">25:00</span>
+        <button id="mode-banner-exit" class="mode-banner-exit">종료</button>
+      </div>
+
       <!-- ============ 본문 (내부 스크롤) ============ -->
       <div class="body">
         <!-- ############ ONBOARDING ############ -->
@@ -229,7 +237,7 @@
             </div>
           </section>
 
-          <!-- 돌보기 (닦아주기 · 밥 주기, update.md 9.4) -->
+          <!-- 돌보기 (닦아주기 · 쓰다듬기, update.md 9.4) -->
           <section class="panel">
             <div class="panel-label">
               돌보기
@@ -237,7 +245,7 @@
             </div>
             <div class="care-grid">
               <button id="clean-btn" class="care-btn">닦아주기</button>
-              <button id="feed-btn" class="care-btn">밥 주기</button>
+              <button id="pet-btn" class="care-btn">쓰다듬기</button>
             </div>
           </section>
 
@@ -663,6 +671,17 @@
               <button class="chip" data-size="small">작게</button>
               <button class="chip" data-size="medium">보통</button>
               <button class="chip" data-size="large">크게</button>
+            </div>
+          </section>
+
+          <!-- 집중 모드 -->
+          <section class="panel">
+            <div class="panel-label">집중 모드 시간</div>
+            <div class="grid-4">
+              <button class="chip" data-focus-minutes="15">15분</button>
+              <button class="chip" data-focus-minutes="25">25분</button>
+              <button class="chip" data-focus-minutes="45">45분</button>
+              <button class="chip" data-focus-minutes="60">60분</button>
             </div>
           </section>
 
