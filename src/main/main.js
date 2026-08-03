@@ -89,6 +89,7 @@ function startDevReload() {
       getWindow: () => mainWindow,
       files: [
         "../renderer/pet/index.html",
+        "../renderer/pet/pet-data.js",
         "../renderer/pet/pet.js",
         "../renderer/pet/style.css",
         "../renderer/shared/sound.js",

@@ -1,4 +1,4 @@
-![Rockie 배너](assets/img/banner.png)
+![Rockie 배너](assets/img/rockie_banner.png)
 
 # Rockie - 데스크롭 애완돌 키우기 앱
 
