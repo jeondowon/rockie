@@ -10,7 +10,7 @@
     "build:helper": "mkdir -p assets/helper/KeyBlocker.app/Contents/MacOS && swiftc -swift-version 5 -O assets/helper/keyblocker.swift -o assets/helper/KeyBlocker.app/Contents/MacOS/keyblocker && codesign --force --deep --sign - --identifier com.dowon.deskpet.keyblocker assets/helper/KeyBlocker.app"
   },
   "devDependencies": {
-    "electron": "^31.0.0"
+    "electron": "^43.2.0"
   },
   "dependencies": {
     "active-win": "^8.2.1",

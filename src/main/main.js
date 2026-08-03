@@ -421,7 +421,7 @@ function togglePet() {
 //  메뉴바에서 아주 작게 보인다)
 function trimTransparent(image) {
   const { width, height } = image.getSize();
-  const bmp = image.getBitmap(); // 픽셀당 4바이트, 알파는 마지막 바이트
+  const bmp = image.toBitmap(); // 픽셀당 4바이트, 알파는 마지막 바이트
   let minX = width,
     minY = height,
     maxX = -1,
