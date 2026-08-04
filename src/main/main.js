@@ -70,6 +70,11 @@ function createWindow() {
   mainWindow.setAlwaysOnTop(true, "screen-saver");
   mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
+  // 펫 렌더러가 다시 로드되면 모드 상태(오버레이·activeMode)가 초기화되므로,
+  // 메인이 들고 있는 잠금·억제 상태도 함께 푼다. 안 그러면 설정 초기화나 개발용
+  // 자동 새로고침 뒤에 키보드가 잠긴 채·알림이 막힌 채 남는다.
+  mainWindow.webContents.on("did-start-loading", releaseModeLocks);
+
   mainWindow.loadFile(path.join(__dirname, "../renderer/pet/index.html"));
 
   startActiveWindowWatcher();
@@ -138,6 +143,7 @@ function startDevReload() {
 function startCursorTracker() {
   cursorInterval = setInterval(() => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
+    if (!mainWindow.isVisible()) return; // 숨겨둔 동안엔 60Hz로 보낼 이유가 없다
     const point = screen.getCursorScreenPoint();
     const bounds = mainWindow.getBounds();
     // 창 기준 좌표로 변환해서 전달
@@ -154,7 +160,7 @@ ipcMain.on("set-ignore-mouse-events", (_event, ignore, options) => {
   mainWindow.setIgnoreMouseEvents(ignore, options);
 });
 
-// 방해금지 모드(집중/발표) 동안 배너 알림을 억제하기 위한 플래그. 렌더러가 켜고 끈다.
+// 방해금지 모드(집중) 동안 배너 알림을 억제하기 위한 플래그. 렌더러가 켜고 끈다.
 let dndActive = false;
 ipcMain.on("pet:set-dnd", (_event, on) => {
   dndActive = !!on;
@@ -165,7 +171,8 @@ ipcMain.on("pet:set-dnd", (_event, on) => {
 // 삼킨다. WindowServer가 단축키를 처리하기 전 단계라 Cmd+Space(Spotlight)·Cmd+Tab까지
 // 막힌다(hidutil·globalShortcut로는 불가). 마우스는 살아 있어 해제 버튼을 누를 수 있다.
 // 헬퍼는 stop 파일 또는 부모 프로세스 종료를 감지하면 스스로 탭을 풀고 종료한다.
-// 손쉬운 사용 권한 필요. 없으면 헬퍼가 시스템 요청창을 띄우고 상태를 보고.
+// 손쉬운 사용 권한만 있으면 된다(이벤트를 소멸시키는 액티브 탭이라 '제어' 관할).
+// 없으면 헬퍼가 보고하고, 오버레이가 설정창을 여는 버튼을 띄운다.
 const { spawn } = require("child_process");
 
 let cleanHelper = null;
@@ -192,20 +199,19 @@ function handleKeyBlockerStatus(helper, status) {
   if (!status || status === helper.status) return;
   helper.status = status;
   console.error("[clean] keyblocker:", status);
-  if (status === "READY" || status === "READY_HID_ONLY") {
+  if (status.startsWith("SPACE_TAP:")) {
+    // 비상 해제 제스처 진행 상황(0이면 초기화됨). 오버레이에 그대로 보여준다.
+    sendCleanStatus(`space-tap:${status.slice("SPACE_TAP:".length)}`);
+  } else if (status === "UNLOCK_REQUEST") {
+    // 헬퍼가 비상 해제 제스처(스페이스 10연타)를 감지했다. 잠금은 렌더러가 모드를
+    // 닫으면서 clean:exit로 푼다(여기서 바로 풀면 오버레이만 남는다).
+    sendCleanStatus("unlock-request");
+  } else if (status === "READY") {
     sendCleanStatus("blocked");
-  } else if (status === "READY_TAP_ONLY") {
-    sendCleanStatus("blocked-partial");
-  } else if (status === "NO_INPUT_MONITORING") {
-    sendCleanStatus("no-input-monitoring");
-    openPermissionSettings("input-monitoring");
-  } else if (status === "NO_ACCESSIBILITY") {
-    sendCleanStatus("no-accessibility");
-    openPermissionSettings("accessibility");
-  } else if (status.startsWith("NO_HID_SEIZE:")) {
-    sendCleanStatus("hid-seize-failed");
-  } else if (status.startsWith("NO_HID_MANAGER:")) {
-    sendCleanStatus("hid-manager-failed");
+  } else if (status.startsWith("NO_PERMS:")) {
+    // 부족한 권한 목록을 그대로 넘긴다 — 렌더러가 어떤 항목을 켜야 하는지 안내 문구에
+    // 쓴다. 설정창은 렌더러 버튼으로 사용자가 직접 연다.
+    sendCleanStatus(`no-perms:${status.slice("NO_PERMS:".length)}`);
   } else if (status === "NO_EVENT_TAP") {
     sendCleanStatus("event-tap-failed");
   } else {
@@ -220,7 +226,8 @@ function armCleanAutoStop(maxMs) {
   cleanAutoStopTimer = setTimeout(() => {
     console.error("[clean] 자동 해제: 최대 잠금 시간을 초과했습니다.");
     stopKeyBlocker();
-    sendCleanStatus("error");
+    // 실패가 아니라 시간이 다 된 것 — 렌더러가 "잠금 실패"로 오해하지 않도록 구분해서 알린다.
+    sendCleanStatus("time-limit");
   }, maxMs);
 }
 
@@ -336,25 +343,13 @@ function stopKeyBlocker() {
   }
 }
 
-// 권한 설정창을 연다(프롬프트는 앱당 한 번만 떠서 신뢰 불가 → 설정창으로 직접 안내).
-function openAccessibilitySettings() {
+// 필요한 권한이 '손쉬운 사용' 하나뿐이라 그 페이지를 바로 연다.
+// 목록 등록은 따로 하지 않는다 — 모드 진입 때 실행된 헬퍼의 AXIsProcessTrusted가
+// 이미 KeyBlocker를 이 목록에 올려 놓으므로, 창이 열리면 토글만 켜면 된다.
+function openPermissionSettings() {
   shell.openExternal(
     "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
   );
-}
-function openInputMonitoringSettings() {
-  shell.openExternal(
-    "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent",
-  );
-}
-
-// 권한이 없을 때 해당 개인정보 보호 설정 창을 바로 연다.
-function openPermissionSettings(kind) {
-  const isInput = kind === "input-monitoring";
-  const openSettings = isInput
-    ? openInputMonitoringSettings
-    : openAccessibilitySettings;
-  openSettings();
 }
 
 ipcMain.on("clean:enter", (_event, maxMs) => {
@@ -372,6 +367,11 @@ ipcMain.on("clean:exit", () => {
   stopKeyBlocker();
 });
 
+// 권한 안내 오버레이의 "손쉬운 사용 열기" 버튼.
+ipcMain.on("clean:open-permission", () => {
+  openPermissionSettings();
+});
+
 // 종료 경로에서 헬퍼를 정리(헬퍼는 stdin EOF로도 자멸하지만 이중 안전).
 app.on("will-quit", stopKeyBlocker);
 process.on("exit", stopKeyBlocker);
@@ -381,10 +381,22 @@ process.on("uncaughtException", (err) => {
   app.quit();
 });
 
+// 펫 렌더러 없이 남으면 안 되는 상태(키보드 잠금·방해금지·모드 배너)를 모두 되돌린다.
+function releaseModeLocks() {
+  stopKeyBlocker();
+  dndActive = false;
+  if (currentModeStatus) {
+    currentModeStatus = null;
+    if (trayPopup && !trayPopup.isDestroyed()) {
+      trayPopup.webContents.send("mode:status", null);
+    }
+  }
+}
+
 // 옵션창의 "애완돌 숨기기/보이기" (트레이 메뉴와 동일 동작)
 ipcMain.on("pet:toggle-visibility", () => togglePet());
 
-// 집중/발표 모드 상태를 트레이 팝업에 미러링한다.
+// 집중 모드 상태를 트레이 팝업에 미러링한다.
 // 펫 렌더러가 진입/해제 시 보내고(null=없음), 트레이는 이 값으로 배너를 그린다.
 let currentModeStatus = null;
 ipcMain.on("mode:set-status", (_event, status) => {
@@ -642,7 +654,7 @@ function lastResetBoundary(nowMs) {
 // 매일 오전 8시 배너 알림 (설정 '질문 알림'이 켜져 있을 때만). update.md 9.3
 function showQuestionBanner() {
   if (!Notification.isSupported()) return;
-  if (dndActive) return; // 집중/발표 모드 중엔 알림을 띄우지 않는다
+  if (dndActive) return; // 집중 모드 중엔 알림을 띄우지 않는다
   const banner = new Notification({
     title: "오늘도 나에 대해 알려주세요",
     body: "새 질문을 준비해뒀어요. 메뉴바에서 답해 주세요!",
@@ -656,7 +668,7 @@ function showQuestionBanner() {
 // 설정에서 '질문 알림'을 켠 순간, 실제 배너가 어떻게 보이는지 미리보기로 한 번 띄운다.
 function showBannerPreview() {
   if (!Notification.isSupported()) return;
-  if (dndActive) return; // 집중/발표 모드 중엔 알림을 띄우지 않는다
+  if (dndActive) return; // 집중 모드 중엔 알림을 띄우지 않는다
   new Notification({
     title: "오늘도 나에 대해 알려주세요",
     body: "이렇게 표시됩니다",
@@ -790,34 +802,30 @@ ipcMain.handle("evolution:complete-pending", () => {
   store.save();
   return result;
 });
-// 호감도 지급(상한 100). 실제로 오른 만큼(상한 반영)을 반환한다.
-function awardAffinity(data, amount) {
-  const before = data.affinity.affinityPoints;
-  data.affinity.affinityPoints = Math.min(100, before + amount);
-  return data.affinity.affinityPoints - before;
-}
-
 // 이름 저장 (사용자/애완돌). 빈 값이면 null, 최초 지정 시각을 한 번만 기록하고
-// 그때 호감도 +5를 지급한다(최초 1회).
+// 그때 호감도 보상을 지급한다(최초 1회). 보상으로 90을 넘길 수 있으므로 진화 판정까지
+// 함께 도는 evolution.awardNameBonus를 쓴다.
 ipcMain.handle("evolution:set-name", (_event, { target, value }) => {
   const data = store.get();
   const name = (value || "").trim() || null;
+  let evolved = null;
   if (target === "user") {
     if (name && !data.user.userNameSetAt) {
       data.user.userNameSetAt = new Date().toISOString();
-      awardAffinity(data, 5);
+      evolved = evolution.awardNameBonus(data).evolved;
     }
     data.user.userName = name;
   } else if (target === "pet") {
     if (name && !data.pet.petNameSetAt) {
       data.pet.petNameSetAt = new Date().toISOString();
-      awardAffinity(data, 5);
+      evolved = evolution.awardNameBonus(data).evolved;
     }
     data.pet.petName = name;
   } else {
     return null;
   }
   store.save();
+  if (evolved) notifyEvolved(data);
   if (target === "user" && mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send("pet:user-name-change", data.user.userName);
   }
@@ -855,7 +863,17 @@ ipcMain.handle("settings:get", () => {
   return {
     ...data.settings,
     notifications: data.notifications.notificationsEnabled,
+    // 펫 렌더러가 첫 클릭 때 모드 안내를 띄울지 판단하는 값
+    modeHintSeen: !!data.user.modeHintSeenAt,
   };
+});
+
+// 모드 안내를 실제로 띄웠을 때 기록한다(다시 띄우지 않도록).
+ipcMain.on("pet:mode-hint-shown", () => {
+  const data = store.get();
+  if (data.user.modeHintSeenAt) return;
+  data.user.modeHintSeenAt = new Date().toISOString();
+  store.save();
 });
 
 // 설정 변경 → 즉시 부수효과 적용 + 저장.

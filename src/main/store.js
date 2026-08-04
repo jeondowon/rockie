@@ -7,11 +7,19 @@ const path = require("path");
 const fs = require("fs");
 
 const FILE = path.join(app.getPath("userData"), "petdata.json");
+const TMP_FILE = `${FILE}.tmp`;
 
 function defaultData() {
   const now = new Date().toISOString();
   return {
-    user: { userName: null, userNameSetAt: null, installedAt: now },
+    user: {
+      userName: null,
+      userNameSetAt: null,
+      installedAt: now,
+      // 더블클릭 모드 안내를 보여준 시각. null이면 아직 안 봤다는 뜻이라
+      // 예전부터 쓰던 사용자도 다음 실행 때 한 번 보게 된다.
+      modeHintSeenAt: null,
+    },
     onboarding: {
       completed: false,
       step: 0,
@@ -105,20 +113,43 @@ function load() {
       data.onboarding.completedAt =
         data.onboarding.completedAt || new Date().toISOString();
     }
-  } catch (_err) {
-    // 파일이 없거나 깨졌으면 기본값으로 새로 만든다
+  } catch (err) {
+    // 파일이 없으면(첫 실행) 그냥 기본값으로 시작한다.
+    // 파일은 있는데 못 읽으면 = 깨진 것. 기본값으로 덮어쓰기 전에 원본을 옆에 남겨
+    // 나중에 손으로라도 복구할 수 있게 한다(그동안 키운 상태가 통째로 사라지므로).
+    if (err.code !== "ENOENT") preserveCorruptFile(err);
     data = defaultData();
     save();
   }
   return data;
 }
 
+// 깨진 저장 파일을 petdata.corrupt-<타임스탬프>.json으로 옮겨 보존한다.
+function preserveCorruptFile(err) {
+  const backup = path.join(
+    app.getPath("userData"),
+    `petdata.corrupt-${Date.now()}.json`,
+  );
+  try {
+    fs.renameSync(FILE, backup);
+    console.error(
+      `[store] 저장 파일을 읽지 못했습니다(${err.message}). ` +
+        `원본을 ${backup}에 보관하고 기본값으로 시작합니다.`,
+    );
+  } catch (_e) {
+    console.error("[store] 저장 파일을 읽지도 보관하지도 못했습니다:", err.message);
+  }
+}
+
 function get() {
   return data;
 }
 
+// 임시 파일에 먼저 쓰고 rename으로 바꿔치기한다(rename은 원자적).
+// 원본을 직접 덮어쓰면 쓰는 도중 크래시·전원 차단 시 파일이 깨진 채 남는다.
 function save() {
-  fs.writeFileSync(FILE, JSON.stringify(data, null, 2));
+  fs.writeFileSync(TMP_FILE, JSON.stringify(data, null, 2));
+  fs.renameSync(TMP_FILE, FILE);
 }
 
 // "처음부터 다시 키우기" — 전체 상태를 기본값으로 되돌리고 저장한다.

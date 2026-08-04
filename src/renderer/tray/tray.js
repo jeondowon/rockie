@@ -15,7 +15,7 @@ const SCREEN_TITLES = {
   settings: "설정",
 };
 
-// 진행 중 모드 배너 (집중/발표)
+// 진행 중 모드 배너 (집중)
 const modeBanner = document.getElementById("mode-banner");
 const modeBannerIc = document.getElementById("mode-banner-ic");
 const modeBannerLabel = document.getElementById("mode-banner-label");
@@ -338,7 +338,7 @@ function menuWindowHeight() {
   );
 }
 
-// ---------- 진행 중 모드 배너 (집중/발표) ----------
+// ---------- 진행 중 모드 배너 (집중) ----------
 // 상태는 메인이 관리하고(펫 렌더러가 갱신), 여기선 표시만 한다.
 // 집중 모드는 focusEndAt으로 남은 시간을 초당 갱신한다.
 let modeCountdown = null;
@@ -364,9 +364,6 @@ function tickModeCountdown(focusEndAt) {
 const MODE_ICON_TARGET =
   '<circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5" />' +
   '<circle cx="12" cy="12" r="1" />';
-const MODE_ICON_SCREEN =
-  '<rect x="3" y="4" width="18" height="12" rx="2" />' +
-  '<path d="M12 16v4M8 20h8" />';
 
 function modeIconSvg(paths) {
   return (
@@ -382,19 +379,14 @@ function renderModeBanner(status) {
     resizeMenuIfActive();
     return;
   }
-  const isFocus = status.mode === "focus";
-  modeBannerIc.innerHTML = modeIconSvg(
-    isFocus ? MODE_ICON_TARGET : MODE_ICON_SCREEN,
-  );
-  modeBannerLabel.textContent = isFocus ? "집중 모드" : "발표 모드";
-  modeBannerTime.classList.toggle("hidden", !isFocus);
-  modeBannerPause.classList.toggle("hidden", !isFocus);
+  modeBannerIc.innerHTML = modeIconSvg(MODE_ICON_TARGET);
+  modeBannerLabel.textContent = "집중 모드";
   modeBannerPause.textContent = status.paused ? "계속하기" : "일시정지";
   modeBanner.classList.remove("hidden");
-  if (isFocus && status.paused) {
+  if (status.paused) {
     // 일시정지 중엔 남은 시간을 멈춘 채로 표시한다(초당 갱신 없음)
     renderModeRemain(Math.max(0, status.remainMs || 0));
-  } else if (isFocus && status.focusEndAt) {
+  } else if (status.focusEndAt) {
     tickModeCountdown(status.focusEndAt);
     // 팝업이 보이는 동안만 초당 갱신한다(숨은 창에서 돌지 않게)
     if (popupVisible) {

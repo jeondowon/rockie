@@ -13,7 +13,9 @@ contextBridge.exposeInMainWorld("petAPI", {
   onCleanStatus: (callback) => {
     ipcRenderer.on("clean:status", (_event, status) => callback(status));
   },
-  // 집중/발표 모드 상태를 트레이에 미러링 + 트레이 "종료" 신호 수신 + 펫 표시 토글
+  // 권한 안내에서 '손쉬운 사용' 설정 페이지를 연다
+  openPermissionSettings: () => ipcRenderer.send("clean:open-permission"),
+  // 집중 모드 상태를 트레이에 미러링 + 트레이 "종료" 신호 수신 + 펫 표시 토글
   setModeStatus: (status) => ipcRenderer.send("mode:set-status", status),
   togglePet: () => ipcRenderer.send("pet:toggle-visibility"),
   onModeExitRequest: (callback) => {
@@ -65,6 +67,7 @@ contextBridge.exposeInMainWorld("petAPI", {
     ipcRenderer.on("onboarding:completed", () => callback());
   },
   getSettings: () => ipcRenderer.invoke("settings:get"),
+  markModeHintShown: () => ipcRenderer.send("pet:mode-hint-shown"),
   onPetSettings: (callback) => {
     ipcRenderer.on("pet-settings", (_event, data) => callback(data));
   },

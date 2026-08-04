@@ -199,7 +199,7 @@ body {
   flex-direction: column;
 }
 
-/* 진행 중 모드 배너 (집중/발표). 헤더 아래 별도 상태 라인으로 표시 */
+/* 진행 중 모드 배너 (집중). 헤더 아래 별도 상태 라인으로 표시 */
 .mode-banner {
   display: flex;
   align-items: center;

@@ -408,9 +408,6 @@ const ICON_KEYBOARD =
 const ICON_TARGET =
   '<circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5" />' +
   '<circle cx="12" cy="12" r="1" />';
-const ICON_SCREEN =
-  '<rect x="3" y="4" width="18" height="12" rx="2" />' +
-  '<path d="M12 16v4M8 20h8" />';
 const ICON_MOON = '<path d="M12 3a6.5 6.5 0 0 0 9 9 9 9 0 1 1-9-9z" />';
 const ICON_EYE =
   '<path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z" />' +
@@ -427,18 +424,12 @@ const MODES = [
     id: "focus",
     icon: ICON_TARGET,
     label: "집중 모드",
-    desc: "설정 시간 · 알림 없이 조용히",
+    desc: "설정 시간 · 말풍선 없이 조용히",
   },
   {
     id: "nap",
     icon: ICON_MOON,
     label: "쪽잠 모드",
     desc: "화면·키보드 잠금 · 끝나면 알람",
-  },
-  {
-    id: "presentation",
-    icon: ICON_SCREEN,
-    label: "발표 모드",
-    desc: "펫·알림 숨김 · 화면공유",
   },
 ];

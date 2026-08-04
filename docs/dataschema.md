@@ -10,7 +10,8 @@
   "user": {
     "userName": null,
     "userNameSetAt": null,
-    "installedAt": "2026-07-06T00:00:00.000Z"
+    "installedAt": "2026-07-06T00:00:00.000Z",
+    "modeHintSeenAt": null
   },
 
   "pet": {
@@ -103,6 +104,7 @@
 | `userName`      | string \| null       | `null`    | 설정에서 지정하는 사용자 이름. 미설정 시 기본 호칭("대장님" 등) 사용 |
 | `userNameSetAt` | ISO datetime \| null | `null`    | 최초 설정 시각. 호감도 중복 지급 방지 플래그로 사용                  |
 | `installedAt`   | ISO datetime         | 설치 시각 | 초반 하루 간격 질문 타이밍 계산 기준                                 |
+| `modeHintSeenAt` | ISO datetime \| null | `null`    | 더블클릭 모드 안내를 띄운 시각. null이면 첫 클릭 때 안내를 한 번 표시 |
 
 ### 2.2 `pet` — 캐릭터 기본 상태
 

@@ -16,11 +16,9 @@
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
-	<key>LSBackgroundOnly</key>
+	<key>LSUIElement</key>
 	<true/>
 	<key>NSAccessibilityUsageDescription</key>
 	<string>키보드 청소 모드에서 모든 키 입력과 단축키를 잠그기 위해 필요합니다.</string>
-	<key>NSInputMonitoringUsageDescription</key>
-	<string>키보드 청소 모드에서 키보드 입력이 시스템으로 전달되지 않게 하기 위해 필요합니다.</string>
 </dict>
 </plist>

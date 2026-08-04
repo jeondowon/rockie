@@ -245,6 +245,34 @@ test("2단계에서 닦기와 쓰다듬기로 호감도 90에 도달하면 3단�
   assert.equal(data.pet.evolutionStage, 3);
 });
 
+test("2단계에서 이름 보상으로 호감도 90에 도달하면 3단계로 오른다", () => {
+  const data = makeData();
+  data.pet.evolutionStage = 2;
+  data.pet.stoneType = "marble";
+  data.pet.evolutionVariant = "introvert";
+  data.affinity.affinityPoints = 88;
+
+  const result = evolution.awardNameBonus(data);
+
+  assert.equal(result.evolved, 3);
+  assert.equal(data.affinity.affinityPoints, 93);
+  assert.equal(data.pet.evolutionStage, 3);
+});
+
+test("이름 보상만으로 90에 못 미치면 진화하지 않는다", () => {
+  const data = makeData();
+  data.pet.evolutionStage = 2;
+  data.pet.stoneType = "marble";
+  data.pet.evolutionVariant = "introvert";
+  data.affinity.affinityPoints = 80;
+
+  const result = evolution.awardNameBonus(data);
+
+  assert.equal(result.evolved, null);
+  assert.equal(data.affinity.affinityPoints, 85);
+  assert.equal(data.pet.evolutionStage, 2);
+});
+
 test("2단계 이상에서는 일일 갱신 후에도 질문 배지가 남지 않는다", () => {
   const data = makeData();
   data.pet.evolutionStage = 2;

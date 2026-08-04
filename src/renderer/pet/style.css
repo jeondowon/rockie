@@ -79,16 +79,27 @@ body.dragging .character {
 }
 
 /* 집중 모드 컨트롤이 떠 있는 동안만 말풍선이 클릭을 받는다.
-   버튼 두 개가 한 줄에 들어가도록 이때만 최대 폭을 넓힌다. */
+   이때만 폭을 잡아 "일시정지 + 중지"가 한 줄에 들어가게 한다(최소치는 약 134px).
+   버튼이 닫힌 "집중 중" 말풍선은 글자 폭만큼만 좁게 남는다. */
 .bubble.interactive {
   pointer-events: auto;
-  max-width: 260px;
+  width: 144px;
+}
+
+.focus-line {
+  text-align: center;
 }
 
 .focus-ctrl {
   display: flex;
+  flex-direction: column;
   gap: 6px;
   margin-top: 8px;
+}
+
+.focus-ctrl-row {
+  display: flex;
+  gap: 6px;
 }
 
 .focus-ctrl.hidden {
@@ -107,6 +118,12 @@ body.dragging .character {
   background: #e2d9c3;
   padding: 5px 8px;
   border: 2px solid #1b1b16;
+}
+
+/* 일시정지·중지 아래 줄에 글자 폭만큼만 놓이는 버튼 */
+.focus-btn-wide {
+  flex: 0 0 auto;
+  align-self: center;
 }
 
 .focus-btn:hover {
@@ -452,6 +469,20 @@ body.dragging .character {
   white-space: pre-line;
 }
 
+/* 비상 해제(스페이스 연타) 안내 겸 진행 표시. 세는 중에는 점이 커지며 또렷해진다 */
+.clean-gesture {
+  font-size: 11px;
+  line-height: 1.6;
+  color: #8a8578;
+  letter-spacing: 1px;
+}
+
+.clean-gesture.counting {
+  font-size: 16px;
+  letter-spacing: 3px;
+  color: #c9a12e;
+}
+
 /* 차단 상태 줄: 기본은 잠김(초록 톤), 권한 필요·오류는 warn(경고 톤) */
 .clean-status {
   max-width: 360px;
@@ -465,14 +496,72 @@ body.dragging .character {
   color: #e6b34b;
 }
 
-.clean-unlock {
-  margin-top: 8px;
+/* 권한 부족 안내 버튼 줄('손쉬운 사용 열기') */
+.clean-perms {
+  display: flex;
+  gap: 8px;
+}
+
+/* 권한이 없으면 키보드가 잠기지 않은 상태다. 화면을 덮는 대신 우측 상단의 작은
+   카드로 줄여, 뒤에 열린 시스템 설정을 보면서 권한을 켤 수 있게 한다.
+   (카드 밖 클릭은 통과 — 렌더러가 hover에 맞춰 setIgnoreMouseEvents를 토글한다) */
+.clean-overlay.perms,
+.nap-overlay.perms {
+  align-items: flex-start;
+  justify-content: flex-end;
+  background: transparent;
+  pointer-events: none;
+}
+
+/* 두 모드가 같은 자리에 같은 크기로 뜨도록 너비를 고정한다. 내용(청소는 안내 문구,
+   쪽잠은 타이머)이 달라 폭을 내용에 맡기면 카드 크기가 서로 달라진다. */
+.clean-overlay.perms .clean-box,
+.nap-overlay.perms .nap-box {
+  width: 360px;
+  margin: 16px;
+  padding: 20px 24px;
+  gap: 10px;
+  background: rgba(18, 17, 13, 0.94);
+  border: 2px solid #3a3730;
+  pointer-events: auto;
+}
+
+/* 줄어든 카드에서는 장식과 무의미해진 안내(키가 안 잠겼으니 비상 해제도 없다)를
+   접어 권한 안내와 버튼만 남긴다. 쪽잠 카드는 여기서 손대지 않는다 —
+   중지 버튼까지 접히면 모드를 빠져나갈 수단이 사라진다. */
+.clean-overlay.perms .clean-icon,
+.clean-overlay.perms .clean-desc,
+.clean-overlay.perms .clean-gesture {
+  display: none;
+}
+
+.clean-perm {
   font-family: inherit;
-  font-size: 13px;
+  font-size: 11px;
+  color: #f2ede1;
+  background: transparent;
+  border: 2px solid #e6b34b;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+.clean-perm:hover {
+  background: #e6b34b;
+  color: #1b1b16;
+}
+
+.clean-perm:active {
+  transform: scale(0.96);
+}
+
+.clean-unlock {
+  margin-top: 6px;
+  font-family: inherit;
+  font-size: 12px;
   color: #1b1b16;
   background: #c9a12e;
   border: 3px solid #f2ede1;
-  padding: 12px 22px;
+  padding: 9px 18px;
   cursor: pointer;
 }
 
@@ -578,12 +667,4 @@ body.dragging .character {
   50% {
     opacity: 0.25;
   }
-}
-
-/* 발표 모드: 펫·말풍선·카드를 숨겨 화면공유에 안 나오게 한다 (pill만 남김) */
-body.presenting .character,
-body.presenting .heart,
-body.presenting .bubble,
-body.presenting .qcard {
-  display: none !important;
 }

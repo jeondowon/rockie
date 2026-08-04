@@ -22,6 +22,7 @@ const QUESTION_DISPLAY_TOTAL = STAGE1_DISPLAY_COUNT + EI_QUESTION_COUNT;
 const AFFINITY_TARGET = 90; // 2→3 진화 필요 호감도
 const CLEAN_POINTS = 3; // 닦아주기 획득 점수
 const PET_POINTS = 3; // 쓰다듬기 획득 점수
+const NAME_POINTS = 5; // 이름(사용자/애완돌) 최초 지정 보상
 const AFFINITY_MAX = 100; // 호감도 상한
 
 // 돌 종류: 영문 key는 pet.stoneType/GIF 접두어, ko는 traitScores 키.
@@ -344,6 +345,18 @@ function awardAffinity(data, amount) {
   );
 }
 
+// 이름(사용자/애완돌) 최초 지정 보상. 호감도만 올리고 끝내면 이 +5로 90을 넘겨도
+// 3단계 판정이 안 걸리므로, 지급과 판정을 여기서 함께 처리한다.
+function awardNameBonus(data) {
+  const before = data.pet.evolutionStage;
+  awardAffinity(data, NAME_POINTS);
+  tryAffinityEvaluate(data);
+  return {
+    evolved:
+      data.pet.evolutionStage !== before ? data.pet.evolutionStage : null,
+  };
+}
+
 // 닦아주기/쓰다듬기 공통: 하루 1회 제한. 진화가 일어났으면 evolved에 새 단계 번호.
 function carePet(data, doneFlag, points) {
   const before = data.pet.evolutionStage;
@@ -591,6 +604,7 @@ module.exports = {
   completeOnboarding,
   setActiveSkin,
   answer,
+  awardNameBonus,
   cleanPet,
   petPet,
   completePendingEvolution,
