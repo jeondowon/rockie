@@ -411,7 +411,6 @@ body {
     276px 44px 0 rgba(242, 237, 225, 0.6),
     306px 10px 0 #f2ede1,
     52px 58px 0 rgba(242, 237, 225, 0.6),
-    140px 72px 0 #f2ede1,
     232px 64px 0 rgba(242, 237, 225, 0.6),
     300px 70px 0 #f2ede1;
 }
@@ -535,33 +534,6 @@ body {
   text-shadow:
     3px 3px 0 #c9a12e,
     6px 6px 0 rgba(27, 27, 22, 0.65);
-}
-
-/* 타이틀 옆 십자 반짝이 픽셀 */
-.intro-title::before,
-.intro-title::after {
-  content: "";
-  position: absolute;
-  width: 5px;
-  height: 5px;
-  background: #c9a12e;
-  box-shadow:
-    0 -5px 0 #c9a12e,
-    0 5px 0 #c9a12e,
-    -5px 0 0 #c9a12e,
-    5px 0 0 #c9a12e;
-  animation: star-twinkle 1.9s steps(1, end) infinite;
-}
-
-.intro-title::before {
-  left: 36px;
-  top: -12px;
-}
-
-.intro-title::after {
-  right: 40px;
-  top: 30px;
-  animation-delay: 0.9s;
 }
 
 .intro-stones {
@@ -1546,6 +1518,12 @@ body {
   font-family: inherit;
   font-size: 12px;
   color: #1b1b16;
+}
+
+/* 입력 중인 칸을 강조 (기본 포커스 링 대신 테두리 색으로) */
+.name-input:focus {
+  outline: none;
+  border-color: #c9a12e;
 }
 
 .name-value {

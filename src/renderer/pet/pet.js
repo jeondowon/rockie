@@ -610,6 +610,11 @@ function formatMessage(message) {
 const DOUBLE_CLICK_MS = 250;
 let clickReactionTimer = null;
 
+// 더블클릭으로 모드를 열 수 있다는 안내. 첫 클릭 때 클릭 대사 대신 한 번만 띄우고,
+// 띄운 시각을 메인에 기록해 다음 실행부터는 다시 나오지 않게 한다.
+const MODE_HINT = " 저를 더블클릭하면 여러 모드를 사용할 수 있어요!";
+let modeHintPending = false;
+
 character.addEventListener("click", (e) => {
   // 집중 모드에선 클릭 반응 대신 말풍선의 일시정지/중지 버튼을 여닫는다
   if (activeMode === "focus" && !modePanelOpen) {
@@ -633,12 +638,17 @@ character.addEventListener("click", (e) => {
   }
   clearTimeout(clickReactionTimer);
   clickReactionTimer = setTimeout(() => {
-    const reactions = currentClickReactions();
-    const msg = formatMessage(
-      reactions[Math.floor(Math.random() * reactions.length)],
-    );
     playSound("click");
-    showBubble(msg);
+    if (modeHintPending) {
+      modeHintPending = false;
+      window.petAPI.markModeHintShown();
+      showBubble(MODE_HINT, 5000);
+    } else {
+      const reactions = currentClickReactions();
+      showBubble(
+        formatMessage(reactions[Math.floor(Math.random() * reactions.length)]),
+      );
+    }
     pauseWalking(1500);
   }, DOUBLE_CLICK_MS);
 });
@@ -1312,6 +1322,7 @@ async function initSettings() {
     setSoundEnabled(s.soundEnabled);
     focusMinutes = Number(s.focusMinutes) || 25;
     napMinutes = Number(s.napMinutes) || 20;
+    modeHintPending = !s.modeHintSeen;
   } catch (_err) {
     // 설정을 못 읽으면 기본값(따라오기 · 보통)을 유지
   } finally {
