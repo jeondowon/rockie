@@ -28,9 +28,11 @@ src/
     pet.js             window.petAPI (펫 오버레이 창)
     tray.js            window.trayAPI (트레이 팝업 창)
   renderer/
-    pet/               펫 오버레이 (index.html · pet.js · style.css)
-    tray/              트레이 팝업 4화면 (tray.html · tray.js · tray.css)
+    pet/               펫 오버레이 (index.html · pet.js · pet-data.js · style.css)
+    tray/              트레이 팝업 4화면 (tray.html · tray.js · tray-data.js · tray.css)
     shared/sprites.js  진화 상태 ↔ GIF 매핑 단일 정의처 (두 렌더러 공용)
+    shared/icons.js    라인 아이콘 SVG + svgIcon() (두 렌더러 공용)
+    shared/sound.js    효과음·알람 (Web Audio 합성)
 assets/
   gif/level0~3/        단계별 스프라이트 ({접두어}_{포즈}.gif) + heart.gif
   tray/                메뉴바 아이콘 (template.png, 배지 new_dark/new_light.png)
@@ -38,7 +40,7 @@ docs/                  기획·스펙 문서
 test/                  진화 로직 테스트 (node --test)
 ```
 
-관련 설계 문서: `docs/plan.md`(기획·작업 현황), `docs/evolution.md`·`docs/update.md`(진화 v2 정본), `docs/dataschema.md`(저장 데이터 구조)
+관련 설계 문서: `docs/plan.md`(기획·작업 현황), `docs/evolution.md`(진화 단계·근거 정본), `docs/dataschema.md`(저장 데이터 구조)
 
 ## 3. 동작 방식
 

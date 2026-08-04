@@ -252,9 +252,10 @@ test("2단계에서 이름 보상으로 호감도 90에 도달하면 3단계로 
   data.pet.evolutionVariant = "introvert";
   data.affinity.affinityPoints = 88;
 
-  const result = evolution.awardNameBonus(data);
+  const result = evolution.setName(data, "user", "도원");
 
   assert.equal(result.evolved, 3);
+  assert.equal(result.userName, "도원");
   assert.equal(data.affinity.affinityPoints, 93);
   assert.equal(data.pet.evolutionStage, 3);
 });
@@ -266,11 +267,38 @@ test("이름 보상만으로 90에 못 미치면 진화하지 않는다", () => 
   data.pet.evolutionVariant = "introvert";
   data.affinity.affinityPoints = 80;
 
-  const result = evolution.awardNameBonus(data);
+  const result = evolution.setName(data, "pet", "몽돌");
 
   assert.equal(result.evolved, null);
+  assert.equal(result.petName, "몽돌");
   assert.equal(data.affinity.affinityPoints, 85);
   assert.equal(data.pet.evolutionStage, 2);
+});
+
+test("이름 보상은 최초 지정 1회뿐이고, 이름을 바꾸거나 지워도 다시 주지 않는다", () => {
+  const data = makeData();
+
+  evolution.setName(data, "user", "도원");
+  assert.equal(data.affinity.affinityPoints, 5);
+  const setAt = data.user.userNameSetAt;
+  assert.ok(setAt);
+
+  evolution.setName(data, "user", "다른이름");
+  assert.equal(data.affinity.affinityPoints, 5); // 재지정은 보상 없음
+  assert.equal(data.user.userNameSetAt, setAt); // 최초 시각도 그대로
+
+  const cleared = evolution.setName(data, "user", "   ");
+  assert.equal(cleared.userName, null); // 공백만 있으면 지운 것으로 본다
+  assert.equal(data.affinity.affinityPoints, 5);
+});
+
+test("이름 대상이 user/pet이 아니면 아무것도 바꾸지 않는다", () => {
+  const data = makeData();
+
+  assert.equal(evolution.setName(data, "stone", "이름"), null);
+  assert.equal(data.affinity.affinityPoints, 0);
+  assert.equal(data.user.userName, null);
+  assert.equal(data.pet.petName, null);
 });
 
 test("2단계 이상에서는 일일 갱신 후에도 질문 배지가 남지 않는다", () => {

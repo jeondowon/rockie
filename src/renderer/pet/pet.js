@@ -137,7 +137,13 @@ function spriteUrl(name) {
   return spriteGifUrl(spriteLevel, spritePrefix, name);
 }
 
+// 트레이가 같은 모습을 보여주도록 현재 스프라이트를 알린다.
+// applySprite는 방향 전환·걷기 시작/정지마다 불리므로, 실제로 바뀐 경우에만 보낸다.
+let lastNotifiedSprite = "";
 function notifyDisplaySprite(pose) {
+  const key = `${spriteLevel}/${spritePrefix}/${pose}`;
+  if (key === lastNotifiedSprite) return;
+  lastNotifiedSprite = key;
   window.petAPI.setDisplaySprite({
     level: spriteLevel,
     prefix: spritePrefix,
@@ -554,7 +560,10 @@ function bubbleBorderLeftWidth() {
 function positionBubble() {
   const o = BUBBLE_OFFSET[spritePrefix] || { x: 0, y: 0 };
   const k = CHAR_SIZE / 320;
+  // 두 치수를 먼저 읽고 스타일은 나중에 쓴다. 읽기-쓰기-읽기 순서로 두면
+  // 매 프레임 레이아웃이 두 번 강제된다(집중 모드처럼 말풍선이 상시 표시될 때 특히).
   const w = bubble.offsetWidth;
+  const h = bubble.offsetHeight;
 
   // 꼬리(화살표)가 가리켜야 할 지점 = 펫 머리 중심 + 캐릭터 보정.
   const tailX = posX + CHAR_SIZE / 2 + o.x * k;
@@ -578,9 +587,8 @@ function positionBubble() {
 
   // 세로는 박스 상단(posY)이 아니라 펫 '머리 상단'(posY + SPRITE_MARGIN) 기준으로 잡아
   // 크기가 커져 투명 여백이 늘어도 말풍선~펫 간격이 일정하게 유지되도록 한다.
-  // (offsetHeight + 꼬리 11px 만큼 위로 = 꼬리 끝이 머리 위에 닿음)
-  bubble.style.top =
-    posY + SPRITE_MARGIN - bubble.offsetHeight - 11 + o.y * k + "px";
+  // (높이 + 꼬리 11px 만큼 위로 = 꼬리 끝이 머리 위에 닿음)
+  bubble.style.top = posY + SPRITE_MARGIN - h - 11 + o.y * k + "px";
 }
 
 // ---------- 3. 클릭 반응 ----------
@@ -644,10 +652,7 @@ character.addEventListener("click", (e) => {
       window.petAPI.markModeHintShown();
       showBubble(MODE_HINT, 5000);
     } else {
-      const reactions = currentClickReactions();
-      showBubble(
-        formatMessage(reactions[Math.floor(Math.random() * reactions.length)]),
-      );
+      showBubble(formatMessage(pickRandom(currentClickReactions())));
     }
     pauseWalking(1500);
   }, DOUBLE_CLICK_MS);
@@ -744,6 +749,13 @@ function matchWindowRule(appName, title) {
 
 function pickRandom(list) {
   return list[Math.floor(Math.random() * list.length)];
+}
+
+// 남은 시간(ms) → "MM:SS" (집중 말풍선·쪽잠 타이머 공용)
+function formatMMSS(ms) {
+  const mm = String(Math.floor(ms / 60000)).padStart(2, "0");
+  const ss = String(Math.floor((ms % 60000) / 1000)).padStart(2, "0");
+  return `${mm}:${ss}`;
 }
 
 // 체류 시간에 해당하는 가장 높은 단계를 찾는다 (stages는 after 오름차순)
@@ -899,11 +911,6 @@ function applyEvolution({ stage, stoneType, variant }) {
   return true;
 }
 
-function evolvePreludeMessage(userName) {
-  const displayName = userName ? `${userName}님` : "주인님";
-  return `${displayName}, 제 몸이 변하는 것 같아요...!`;
-}
-
 function setUserName(name) {
   userName = name || null;
 }
@@ -937,11 +944,11 @@ function preloadImage(src) {
   });
 }
 
-function setPendingEvolution(pending, userName) {
+function setPendingEvolution(pending) {
   pendingEvolution = pending;
   if (!pendingEvolution) return;
   applyEvolution(pendingEvolution.from);
-  showBubble(evolvePreludeMessage(userName), 3000);
+  showBubble(`${ownerDisplayName()}, 제 몸이 변하는 것 같아요...!`, 3000);
 }
 
 function previewEvolution(to) {
@@ -950,21 +957,18 @@ function previewEvolution(to) {
     2: { stage: 1, stoneType: to.stoneType, variant: null },
     3: { stage: 2, stoneType: to.stoneType, variant: to.variant },
   };
-  setPendingEvolution(
-    {
-      stage: to.stage,
-      from: fromByStage[to.stage],
-      to,
-      createdAt: new Date().toISOString(),
-      preview: true,
-    },
-    null,
-  );
+  setPendingEvolution({
+    stage: to.stage,
+    from: fromByStage[to.stage],
+    to,
+    createdAt: new Date().toISOString(),
+    preview: true,
+  });
 }
 
 // 단계가 올라가면 바로 gif를 바꾸지 않고, 펫 클릭으로 여는 진화 카드 상태로 둔다.
 window.petAPI.onEvolved((info) => {
-  setPendingEvolution(info.pendingEvolution, info.userName);
+  setPendingEvolution(info.pendingEvolution);
 });
 
 async function initEvolutionPreviewKeys() {
@@ -1003,7 +1007,7 @@ async function initEvolution() {
     }
     setOnboardingLocked(false);
     if (state.pendingEvolution) {
-      setPendingEvolution(state.pendingEvolution, state.userName);
+      setPendingEvolution(state.pendingEvolution);
       return;
     }
     applyEvolution({
@@ -1035,15 +1039,21 @@ window.petAPI.onOpenQuestionCard(() => {
   if (qcard.classList.contains("hidden")) openQuestionCard();
 });
 
-function positionCard() {
-  // 카드를 펫 위쪽에 띄우되, 가로 위치는 펫 위치 모드에 맞춰 화면 안쪽으로 펼친다.
-  const w = qcard.offsetWidth;
-  const h = qcard.offsetHeight;
-  // 말풍선과 같은 기준(머리 상단 = posY + SPRITE_MARGIN)으로 잡아 카드를 펫에 더 가깝게 내린다.
+// 오버레이(질문 카드·옵션 패널)를 펫 머리 위에 붙인다.
+// 가로는 펫 위치 모드에 맞춰 화면 안쪽으로 펼치고(overlayLeft), 세로는 말풍선과 같은
+// 기준(머리 상단 = posY + SPRITE_MARGIN)을 써서 펫에 가깝게 내린다.
+// 위쪽 공간이 부족할 때: fallbackBelow면 발밑으로 옮기고, 아니면 화면 상단에 붙인다.
+function positionAbovePet(el, fallbackBelow) {
+  const w = el.offsetWidth;
+  const h = el.offsetHeight;
   let top = posY + SPRITE_MARGIN - h - 12;
-  if (top < 8) top = 8;
-  qcard.style.left = overlayLeft(w, 8) + "px";
-  qcard.style.top = top + "px";
+  if (top < 8) top = fallbackBelow ? posY + CHAR_SIZE - SPRITE_MARGIN + 12 : 8;
+  el.style.left = overlayLeft(w, 8) + "px";
+  el.style.top = top + "px";
+}
+
+function positionCard() {
+  positionAbovePet(qcard, false);
 }
 
 function hideQuestionCard() {
@@ -1121,20 +1131,19 @@ async function advanceEvolutionCard(img, hint) {
   evolutionCardAnimating = true;
   const current = pendingEvolution;
 
-  if (evolutionCardStep === 0) {
-    hint.textContent = "좋아요, 힘이 모이고 있어요...";
+  if (evolutionCardStep < 2) {
+    // 앞의 두 번은 깜빡임이 같고 안내 문구를 바꾸는 시점만 다르다
+    // (첫 번째는 깜빡이기 전에, 두 번째는 깜빡인 뒤에).
+    if (evolutionCardStep === 0)
+      hint.textContent = "좋아요, 힘이 모이고 있어요...";
     img.classList.add("blink-out");
     await wait(EVOLVE_BLINK_OUT_MS);
     img.classList.remove("blink-out");
     await wait(EVOLVE_BLINK_IN_MS);
-    evolutionCardStep = 1;
-  } else if (evolutionCardStep === 1) {
-    img.classList.add("blink-out");
-    await wait(EVOLVE_BLINK_OUT_MS);
-    img.classList.remove("blink-out");
-    await wait(EVOLVE_BLINK_IN_MS);
-    hint.textContent = "마지막으로 한 번 더 눌러\n힘을 모아주세요!";
-    evolutionCardStep = 2;
+    if (evolutionCardStep === 1) {
+      hint.textContent = "마지막으로 한 번 더 눌러\n힘을 모아주세요!";
+    }
+    evolutionCardStep += 1;
   } else if (evolutionCardStep === 2) {
     const nextSrc = spriteUrlFor(current.to, "smile");
     hint.textContent = "(달그락..달그락...)";
@@ -1366,9 +1375,7 @@ const cleanOverlay = document.getElementById("clean-overlay");
 
 function iconEl(paths) {
   const span = cardEl("span", "mode-ic", null);
-  span.innerHTML =
-    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ` +
-    `stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
+  span.innerHTML = svgIcon(paths);
   return span;
 }
 
@@ -1452,14 +1459,9 @@ function closeModePanel() {
   window.petAPI.setIgnoreMouseEvents(true, { forward: true });
 }
 
-// 펫 머리 위(공간이 부족하면 발밑)에 패널을 붙인다. overlayLeft로 좌우는 화면 안에 클램프.
+// 펫 머리 위에 붙이되, 공간이 부족하면 발밑으로 옮긴다(카드와 달리 화면 상단에 붙지 않음).
 function positionModePanel() {
-  const w = modePanel.offsetWidth;
-  const h = modePanel.offsetHeight;
-  modePanel.style.left = overlayLeft(w, 8) + "px";
-  let top = posY + SPRITE_MARGIN - h - 12;
-  if (top < 8) top = posY + CHAR_SIZE - SPRITE_MARGIN + 12;
-  modePanel.style.top = top + "px";
+  positionAbovePet(modePanel, true);
 }
 
 // ── 모드 진입/해제 ─────────────────────────────────────────
@@ -1616,8 +1618,17 @@ function exitCleanMode() {
   }
   cleanOverlay.classList.add("hidden");
   cleanOverlay.innerHTML = "";
+  clearCleanStatusRefs();
   window.petAPI.setIgnoreMouseEvents(true, { forward: true });
   window.petAPI.cleanExit(); // 키보드 원복
+}
+
+// 오버레이를 비운 뒤에도 참조가 남으면, 뒤늦게 도착한 clean:status가 화면에서 떨어져 나간
+// 노드를 건드린다(권한 안내 경로는 부모가 없어 예외까지 난다). 참조를 끊어 무해한 no-op으로 만든다.
+function clearCleanStatusRefs() {
+  cleanStatusEl = null;
+  cleanGestureEl = null;
+  cleanPermsEl = null;
 }
 
 function buildCleanOverlay() {
@@ -1683,6 +1694,8 @@ function focusRemainMs() {
 // 말풍선 안에 "집중 중 MM:SS" 줄과 (숨겨진) 컨트롤 버튼 줄을 만든다.
 // 카운트다운은 텍스트 줄만 갈아끼워, 버튼이 매초 새로 생기지 않게 한다.
 function buildFocusBubble() {
+  // 직전 클릭 반응 말풍선의 자동 숨김 타이머가 살아 있으면 타이머 말풍선을 숨겨버린다
+  clearTimeout(bubbleTimeout);
   bubble.innerHTML = "";
   focusTextEl = cardEl("div", "focus-line", "");
   bubble.appendChild(focusTextEl);
@@ -1720,11 +1733,8 @@ function setFocusControls(open) {
 
 function renderFocusBubble() {
   if (activeMode !== "focus") return;
-  const remain = focusRemainMs();
-  const mm = String(Math.floor(remain / 60000)).padStart(2, "0");
-  const ss = String(Math.floor((remain % 60000) / 1000)).padStart(2, "0");
   const label = focusPausedMs != null ? "일시정지" : "집중 중";
-  focusTextEl.textContent = `${label} ${mm}:${ss}`;
+  focusTextEl.textContent = `${label} ${formatMMSS(focusRemainMs())}`;
   bubble.classList.remove("hidden");
   positionBubble();
 }
@@ -1837,9 +1847,7 @@ function renderNapTime() {
       : napEndAt
         ? Math.max(0, napEndAt - Date.now())
         : 0;
-  const mm = String(Math.floor(remain / 60000)).padStart(2, "0");
-  const ss = String(Math.floor((remain % 60000) / 1000)).padStart(2, "0");
-  napTimeEl.textContent = `${mm}:${ss}`;
+  napTimeEl.textContent = formatMMSS(remain);
 }
 
 // 잠결에 Space/Enter로 눌리지 않도록 키보드 활성화(detail===0)는 무시하고,
@@ -1986,6 +1994,7 @@ function exitNapMode() {
   napPausedMs = null;
   napOverlay.classList.add("hidden");
   napOverlay.innerHTML = "";
+  clearCleanStatusRefs(); // 쪽잠 오버레이도 같은 차단 상태 줄을 쓴다
   window.petAPI.setIgnoreMouseEvents(true, { forward: true });
   window.petAPI.cleanExit(); // 키보드 원복
   setDnd(false);

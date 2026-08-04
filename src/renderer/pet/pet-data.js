@@ -401,18 +401,7 @@ const LEVEL3_GEOM = {
 
 const FOOT_LINE_GAP = 12; // 발밑과 화면 하단 사이 간격(px). 0/1단계 현재 값 유지.
 
-// 옵션창 행 아이콘. 트레이(sys-glyph)와 같은 라인 SVG 규칙을 따른다.
-const ICON_KEYBOARD =
-  '<rect x="2" y="5" width="20" height="14" rx="2" />' +
-  '<path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M6 13h.01M18 13h.01M9 13h6" />';
-const ICON_TARGET =
-  '<circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5" />' +
-  '<circle cx="12" cy="12" r="1" />';
-const ICON_MOON = '<path d="M12 3a6.5 6.5 0 0 0 9 9 9 9 0 1 1-9-9z" />';
-const ICON_EYE =
-  '<path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z" />' +
-  '<circle cx="12" cy="12" r="2.5" />';
-
+// 옵션창 행 아이콘(ICON_*)은 트레이와 공용이라 ../shared/icons.js에 있다.
 const MODES = [
   {
     id: "clean",

@@ -66,7 +66,6 @@
             <!-- 조약돌: ground보다 앞(DOM상 위)에 두어 땅 뒤에서 솟아오르게 -->
             <img
               class="pebble"
-              id="onboarding-pebble"
               src="../../../assets/gif/level0/rockie_left.gif"
               alt="조약돌"
             />
@@ -107,7 +106,7 @@
             <button class="mrow" data-action="status">
               <span class="mrow-arrow">▶</span>
               <span class="mrow-label">나의 애완돌</span>
-              <span class="mrow-badge" id="status-badge"></span>
+              <span class="mrow-badge"></span>
             </button>
             <button class="mrow" data-action="system">
               <span class="mrow-arrow">▶</span>
@@ -147,7 +146,7 @@
             <div id="hero-mood" class="hero-mood">수정 예정</div>
           </div>
 
-          <!-- 새로운 질문에 답하기 버튼 (update.md 9.1) -->
+          <!-- 새로운 질문에 답하기 버튼 -->
           <button id="pet-callout" class="callout">
             <span class="callout-icon">?</span>
             <div class="callout-text">
@@ -242,7 +241,7 @@
             </div>
           </section>
 
-          <!-- 돌보기 (닦아주기 · 쓰다듬기, update.md 9.4) -->
+          <!-- 돌보기 (닦아주기 · 쓰다듬기) -->
           <section class="panel">
             <div class="panel-label">
               돌보기
@@ -757,6 +756,8 @@
       </div>
     </div>
     <script src="../shared/sprites.js"></script>
+    <script src="../shared/icons.js"></script>
+    <script src="tray-data.js"></script>
     <script src="tray.js"></script>
   </body>
 </html>

@@ -1,4 +1,4 @@
-// 진화 상태 ↔ 스프라이트 매핑 (pet/tray 렌더러 공용, update.md 1.1)
+// 진화 상태 ↔ 스프라이트 매핑 (pet/tray 렌더러 공용)
 // 각 렌더러 HTML에서 본 스크립트(pet.js/tray.js)보다 먼저 로드한다.
 
 const STONE_NAMES = {

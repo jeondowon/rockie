@@ -35,6 +35,28 @@ let petDisplaySprite = {
   pose: "right",
 };
 
+// 창이 살아 있을 때만 렌더러로 보낸다. 전송 지점마다 같은 가드를 반복하면
+// 언젠가 한 곳을 빠뜨리고, 파괴된 창에 send하면 예외가 난다.
+function sendToPet(channel, ...args) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send(channel, ...args);
+  }
+}
+
+function sendToTray(channel, ...args) {
+  if (trayPopup && !trayPopup.isDestroyed()) {
+    trayPopup.webContents.send(channel, ...args);
+  }
+}
+
+function trayPopupVisible() {
+  return !!trayPopup && !trayPopup.isDestroyed() && trayPopup.isVisible();
+}
+
+function hideTrayPopup() {
+  if (trayPopup && !trayPopup.isDestroyed()) trayPopup.hide();
+}
+
 function createWindow() {
   const primaryDisplay = screen.getPrimaryDisplay();
   // 작업 영역(workArea)이 아닌 화면 전체를 덮는다.
@@ -99,6 +121,7 @@ function startDevReload() {
         "../renderer/pet/style.css",
         "../renderer/shared/sound.js",
         "../renderer/shared/sprites.js",
+        "../renderer/shared/icons.js",
       ],
     },
     {
@@ -106,9 +129,11 @@ function startDevReload() {
       getWindow: () => trayPopup,
       files: [
         "../renderer/tray/tray.html",
+        "../renderer/tray/tray-data.js",
         "../renderer/tray/tray.js",
         "../renderer/tray/tray.css",
         "../renderer/shared/sprites.js",
+        "../renderer/shared/icons.js",
       ],
     },
   ];
@@ -190,9 +215,7 @@ const KEYBLOCKER_EXEC_PATH = path.join(
 
 // 렌더러 오버레이가 차단 상태를 표시하도록 알린다.
 function sendCleanStatus(status) {
-  if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send("clean:status", status);
-  }
+  sendToPet("clean:status", status);
 }
 
 function handleKeyBlockerStatus(helper, status) {
@@ -387,9 +410,7 @@ function releaseModeLocks() {
   dndActive = false;
   if (currentModeStatus) {
     currentModeStatus = null;
-    if (trayPopup && !trayPopup.isDestroyed()) {
-      trayPopup.webContents.send("mode:status", null);
-    }
+    sendToTray("mode:status", null);
   }
 }
 
@@ -401,9 +422,7 @@ ipcMain.on("pet:toggle-visibility", () => togglePet());
 let currentModeStatus = null;
 ipcMain.on("mode:set-status", (_event, status) => {
   currentModeStatus = status || null;
-  if (trayPopup && !trayPopup.isDestroyed()) {
-    trayPopup.webContents.send("mode:status", currentModeStatus);
-  }
+  sendToTray("mode:status", currentModeStatus);
 });
 ipcMain.handle("mode:get-status", () => currentModeStatus);
 
@@ -414,9 +433,9 @@ ipcMain.on("pet:display-sprite", (_event, sprite) => {
     prefix: sprite.prefix,
     pose: sprite.pose,
   };
-  if (trayPopup && !trayPopup.isDestroyed()) {
-    trayPopup.webContents.send("pet:display-sprite", petDisplaySprite);
-  }
+  // 팝업이 숨어 있으면 보낼 필요가 없다 — 열려서 펫/시스템 화면으로 들어갈 때
+  // getPetDisplaySprite로 최신 값을 직접 당겨 간다.
+  if (trayPopupVisible()) sendToTray("pet:display-sprite", petDisplaySprite);
 });
 
 ipcMain.handle("pet:get-display-sprite", () => petDisplaySprite);
@@ -465,7 +484,14 @@ const TRAY_ICON_PT = 15;
 // assets/tray의 PNG 한 장을 트레이용 nativeImage로 만든다.
 // Retina(2x) 대응: 표시 크기는 TRAY_ICON_PT(pt)로 유지하되 1x/2x를 함께 담아 고밀도에서 안 흐리게.
 // 맥: 템플릿 이미지는 다크/라이트 메뉴바에 맞춰 자동 반전(단색). 컬러 배지 아이콘은 비-템플릿이어야 한다.
+// 원본 PNG(320×320) 읽기 + 전 픽셀 알파 스캔 + 2회 리사이즈·PNG 인코딩은 꽤 무거운데,
+// 결과는 파일마다 고정이다. 배지가 켜지고 꺼질 때마다 다시 만들지 않도록 캐시한다.
+const trayIconCache = new Map();
+
 function makeTrayIcon(fileName, isTemplate) {
+  const cached = trayIconCache.get(fileName);
+  if (cached) return cached;
+
   let src = nativeImage.createFromPath(
     path.join(__dirname, "../../assets/tray", fileName),
   );
@@ -480,6 +506,7 @@ function makeTrayIcon(fileName, isTemplate) {
     buffer: src.resize({ height: TRAY_ICON_PT * 2, quality: "best" }).toPNG(),
   });
   if (process.platform === "darwin") icon.setTemplateImage(isTemplate);
+  trayIconCache.set(fileName, icon);
   return icon;
 }
 
@@ -606,31 +633,27 @@ ipcMain.on("tray-menu-action", (_event, action) => {
       break;
     case "answer-question":
       // 트레이 "질문에 답하기" → 펫 창을 띄우고 기존 질문 카드를 애완돌 옆에 연다
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        if (!mainWindow.isVisible()) mainWindow.show();
-        mainWindow.webContents.send("evolution:open-question-card");
+      if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) {
+        mainWindow.show();
       }
-      if (trayPopup && !trayPopup.isDestroyed()) trayPopup.hide();
+      sendToPet("evolution:open-question-card");
+      hideTrayPopup();
       break;
     case "close-popup":
-      if (trayPopup && !trayPopup.isDestroyed()) trayPopup.hide();
+      hideTrayPopup();
       break;
     case "homepage":
       // 트레이 홈페이지 링크 → 기본 브라우저로 열고 팝업은 닫는다
       shell.openExternal("https://jeondowon.com/rockie/");
-      if (trayPopup && !trayPopup.isDestroyed()) trayPopup.hide();
+      hideTrayPopup();
       break;
     case "exit-mode":
       // 트레이 배너의 "종료" → 펫 렌더러가 현재 모드를 해제한다(팝업은 열어 둠).
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send("mode:exit-request");
-      }
+      sendToPet("mode:exit-request");
       break;
     case "pause-mode":
       // 트레이 배너의 "일시정지 / 계속하기" → 펫 렌더러가 집중 타이머를 멈추거나 재개한다.
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send("mode:pause-request");
-      }
+      sendToPet("mode:pause-request");
       break;
     case "quit":
       app.quit();
@@ -638,7 +661,7 @@ ipcMain.on("tray-menu-action", (_event, action) => {
   }
 });
 
-// ---------- 매일 오전 8시 질문 갱신 (update.md 8.1) ----------
+// ---------- 매일 오전 8시 질문 갱신 ----------
 // 앱 실행 시 + 주기적으로 마지막 갱신 시각을 확인해, 가장 최근 오전 8시 경계를
 // 아직 안 지났으면 갱신을 실행한다. 최초 실행(dailyResetAt=null)도 여기서 부트스트랩된다.
 const DAILY_RESET_HOUR = 8;
@@ -651,28 +674,25 @@ function lastResetBoundary(nowMs) {
   return eight.getTime();
 }
 
-// 매일 오전 8시 배너 알림 (설정 '질문 알림'이 켜져 있을 때만). update.md 9.3
-function showQuestionBanner() {
+// 질문 배너 알림. 실제 알림(매일 오전 8시)은 클릭하면 펫 창을 띄우고,
+// 설정에서 '질문 알림'을 켠 순간 보여주는 미리보기는 문구만 다르다.
+const QUESTION_BANNER_TITLE = "오늘도 나에 대해 알려주세요";
+
+function showQuestionBanner({ preview = false } = {}) {
   if (!Notification.isSupported()) return;
   if (dndActive) return; // 집중 모드 중엔 알림을 띄우지 않는다
   const banner = new Notification({
-    title: "오늘도 나에 대해 알려주세요",
-    body: "새 질문을 준비해뒀어요. 메뉴바에서 답해 주세요!",
+    title: QUESTION_BANNER_TITLE,
+    body: preview
+      ? "이렇게 표시됩니다"
+      : "새 질문을 준비해뒀어요. 메뉴바에서 답해 주세요!",
   });
-  banner.on("click", () => {
-    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.show();
-  });
+  if (!preview) {
+    banner.on("click", () => {
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.show();
+    });
+  }
   banner.show();
-}
-
-// 설정에서 '질문 알림'을 켠 순간, 실제 배너가 어떻게 보이는지 미리보기로 한 번 띄운다.
-function showBannerPreview() {
-  if (!Notification.isSupported()) return;
-  if (dndActive) return; // 집중 모드 중엔 알림을 띄우지 않는다
-  new Notification({
-    title: "오늘도 나에 대해 알려주세요",
-    body: "이렇게 표시됩니다",
-  }).show();
 }
 
 function runDailyResetIfNeeded() {
@@ -730,22 +750,18 @@ ipcMain.handle("onboarding:complete", () => {
     ) {
       showQuestionBanner();
     }
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send("onboarding:completed");
-    }
+    sendToPet("onboarding:completed");
   }
   return state;
 });
 
 // 단계가 올랐을 때 펫 오버레이가 해당 GIF로 전환하도록 진화 정보를 보낸다.
 function notifyEvolved(data) {
-  if (!mainWindow || mainWindow.isDestroyed()) return;
-  mainWindow.webContents.send("evolution:evolved", {
+  sendToPet("evolution:evolved", {
     stage: data.pet.evolutionStage,
     stoneType: data.pet.stoneType,
     variant: data.pet.evolutionVariant,
     pendingEvolution: data.pet.pendingEvolution,
-    userName: data.user.userName,
   });
 }
 
@@ -758,19 +774,14 @@ ipcMain.handle("evolution:answer", (_event, payload) => {
   return result;
 });
 
-// 애정을 준 직후 펫 창에 애정 표현(하트/웃음)을 잠깐 띄우도록 신호를 보낸다.
-// 쓰다듬기는 하트, 닦아주기는 웃는 얼굴(smile gif)로 구분한다.
-function notifyAffection(channel) {
-  if (!mainWindow || mainWindow.isDestroyed()) return;
-  mainWindow.webContents.send(channel);
-}
-
 // 호감도 획득. 트레이 "돌보기" 버튼(닦아주기/쓰다듬기)에서 호출된다.
+// 애정을 준 직후 펫 창이 애정 표현을 잠깐 띄운다 — 쓰다듬기는 하트,
+// 닦아주기는 웃는 얼굴(smile gif)로 구분한다.
 ipcMain.handle("evolution:clean", () => {
   const data = store.get();
   const result = evolution.cleanPet(data);
   store.save();
-  notifyAffection("pet:show-smile");
+  sendToPet("pet:show-smile");
   if (result.evolved) notifyEvolved(data);
   return result;
 });
@@ -778,7 +789,7 @@ ipcMain.handle("evolution:pet", () => {
   const data = store.get();
   const result = evolution.petPet(data);
   store.save();
-  notifyAffection("pet:show-heart");
+  sendToPet("pet:show-heart");
   if (result.evolved) notifyEvolved(data);
   return result;
 });
@@ -787,13 +798,11 @@ ipcMain.handle("evolution:set-skin", (_event, stage) => {
   const data = store.get();
   const state = evolution.setActiveSkin(data, stage);
   store.save();
-  if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send("pet:skin-change", {
-      stage: state.activeSkinStage ?? state.stage,
-      stoneType: state.stoneType,
-      variant: state.variant,
-    });
-  }
+  sendToPet("pet:skin-change", {
+    stage: state.activeSkinStage ?? state.stage,
+    stoneType: state.stoneType,
+    variant: state.variant,
+  });
   return state;
 });
 ipcMain.handle("evolution:complete-pending", () => {
@@ -802,46 +811,23 @@ ipcMain.handle("evolution:complete-pending", () => {
   store.save();
   return result;
 });
-// 이름 저장 (사용자/애완돌). 빈 값이면 null, 최초 지정 시각을 한 번만 기록하고
-// 그때 호감도 보상을 지급한다(최초 1회). 보상으로 90을 넘길 수 있으므로 진화 판정까지
-// 함께 도는 evolution.awardNameBonus를 쓴다.
+// 이름 저장 (사용자/애완돌). 최초 지정 보상·진화 판정은 evolution.setName이 담당한다.
 ipcMain.handle("evolution:set-name", (_event, { target, value }) => {
   const data = store.get();
-  const name = (value || "").trim() || null;
-  let evolved = null;
-  if (target === "user") {
-    if (name && !data.user.userNameSetAt) {
-      data.user.userNameSetAt = new Date().toISOString();
-      evolved = evolution.awardNameBonus(data).evolved;
-    }
-    data.user.userName = name;
-  } else if (target === "pet") {
-    if (name && !data.pet.petNameSetAt) {
-      data.pet.petNameSetAt = new Date().toISOString();
-      evolved = evolution.awardNameBonus(data).evolved;
-    }
-    data.pet.petName = name;
-  } else {
-    return null;
-  }
+  const result = evolution.setName(data, target, value);
+  if (!result) return null; // 알 수 없는 target
   store.save();
-  if (evolved) notifyEvolved(data);
-  if (target === "user" && mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send("pet:user-name-change", data.user.userName);
-  }
-  return {
-    userName: data.user.userName,
-    petName: data.pet.petName,
-    affinityPoints: data.affinity.affinityPoints,
-  };
+  // 이름 변경을 먼저 알려야, 이어지는 진화 축하 문구가 새 이름으로 나온다.
+  if (target === "user") sendToPet("pet:user-name-change", result.userName);
+  if (result.evolved) notifyEvolved(data);
+  return result;
 });
 
 // ---------- 설정 (트레이 "설정" 화면) ----------
 // 펫 렌더러에 위치/크기 변경을 알린다.
 function sendPetSettings() {
-  if (!mainWindow || mainWindow.isDestroyed()) return;
   const s = store.get().settings;
-  mainWindow.webContents.send("pet-settings", {
+  sendToPet("pet-settings", {
     placement: s.petPlacement,
     size: s.petSize,
     sound: s.soundEnabled,
@@ -886,7 +872,7 @@ ipcMain.on("settings:set", (_event, { key, value }) => {
       break;
     case "notifications":
       data.notifications.notificationsEnabled = value; // 새 질문 배너 알림 on/off
-      if (value) showBannerPreview(); // 켠 순간 실제 배너 모습을 미리보기로 표시
+      if (value) showQuestionBanner({ preview: true }); // 켠 순간 실제 배너 모습을 표시
       break;
     case "soundEnabled":
       data.settings.soundEnabled = value;
@@ -952,9 +938,9 @@ ipcMain.handle("request-screen-permission", async () => {
 // 권한이 없으면 active-win이 매번 예외를 던져 앱 감지 기능 전체가 동작하지 않으므로,
 // 시작 시 권한 상태를 확인해 렌더러에 알리고(말풍선 안내) 로그도 남긴다.
 function checkScreenRecordingPermission() {
-  if (process.platform !== "darwin") return true;
+  if (process.platform !== "darwin") return;
   const status = systemPreferences.getMediaAccessStatus("screen");
-  if (status === "granted") return true;
+  if (status === "granted") return;
 
   console.warn(
     `[active-window] 화면 기록 권한 없음(상태: ${status}). ` +
@@ -962,9 +948,24 @@ function checkScreenRecordingPermission() {
       "활성 앱 감지(유튜브 등 말풍선)가 동작합니다.",
   );
   mainWindow.webContents.once("did-finish-load", () => {
-    mainWindow.webContents.send("screen-permission-missing");
+    sendToPet("screen-permission-missing");
   });
-  return false;
+}
+
+// active-win은 ESM이라 동적 import로만 불러올 수 있다. 3초마다 부르므로 한 번만 로드한다.
+// 실패한 프라미스를 그대로 들고 있으면 영영 재시도하지 않으므로, 실패 시엔 비워 둔다.
+let activeWinPromise = null;
+function loadActiveWin() {
+  if (!activeWinPromise) {
+    activeWinPromise = import("active-win").then(
+      (m) => m.default,
+      (err) => {
+        activeWinPromise = null;
+        throw err;
+      },
+    );
+  }
+  return activeWinPromise;
 }
 
 function startActiveWindowWatcher() {
@@ -974,12 +975,11 @@ function startActiveWindowWatcher() {
 
   watcherInterval = setInterval(async () => {
     try {
-      const activeWinModule = await import("active-win");
-      const activeWin = activeWinModule.default;
+      const activeWin = await loadActiveWin();
       const result = await activeWin();
       loggedError = false; // 성공하면(권한 허용 후) 다음 실패를 다시 로그할 수 있게 초기화
-      if (result && mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send("active-window-info", {
+      if (result) {
+        sendToPet("active-window-info", {
           appName: result.owner ? result.owner.name : "",
           title: result.title || "",
         });

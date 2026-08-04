@@ -1,4 +1,4 @@
-// 진화 판정 엔진 (update.md 기준 v2).
+// 진화 판정 엔진.
 // - 0→1: 본 질문 → 돌 종류 확정 (동점 시 타이브레이커)
 // - 1→2: E/I 질문 → 변성체 변형(extrovert/introvert) 확정 (동점 시 타이브레이커)
 // - 2→3: 호감도 90 도달 → 보석 확정 (질문 없음, 호감도 트리거)
@@ -14,7 +14,7 @@ const {
   EI_TIEBREAKER,
 } = require("./questions");
 
-// ---------- 상수 (update.md 2장) ----------
+// ---------- 상수 ----------
 const MAIN_QUESTION_COUNT = MAIN_QUESTIONS.length; // 0→1 본 질문 총 개수
 const EI_QUESTION_COUNT = EI_QUESTIONS.length; // 1→2 E/I 질문 총 개수
 const STAGE1_DISPLAY_COUNT = ONBOARDING_QUESTIONS.length + MAIN_QUESTION_COUNT;
@@ -125,7 +125,7 @@ function maxDailyQuestions(stage) {
   return 0;
 }
 
-// ---------- 질문 풀에서 다음 질문 뽑기 (update.md 8.2) ----------
+// ---------- 질문 풀에서 다음 질문 뽑기 ----------
 // 아직 답하지 않았고 오늘 목록에도 없는 질문을 풀 순서대로 count개 선택.
 function pickUnanswered(data, pool, count) {
   const answered = new Set(
@@ -155,7 +155,7 @@ function pickNextQuestions(data, count) {
   return []; // 2단계 이상: 질문 없음
 }
 
-// ---------- 매일 오전 8시 갱신 (update.md 8.1) ----------
+// ---------- 매일 오전 8시 갱신 ----------
 // 어제 안 답한 질문은 유지하고, 부족분(2 - 남은 개수)만 새로 채운다.
 // 반환: { showBanner } — 갱신 후 답할 질문이 있으면 배너 알림 대상.
 function onDailyReset(data, nowIso) {
@@ -229,7 +229,7 @@ function winnerStone(data) {
   return answered[answered.length - 1].selectedOption;
 }
 
-// 타이브레이커를 오늘 목록 맨 앞에 삽입 → 다음에 바로 답할 수 있게 한다 (update.md 5.1/5.2)
+// 타이브레이커를 오늘 목록 맨 앞에 삽입 → 다음에 바로 답할 수 있게 한다
 function insertTiebreakerToday(data, id) {
   if (!data.questions.todaysQuestions.includes(id)) {
     data.questions.todaysQuestions.unshift(id);
@@ -237,7 +237,7 @@ function insertTiebreakerToday(data, id) {
   data.notifications.hasUnreadBadge = true;
 }
 
-// ---------- 단계 확정 (update.md 8.4) ----------
+// ---------- 단계 확정 ----------
 function evolutionSnapshot(data) {
   return {
     stage: data.pet.evolutionStage,
@@ -281,7 +281,7 @@ function confirmStage2(data, variant) {
   // 2단계는 질문 없음: 오늘 남은 질문 비운다
   data.questions.todaysQuestions = [];
   data.notifications.hasUnreadBadge = false;
-  // 진입 시점에 이미 호감도 90 이상이면 즉시 3단계 판정 (update.md 6.2)
+  // 진입 시점에 이미 호감도 90 이상이면 즉시 3단계 판정
   if (data.affinity.affinityPoints >= AFFINITY_TARGET) confirmStage3(data);
 }
 
@@ -304,7 +304,7 @@ function completePendingEvolution(data) {
   return { completed: pending, state: getState(data) };
 }
 
-// ---------- 판정 시도 (update.md 8.3) ----------
+// ---------- 판정 시도 ----------
 function tryEvaluate(data, nowIso) {
   if (
     data.pet.evolutionStage === 0 &&
@@ -328,7 +328,7 @@ function tryEvaluate(data, nowIso) {
   }
 }
 
-// ---------- 호감도 획득 (update.md 8.5) ----------
+// ---------- 호감도 획득 ----------
 function tryAffinityEvaluate(data) {
   if (
     data.pet.evolutionStage === 2 &&
@@ -345,15 +345,34 @@ function awardAffinity(data, amount) {
   );
 }
 
-// 이름(사용자/애완돌) 최초 지정 보상. 호감도만 올리고 끝내면 이 +5로 90을 넘겨도
-// 3단계 판정이 안 걸리므로, 지급과 판정을 여기서 함께 처리한다.
-function awardNameBonus(data) {
+// 이름(사용자/애완돌) 저장. 빈 값이면 null로 지운다.
+// 최초 지정이면 그 시각을 한 번만 기록하고 호감도 보상을 준다. 호감도만 올리고 끝내면
+// 이 +5로 90을 넘겨도 3단계 판정이 안 걸리므로, 지급과 판정을 함께 처리한다.
+// target이 "user"/"pet"이 아니면 아무것도 바꾸지 않고 null을 반환한다.
+function setName(data, target, value) {
+  const slot =
+    target === "user"
+      ? { holder: data.user, nameKey: "userName", setAtKey: "userNameSetAt" }
+      : target === "pet"
+        ? { holder: data.pet, nameKey: "petName", setAtKey: "petNameSetAt" }
+        : null;
+  if (!slot) return null;
+
+  const name = (value || "").trim() || null;
   const before = data.pet.evolutionStage;
-  awardAffinity(data, NAME_POINTS);
-  tryAffinityEvaluate(data);
+  if (name && !slot.holder[slot.setAtKey]) {
+    slot.holder[slot.setAtKey] = new Date().toISOString();
+    awardAffinity(data, NAME_POINTS);
+    tryAffinityEvaluate(data);
+  }
+  slot.holder[slot.nameKey] = name;
+
   return {
     evolved:
       data.pet.evolutionStage !== before ? data.pet.evolutionStage : null,
+    userName: data.user.userName,
+    petName: data.pet.petName,
+    affinityPoints: data.affinity.affinityPoints,
   };
 }
 
@@ -380,7 +399,7 @@ function petPet(data) {
   return carePet(data, "dailyPetDone", PET_POINTS);
 }
 
-// ---------- 답변 제출 (update.md 8.3) ----------
+// ---------- 답변 제출 ----------
 // { evolved, state } 반환. evolved는 이번 답변으로 올라간 단계 번호(없으면 null).
 function answer(data, { questionId, value }) {
   const q = QUESTION_BY_ID[questionId];
@@ -536,7 +555,7 @@ function serialize(id) {
   };
 }
 
-// "새로운 질문에 답하기" 버튼 상태 (update.md 9.1)
+// "새로운 질문에 답하기" 버튼 상태
 function answerButtonState(data) {
   if (!onboardingCompleted(data)) {
     return { enabled: false, note: "프롤로그를 먼저 완료해 주세요." };
@@ -604,7 +623,7 @@ module.exports = {
   completeOnboarding,
   setActiveSkin,
   answer,
-  awardNameBonus,
+  setName,
   cleanPet,
   petPet,
   completePendingEvolution,
