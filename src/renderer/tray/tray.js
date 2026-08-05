@@ -772,7 +772,8 @@ let napDragging = false;
 function snapNapMinutes(v) {
   const nearest = Math.round(v / NAP_SNAP_STEP) * NAP_SNAP_STEP;
   // 배수가 범위 밖이면(예: 1~4분의 0) 끌어당기지 않는다
-  if (nearest < Number(napRange.min) || nearest > Number(napRange.max)) return v;
+  if (nearest < Number(napRange.min) || nearest > Number(napRange.max))
+    return v;
   return Math.abs(v - nearest) <= NAP_SNAP_PULL ? nearest : v;
 }
 

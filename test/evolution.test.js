@@ -13,7 +13,11 @@ const onboardingIds = () => ONBOARDING_QUESTIONS.map((q) => q.id);
 
 function makeData({ onboardingCompleted = true } = {}) {
   return {
-    user: { userName: null, userNameSetAt: null, installedAt: "2026-07-09T00:00:00.000Z" },
+    user: {
+      userName: null,
+      userNameSetAt: null,
+      installedAt: "2026-07-09T00:00:00.000Z",
+    },
     onboarding: {
       completed: onboardingCompleted,
       step: onboardingCompleted ? 999 : 0,
@@ -54,7 +58,11 @@ function makeData({ onboardingCompleted = true } = {}) {
     },
     items: { unlockedItems: [], equippedItem: null },
     notifications: { hasUnreadBadge: false, notificationsEnabled: true },
-    chat: { recentChatContext: [], chatSummary: null, turnsSinceLastSummary: 0 },
+    chat: {
+      recentChatContext: [],
+      chatSummary: null,
+      turnsSinceLastSummary: 0,
+    },
     settings: {
       autoLaunch: false,
       soundEnabled: false,
@@ -267,10 +275,10 @@ test("이름 보상만으로 90에 못 미치면 진화하지 않는다", () => 
   data.pet.evolutionVariant = "introvert";
   data.affinity.affinityPoints = 80;
 
-  const result = evolution.setName(data, "pet", "몽돌");
+  const result = evolution.setName(data, "pet", "애완돌");
 
   assert.equal(result.evolved, null);
-  assert.equal(result.petName, "몽돌");
+  assert.equal(result.petName, "애완돌");
   assert.equal(data.affinity.affinityPoints, 85);
   assert.equal(data.pet.evolutionStage, 2);
 });
@@ -328,11 +336,7 @@ test("성향 태그는 카테고리별 최다 답변 태그로 계산된다", ()
 test("온보딩 질문은 0→1 점수에 반영되고 완료 후 오늘 질문 3개를 채운다", () => {
   const data = makeData({ onboardingCompleted: false });
 
-  const beforeComplete = answerOnboardingIds(
-    data,
-    onboardingIds(),
-    "granite",
-  );
+  const beforeComplete = answerOnboardingIds(data, onboardingIds(), "granite");
   assert.equal(beforeComplete.completed, false);
   assert.equal(data.traits.traitScores["화강암"], 4);
   assert.equal(data.questions.mainQuestionProgress, 0);
