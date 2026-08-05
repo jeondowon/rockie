@@ -1033,11 +1033,12 @@ function renderSystem(s) {
     setText("sc-bat-cycles", "—");
   }
 
-  // 네트워크 (자연한 최대치가 없어 총 처리량을 100Mbps=꽉 참으로 근사)
+  // 네트워크 (속도는 높을수록 좋으므로 경고색 없이 항상 초록,
+  // 게이지는 0.1Mbps~1Gbps를 로그로 펼쳐 저속에서도 눈에 보이게)
   const mbps = ((s.network.rxSec + s.network.txSec) * 8) / 1e6;
   setText("sc-net-val", rate(s.network.rxSec + s.network.txSec));
-  setFill("sc-net-fill", mbps);
-  paint("net", loadClass(mbps));
+  setFill("sc-net-fill", mbps <= 0.1 ? 0 : (Math.log10(mbps * 10) / 4) * 100);
+  paint("net", "green");
   setText("sc-net-sub", s.network.label);
   setText("sc-net-ip", s.network.ip);
   setText("sc-net-up", `↑ ${rate(s.network.txSec)}`);
