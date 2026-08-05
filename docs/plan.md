@@ -23,7 +23,9 @@ deskPet 캐릭터에 성향 발견형 성장 요소를 추가한다. 사용자�
 | 트레이 UI | MENU/PET/SYSTEM/SETTINGS, 이름 편집, 진행도, 성향 태그, 답변 히스토리, 돌보기 버튼 |
 | 스킨 | 0~3단계 진화 모습을 스킨처럼 착용/해제, 잠금/착용중 표시, 펫 창과 트레이 히어로 반영 |
 | 시스템 모니터 | CPU/RAM/디스크/배터리/네트워크 조회, SYSTEM 화면 폴링, 부하별 반응 카드 |
+| AI 사용량 | SYSTEM 화면의 Claude/Codex 사용량 행. 로컬 파일만 읽어 표시하고 창을 열 때·수동 새로고침에만 갱신 |
 | 위치/크기 | 설정의 따라오기/좌하단/우하단, 작게/보통/크게, follow 모드 롱프레스 드래그 |
+| 화면 캡처에서 숨기기 | 설정 토글(기본 꺼짐). 켜면 펫 창을 `setContentProtection`으로 캡처 대상에서 제외해 스크린샷·화면 녹화·화면 공유에 애완돌이 안 찍힘. 내 모니터에는 그대로 보임 |
 | 부가 리액션 | 활성 앱 말풍선, SNS 체류 단계 멘트, 배터리 부족 리액션, 시간대/장시간 사용 리액션 |
 | 테스트 | `node --test` 기반 진화/타이브레이커/온보딩/진행도/성향 태그 테스트 |
 | 배포 웹사이트 | 펫 화면 후원 카드·설정 하단에서 홈페이지 방문 링크 열기 | 방문 및 다운로드 수 기록 |
@@ -311,7 +313,7 @@ deskPet 캐릭터에 성향 발견형 성장 요소를 추가한다. 사용자�
 - `questions.mainQuestionProgress`, `questions.eiQuestionProgress`
 - `questions.todaysQuestions`, `questions.dailyResetAt`, `questions.answeredQuestions`
 - `affinity.affinityPoints`, `dailyCleanDone`, `dailyFeedDone`
-- `settings.autoLaunch`, `soundEnabled`, `petPlacement`, `petSize`
+- `settings.autoLaunch`, `soundEnabled`, `hideFromCapture`, `petPlacement`, `petSize`
 
 마이그레이션 보강:
 
@@ -330,7 +332,7 @@ deskPet 캐릭터에 성향 발견형 성장 요소를 추가한다. 사용자�
 | ONBOARDING | 운석 프롤로그, 질문 선택지, 완료 후 PET 진입 |
 | PET | 히어로 이미지, 이름 편집, 성향 설명, 태그, 진행도, 질문 버튼, 호감도, 돌보기, 스킨, 히스토리 |
 | SYSTEM | 시스템 수치, 게이지, 상세 드롭다운, 반응 카드 |
-| SETTINGS | 자동실행, 질문 알림, 효과음, 위치, 크기, 화면 기록 권한, 초기화 |
+| SETTINGS | 자동실행, 질문 알림, 효과음, 화면 캡처에서 숨기기, 위치, 크기, 화면 기록 권한, 초기화 |
 
 ### PET 화면 세부 상태
 
@@ -445,6 +447,29 @@ deskPet 캐릭터에 성향 발견형 성장 요소를 추가한다. 사용자�
 
 - 장시간 사용 시 폴링 비용 실사용 검증
 
+### AI 사용량 (Claude / Codex)
+
+구현 완료:
+
+- SYSTEM 화면에 Claude 사용량·CODEX 행 추가. 게이지·상세 드롭다운은 기존 지표와 같은 형태
+- CPU·메모리와 달리 **폴링하지 않는다.** 창을 열 때 1회 + 행마다 있는 수동 새로고침 버튼을 누를 때만 읽는다
+- 상세에 "마지막 확인" 시각을 상대 시간("3분 전")으로 표시해, 값이 그대로여도 확인 여부를 알 수 있게 함
+- 조회 경로는 `src/main/ai-usage.js` → `system:get-ai-usage` IPC. 한쪽 읽기가 실패해도 다른 쪽은 표시하고, 실패 시 직전 스냅샷을 유지
+
+Claude (`src/main/claude-usage-cache.js`):
+
+- 한도(%)는 로컬에 원본이 없어 **Claude Code의 statusLine이 남긴 캐시**(`~/.claude/usage-cache.json`)만 읽는다
+- 5시간·7일 사용률과 리셋 시각, 캐시 갱신 시각을 표시. 트레이 표시 경로에서 `claude` 프로세스·`/usage`·PTY를 실행하지 않는다
+- 캐시가 없으면 "Claude Code에서 메시지를 한 번 보낸 후 확인해 주세요" 안내
+- 캐시를 만들어 주는 statusLine 설치는 `npm run install:claude-statusline` (`scripts/install-claude-statusline.js` → `src/main/claude-statusline-installer.js`). `~/.claude/save-usage-statusline.mjs`를 쓰고 `~/.claude/settings.json`의 `statusLine`을 설정한다
+
+Codex (`src/main/codex-usage-cache.js`):
+
+- `~/.codex/sessions`의 `.jsonl` 세션 로그에서 `token_count` 이벤트를 읽어 **오늘치 입력/출력 토큰을 누계**
+- 파일별로 읽은 오프셋을 캐시해 새로 붙은 줄만 스트리밍으로 읽는다(수 MB 세션도 전부 메모리에 올리지 않음). 파일이 줄면 잘린 것으로 보고 처음부터 다시 읽음
+- 날짜가 바뀌면 캐시를 비워 어제 누계가 섞이지 않게 함
+- 한도(%)·플랜·리셋 시각은 가장 최근 로그의 `rate_limits.primary` **스냅샷**이라 실시간 값이 아니다
+
 ---
 
 ## 12. 부가 리액션
@@ -554,6 +579,18 @@ deskPet 캐릭터에 성향 발견형 성장 요소를 추가한다. 사용자�
 - 성향 태그 계산
 - 온보딩 질문 점수 반영과 완료 후 오늘 질문 3개 채움
 - 표시용 진행도 22개 계산
+
+`test/ai-usage.test.js`:
+
+- 조회할 때마다 두 도구의 파일을 다시 읽어 퍼센트 갱신
+- 한쪽 파일을 읽지 못해도 다른 쪽은 계속 표시
+
+`test/codex-usage-cache.test.js`:
+
+- 오늘 토큰만 합산하고 최신 rate_limit 스냅샷 사용
+- 증분 읽기 결과가 전체 재독과 동일, 끊긴 마지막 줄은 다음 갱신까지 보류
+- 파일 잘림·교체 시 처음부터 재독, 날짜가 바뀌면 어제 누계 폐기
+- 이벤트 원본을 메모리에 쌓지 않음, 오늘 쓰지 않은 파일은 캐시에서 제거
 
 ### 추가 검증 필요
 
