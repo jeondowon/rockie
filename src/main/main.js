@@ -92,6 +92,8 @@ function createWindow() {
   mainWindow.setIgnoreMouseEvents(true, { forward: true });
   mainWindow.setAlwaysOnTop(true, "screen-saver");
   mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  // 창을 새로 만드는 경로(activate)에서도 캡처 제외 설정이 유지되도록 여기서 적용한다.
+  applyCaptureProtection(!!store.get().settings.hideFromCapture);
 
   // 펫 렌더러가 다시 로드되면 모드 상태(오버레이·activeMode)가 초기화되므로,
   // 메인이 들고 있는 잠금·억제 상태도 함께 푼다. 안 그러면 설정 초기화나 개발용
@@ -842,6 +844,14 @@ function sendPetSettings() {
 function applyStartupSettings() {
   const s = store.get().settings;
   app.setLoginItemSettings({ openAtLogin: !!s.autoLaunch });
+  applyCaptureProtection(!!s.hideFromCapture);
+}
+
+// 켜면 애완돌 창이 화면 캡처(스크린샷·녹화·화면 공유) 대상에서 빠진다.
+// 내 모니터에는 그대로 보이므로 "숨기기"라기보다 "캡처에만 안 찍히기"에 가깝다.
+function applyCaptureProtection(enabled) {
+  if (mainWindow && !mainWindow.isDestroyed())
+    mainWindow.setContentProtection(enabled);
 }
 
 // 토글/칩 초기 상태 표시용. 질문 알림은 notifications 섹션에 있으므로 합쳐서 반환.
@@ -874,6 +884,10 @@ ipcMain.on("settings:set", (_event, { key, value }) => {
     case "notifications":
       data.notifications.notificationsEnabled = value; // 새 질문 배너 알림 on/off
       if (value) showQuestionBanner({ preview: true }); // 켠 순간 실제 배너 모습을 표시
+      break;
+    case "hideFromCapture":
+      data.settings.hideFromCapture = value;
+      applyCaptureProtection(value);
       break;
     case "soundEnabled":
       data.settings.soundEnabled = value;

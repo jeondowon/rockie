@@ -68,6 +68,7 @@ function defaultData() {
     settings: {
       autoLaunch: true,
       soundEnabled: true,
+      hideFromCapture: false, // 스크린샷·화면 녹화·화면 공유에서 애완돌 제외
       petPlacement: "follow", // "follow" | "bottom-left" | "bottom-right"
       petSize: "medium", // "small" | "medium" | "large"
       focusMinutes: 25,
