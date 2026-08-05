@@ -98,7 +98,13 @@ function createWindow() {
   // 펫 렌더러가 다시 로드되면 모드 상태(오버레이·activeMode)가 초기화되므로,
   // 메인이 들고 있는 잠금·억제 상태도 함께 푼다. 안 그러면 설정 초기화나 개발용
   // 자동 새로고침 뒤에 키보드가 잠긴 채·알림이 막힌 채 남는다.
-  mainWindow.webContents.on("did-start-loading", releaseModeLocks);
+  mainWindow.webContents.on("did-start-loading", () => {
+    releaseModeLocks();
+    // 렌더러의 mouseX도 기본값으로 되돌아간다. 그때 커서가 멈춰 있으면 "좌표가 같아서
+    // 생략" 판정에 걸려 새 값이 영영 안 가므로, 캐시를 비워 다음 틱에 한 번은 보내게 한다.
+    lastCursorX = null;
+    lastCursorY = null;
+  });
 
   mainWindow.loadFile(path.join(__dirname, "../renderer/pet/index.html"));
 
@@ -166,6 +172,11 @@ function startDevReload() {
   }
 }
 
+// 마지막으로 보낸 커서 좌표(화면 기준). 창은 movable:false로 (0,0)에 고정돼 있어
+// bounds가 변하지 않으므로 화면 좌표만 비교해도 충분하다.
+let lastCursorX = null;
+let lastCursorY = null;
+
 // 전역 커서 위치를 주기적으로 렌더러에 전달 (창이 클릭 통과 상태라
 // 렌더러에서는 마우스 이동 이벤트를 직접 받을 수 없기 때문)
 function startCursorTracker() {
@@ -173,6 +184,11 @@ function startCursorTracker() {
     if (!mainWindow || mainWindow.isDestroyed()) return;
     if (!mainWindow.isVisible()) return; // 숨겨둔 동안엔 60Hz로 보낼 이유가 없다
     const point = screen.getCursorScreenPoint();
+    // 커서가 멈춰 있으면 보낼 게 없다. 렌더러는 마지막 값을 그대로 들고 있으므로
+    // 동작은 같고, 마우스를 안 움직이는 동안의 초당 60회 IPC만 사라진다.
+    if (point.x === lastCursorX && point.y === lastCursorY) return;
+    lastCursorX = point.x;
+    lastCursorY = point.y;
     const bounds = mainWindow.getBounds();
     // 창 기준 좌표로 변환해서 전달
     mainWindow.webContents.send("cursor-position", {
@@ -305,12 +321,15 @@ function startKeyBlocker(maxMs) {
         cleanHelper,
         fs.readFileSync(statusPath, "utf8").trim(),
       );
-    } catch (_err) {
-    }
+    } catch (_err) {}
   }, 100);
 
   cleanHelper.startTimer = setTimeout(() => {
-    if (!cleanHelper || cleanHelper.statusPath !== statusPath || cleanHelper.status) {
+    if (
+      !cleanHelper ||
+      cleanHelper.statusPath !== statusPath ||
+      cleanHelper.status
+    ) {
       return;
     }
     console.error("[clean] keyblocker 시작 시간 초과");
@@ -332,8 +351,7 @@ function startKeyBlocker(maxMs) {
           helper,
           fs.readFileSync(statusPath, "utf8").trim(),
         );
-      } catch (_err) {
-      }
+      } catch (_err) {}
     }
     if (code !== 0) {
       console.error("[clean] keyblocker 종료:", { code, signal });
@@ -907,7 +925,10 @@ ipcMain.on("settings:set", (_event, { key, value }) => {
       break;
     case "napMinutes":
       // 슬라이더 범위(1~120분) 밖의 값이 들어와도 저장 단계에서 잘라낸다
-      data.settings.napMinutes = Math.min(120, Math.max(1, Number(value) || 20));
+      data.settings.napMinutes = Math.min(
+        120,
+        Math.max(1, Number(value) || 20),
+      );
       sendPetSettings();
       break;
     default:

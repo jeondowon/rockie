@@ -1,3 +1,9 @@
+// Codex 사용량 조회 (트레이 SYSTEM 화면용).
+// Codex는 평소 동작하면서 ~/.codex/sessions/**/*.jsonl에 세션 로그를 스스로 남긴다.
+// 여기서는 그 로그를 읽기만 하며, 설치·설정은 필요 없다.
+//
+// 필요한 건 한도 스냅샷(퍼센트·플랜·리셋 시각) 하나뿐이라 **가장 최근에 쓰인 파일 하나만**
+// 본다. 한도는 계정 단위라 어느 세션에서 기록됐든 마지막 값이 곧 최신이다.
 const fs = require("fs");
 const fsp = require("fs/promises");
 const os = require("os");
@@ -5,14 +11,9 @@ const path = require("path");
 
 const CODEX_DIR = path.join(os.homedir(), ".codex", "sessions");
 
+// 보여줄 한도 스냅샷이 없는 상태(디렉터리·로그 없음, 읽기 실패)
 function emptyCodexUsage() {
-  return { available: false };
-}
-
-function startOfToday() {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d.getTime();
+  return { limit: null };
 }
 
 async function exists(p) {
@@ -24,8 +25,9 @@ async function exists(p) {
   }
 }
 
-async function listJsonl(dir) {
-  const out = [];
+// 세션 로그 중 가장 최근에 쓰인 파일 하나 (없으면 null).
+async function newestJsonl(dir) {
+  let best = null;
   async function walk(d) {
     let items;
     try {
@@ -39,7 +41,9 @@ async function listJsonl(dir) {
       else if (it.name.endsWith(".jsonl")) {
         try {
           const st = await fsp.stat(p);
-          out.push({ path: p, size: st.size, mtimeMs: st.mtimeMs });
+          if (!best || st.mtimeMs > best.mtimeMs) {
+            best = { path: p, size: st.size, mtimeMs: st.mtimeMs };
+          }
         } catch (_err) {
           // 방금 지워진 파일은 무시
         }
@@ -47,7 +51,7 @@ async function listJsonl(dir) {
     }
   }
   await walk(dir);
-  return out;
+  return best;
 }
 
 // offset 바이트 이후에 새로 붙은 줄만 한 줄씩 흘려보낸다.
@@ -78,8 +82,8 @@ async function readNewLines(filePath, offset, onLine) {
   return consumed;
 }
 
-// token_count 이벤트 한 줄 → { at, usage, limit } (필요 없는 원본은 버린다)
-function parseTokenLine(line) {
+// token_count 이벤트 한 줄 → 한도 스냅샷 (한도 정보가 없는 줄이면 null)
+function parseLimit(line) {
   if (!line || !line.includes("token_count")) return null;
   let d;
   try {
@@ -91,20 +95,11 @@ function parseTokenLine(line) {
   if (d.payload.type !== "token_count") return null;
 
   const rl = d.payload.rate_limits;
-  const primary = rl && rl.primary;
-  const at = Date.parse(d.timestamp);
+  if (!rl || !rl.primary) return null;
   return {
-    at,
-    usage: d.payload.info && d.payload.info.last_token_usage,
-    limit: primary
-      ? {
-          usedPercent: primary.used_percent,
-          windowMinutes: primary.window_minutes,
-          resetsAt: primary.resets_at,
-          planType: rl.plan_type || null,
-          measuredAt: at,
-        }
-      : null,
+    usedPercent: rl.primary.used_percent,
+    resetsAt: rl.primary.resets_at,
+    planType: rl.plan_type || null,
   };
 }
 
@@ -112,12 +107,12 @@ class CodexUsageCache {
   constructor(dir = CODEX_DIR) {
     this.dir = dir;
     this.snapshot = emptyCodexUsage();
-    this.fileCache = new Map();
-    this.dayStart = null;
+    // 지금 따라가고 있는 파일 { path, size, mtimeMs, offset, limit }
+    this.file = null;
     this.pending = null;
   }
 
-  // 앱 시작 시 1회 예열. 오늘치 로그를 미리 훑어두면 첫 트레이 오픈이 즉시 뜬다.
+  // 앱 시작 시 1회 예열. 미리 훑어두면 첫 트레이 오픈이 즉시 뜬다.
   async start() {
     await this.reload({ keepPreviousOnFailure: false });
   }
@@ -128,7 +123,7 @@ class CodexUsageCache {
 
   async reload({ keepPreviousOnFailure = true } = {}) {
     if (this.pending) return this.pending;
-    this.pending = this.readUsage(startOfToday())
+    this.pending = this.readUsage()
       .then((usage) => {
         this.snapshot = usage;
         return this.snapshot;
@@ -143,78 +138,39 @@ class CodexUsageCache {
     return this.pending;
   }
 
-  // 파일 하나를 훑어 누계만 갱신한다. 이벤트 원본은 보관하지 않는다.
-  async scanFile(file, dayStart) {
-    let entry = this.fileCache.get(file.path);
-    if (entry && entry.size === file.size && entry.mtimeMs === file.mtimeMs) {
-      return entry;
-    }
-    // 파일이 줄었으면 잘렸거나 교체된 것 → 처음부터 다시 읽는다
-    if (!entry || file.size < entry.size) {
-      entry = { size: 0, mtimeMs: 0, offset: 0, input: 0, output: 0, last: null };
-    }
-
-    const consumed = await readNewLines(file.path, entry.offset, (line) => {
-      const ev = parseTokenLine(line);
-      if (!ev) return;
-      entry.last = ev; // 최신 스냅샷 1개만 남기고 이전 것은 그때그때 버린다
-      if (!(ev.at >= dayStart) || !ev.usage) return;
-      entry.input += ev.usage.input_tokens || 0;
-      entry.output += ev.usage.output_tokens || 0;
-    });
-
-    entry.offset += consumed;
-    entry.size = file.size;
-    entry.mtimeMs = file.mtimeMs;
-    this.fileCache.set(file.path, entry);
-    return entry;
-  }
-
-  async readUsage(dayStart) {
-    // 날짜가 바뀌면 어제 누계가 섞이지 않도록 전부 버리고 다시 센다
-    if (this.dayStart !== dayStart) {
-      this.fileCache.clear();
-      this.dayStart = dayStart;
-    }
-
+  async readUsage() {
     if (!(await exists(this.dir))) return emptyCodexUsage();
 
-    const files = await listJsonl(this.dir);
-    if (!files.length) {
-      this.fileCache.clear();
-      return { available: true, input: 0, output: 0, limit: null };
+    const newest = await newestJsonl(this.dir);
+    if (!newest) {
+      this.file = null;
+      return emptyCodexUsage();
     }
 
-    const newest = files.reduce((a, b) => (b.mtimeMs > a.mtimeMs ? b : a));
-    const total = { input: 0, output: 0 };
-    const keep = new Set();
-    for (const f of files) {
-      // 오늘 합계에 기여하지 않는 파일은 읽지도, 캐시에 남기지도 않는다
-      if (f.mtimeMs < dayStart && f.path !== newest.path) continue;
-      const entry = await this.scanFile(f, dayStart);
-      total.input += entry.input;
-      total.output += entry.output;
-      keep.add(f.path);
+    let f = this.file;
+    if (!f || f.path !== newest.path || newest.size < f.size) {
+      // 새 세션 파일이거나, 파일이 줄었으면(잘렸거나 교체됨) 처음부터 다시 읽는다
+      f = { path: newest.path, size: 0, mtimeMs: 0, offset: 0, limit: null };
+    } else if (f.size === newest.size && f.mtimeMs === newest.mtimeMs) {
+      return { limit: f.limit }; // 그대로면 다시 읽을 것이 없다
     }
 
-    for (const p of this.fileCache.keys()) {
-      if (!keep.has(p)) this.fileCache.delete(p);
-    }
+    const consumed = await readNewLines(newest.path, f.offset, (line) => {
+      // 최신 스냅샷 1개만 남기고 이전 것은 그때그때 버린다.
+      // 한도 정보가 없는 줄은 건너뛰므로, 마지막 줄에 없더라도 직전 값을 잃지 않는다.
+      const limit = parseLimit(line);
+      if (limit) f.limit = limit;
+    });
 
-    const last = this.fileCache.get(newest.path);
-    return {
-      available: true,
-      ...total,
-      limit: (last && last.last && last.last.limit) || null,
-    };
+    f.offset += consumed;
+    f.size = newest.size;
+    f.mtimeMs = newest.mtimeMs;
+    this.file = f;
+    return { limit: f.limit };
   }
-
 }
 
 const codexUsageCache = new CodexUsageCache();
 
-module.exports = {
-  CODEX_DIR,
-  CodexUsageCache,
-  codexUsageCache,
-};
+// CodexUsageCache는 테스트가 임시 디렉터리로 인스턴스를 따로 만들 때 쓴다.
+module.exports = { CodexUsageCache, codexUsageCache };

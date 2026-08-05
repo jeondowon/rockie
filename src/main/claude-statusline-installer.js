@@ -106,8 +106,11 @@ function settingsPath() {
   return path.join(claudeDir(), "settings.json");
 }
 
+// 인터프리터 경로를 박지 않는다 — 스크립트 첫 줄의 #!/usr/bin/env node가 실행 시점에
+// PATH에서 node를 찾는다. 예전엔 process.execPath를 박아서, 그 node 버전을 지우면
+// (nvm 정리 등) 애완돌과 무관한 Claude Code 상태줄이 매 프롬프트마다 깨졌다.
 function statusLineCommand() {
-  return `"${process.execPath}" "${statuslineScriptPath()}"`;
+  return `"${statuslineScriptPath()}"`;
 }
 
 async function readSettings(filePath) {
@@ -116,7 +119,9 @@ async function readSettings(filePath) {
   } catch (err) {
     if (err && err.code === "ENOENT") return {};
     if (err instanceof SyntaxError) {
-      throw new Error(`${filePath} 파일의 JSON이 손상되어 자동 수정하지 않았습니다.`);
+      throw new Error(
+        `${filePath} 파일의 JSON이 손상되어 자동 수정하지 않았습니다.`,
+      );
     }
     throw err;
   }
@@ -150,10 +155,4 @@ async function installClaudeStatusLine() {
   };
 }
 
-module.exports = {
-  STATUSLINE_SCRIPT,
-  installClaudeStatusLine,
-  statusLineCommand,
-  statuslineScriptPath,
-  settingsPath,
-};
+module.exports = { installClaudeStatusLine };

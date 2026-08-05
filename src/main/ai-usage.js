@@ -11,19 +11,16 @@ async function startAiUsage() {
 // 조회가 곧 갱신이다. 트레이가 물어볼 때만 디스크를 읽으므로,
 // 팝업이 닫혀 있는 동안에는 감시자도 타이머도 돌지 않는다.
 async function getAiUsage() {
-  try {
-    // 한쪽 읽기가 실패해도 다른 쪽은 보여준다(실패 시 직전 스냅샷 유지)
-    await Promise.allSettled([
-      claudeUsageCache.reload(),
-      codexUsageCache.reload(),
-    ]);
-    return {
-      claude: claudeUsageCache.get(),
-      codex: codexUsageCache.get(),
-    };
-  } catch (_err) {
-    return null;
-  }
+  // 한쪽 읽기가 실패해도 다른 쪽은 보여준다(실패 시 직전 스냅샷 유지).
+  // allSettled는 reject하지 않고 get()도 던지지 않으므로 여기서 감쌀 실패가 없다.
+  await Promise.allSettled([
+    claudeUsageCache.reload(),
+    codexUsageCache.reload(),
+  ]);
+  return {
+    claude: claudeUsageCache.get(),
+    codex: codexUsageCache.get(),
+  };
 }
 
 module.exports = {

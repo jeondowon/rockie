@@ -1075,20 +1075,6 @@ function renderMood(load) {
   setText("sys-mood-desc", desc);
 }
 
-// 토큰 수는 자릿수가 커서 K/M으로 줄여 보여준다
-function tokens(n) {
-  if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
-  if (n >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
-  return `${n}`;
-}
-
-function clock(ms) {
-  const d = new Date(ms);
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mm = String(d.getMinutes()).padStart(2, "0");
-  return `${d.getMonth() + 1}/${d.getDate()} ${hh}:${mm}`;
-}
-
 function usagePercent(value) {
   return typeof value === "number" && Number.isFinite(value)
     ? `${Math.round(value)}%`
@@ -1138,46 +1124,44 @@ function renderAiUsage(u) {
     setText("sc-claude-sub", "확인 불가");
     setFill("sc-claude-fill", 0);
     paint("claude", "green");
-    setText("sc-claude-output", "확인 불가");
-    setText("sc-claude-input", "확인 불가");
-    setText("sc-claude-cache", "확인 불가");
-    setText("sc-claude-sessions", "확인 불가");
+    setText("sc-claude-7d", "확인 불가");
+    setText("sc-claude-5h-reset", "확인 불가");
+    setText("sc-claude-7d-reset", "확인 불가");
   } else {
-    const fiveHour = c.fiveHourPercentage;
-    const pct = typeof fiveHour === "number" ? fiveHour : 0;
-    setText("sc-claude-val", usagePercent(fiveHour));
+    // 헤더 값이 곧 5시간(현재 세션) 사용량이라 상세에 같은 값을 또 두지 않는다
+    const pct =
+      typeof c.fiveHourPercentage === "number" ? c.fiveHourPercentage : 0;
+    setText("sc-claude-val", usagePercent(c.fiveHourPercentage));
     setText("sc-claude-sub", "현재 세션");
     setFill("sc-claude-fill", pct);
     paint("claude", loadClass(pct));
-    setText("sc-claude-output", usagePercent(c.fiveHourPercentage));
-    setText("sc-claude-input", usagePercent(c.sevenDayPercentage));
-    setText("sc-claude-cache", resetTime(c.fiveHourResetsAt));
-    setText("sc-claude-sessions", resetTime(c.sevenDayResetsAt));
+    setText("sc-claude-7d", usagePercent(c.sevenDayPercentage));
+    setText("sc-claude-5h-reset", resetTime(c.fiveHourResetsAt));
+    setText("sc-claude-7d-reset", resetTime(c.sevenDayResetsAt));
   }
 
   // Codex: 로컬 세션 로그에 남은 rate_limits 스냅샷을 표시한다.
-  const x = u.codex;
-  const lim = x.available ? x.limit : null;
-  if (lim) {
+  // 스냅샷은 "마지막으로 Codex를 쓴 시점"의 값이다. 그 뒤로 한도 창이 리셋됐다면
+  // (resetsAt 경과) 로그의 퍼센트는 더 이상 사실이 아니다 — 새 값은 Codex를 한 번
+  // 써야 로그에 남으므로, 만료된 수치를 그대로 보여주는 대신 모른다고 말한다.
+  const lim = u.codex.limit;
+  const stale = !!lim && lim.resetsAt * 1000 <= Date.now();
+  if (lim && !stale) {
     const used = lim.usedPercent;
     setText("sc-codex-val", `${Math.round(used)}%`);
-    setFill("sc-codex-fill", lim.usedPercent);
+    setFill("sc-codex-fill", used);
     paint("codex", loadClass(used));
     setText("sc-codex-sub", "주간");
     setText("sc-codex-plan", lim.planType || "—");
-    setText(
-      "sc-codex-reset",
-      lim.resetsText || (lim.resetsAt ? clock(lim.resetsAt * 1000) : "—"),
-    );
+    setText("sc-codex-reset", resetTime(lim.resetsAt));
   } else {
     setText("sc-codex-val", "—");
     setFill("sc-codex-fill", 0);
     paint("codex", "green");
-    setText("sc-codex-sub", "기록 없음");
-    setText("sc-codex-plan", "—");
-    setText("sc-codex-reset", "—");
+    setText("sc-codex-sub", stale ? "갱신 필요" : "기록 없음");
+    setText("sc-codex-plan", (lim && lim.planType) || "—");
+    setText("sc-codex-reset", stale ? resetTime(lim.resetsAt) : "—");
   }
-  setText("sc-codex-today", x.available ? tokens(x.input + x.output) : "—");
 }
 
 // 항목 박스 클릭 → 세부 정보 드롭다운 토글

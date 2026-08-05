@@ -4,15 +4,44 @@ const si = require("systeminformation");
 
 const GB = 1024 ** 3;
 
+// 값이 느리게 변하는 조회는 TTL 동안 직전 결과를 재사용한다.
+// SYSTEM 화면은 2초마다 여기를 부르는데, fsSize는 df를, networkInterfaces·battery는
+// 각각 별도의 시스템 명령을 띄운다(실측 합계 130~180ms). 초 단위로 변하지도 않는 값에
+// 매 틱 그 비용을 낼 이유가 없다.
+// 실패는 캐시하지 않으므로(예외가 그대로 전파된다) 다음 틱에 다시 시도한다.
+function cached(fn, ttlMs) {
+  let value = null;
+  let at = 0;
+  return async () => {
+    if (value !== null && Date.now() - at < ttlMs) return value;
+    value = await fn();
+    at = Date.now();
+    return value;
+  };
+}
+
+const readDisks = cached(() => si.fsSize(), 60 * 1000);
+const readBattery = cached(() => si.battery(), 15 * 1000);
+// def(기본 인터페이스명)와 목록은 같은 시점의 값이어야 짝이 맞으므로 함께 캐시한다.
+// 대가: Wi-Fi↔유선을 갈아타면 라벨·IP가 최대 30초 늦게 반영된다.
+const readNet = cached(
+  async () => ({
+    def: await si.networkInterfaceDefault(),
+    ifaces: await si.networkInterfaces(),
+  }),
+  30 * 1000,
+);
+
 async function getSystemStats() {
   try {
-    const def = await si.networkInterfaceDefault();
-    const [load, mem, disks, batt, ifaces, netStat] = await Promise.all([
+    const { def, ifaces } = await readNet();
+    // networkStats는 캐시하지 않는다 — rx_sec/tx_sec가 "직전 호출 이후 델타"라서
+    // 호출 간격이 곧 측정 구간이다. 재사용하면 속도 표시가 멈춘다.
+    const [load, mem, disks, batt, netStat] = await Promise.all([
       si.currentLoad(),
       si.mem(),
-      si.fsSize(),
-      si.battery(),
-      si.networkInterfaces(),
+      readDisks(),
+      readBattery(),
       si.networkStats(def),
     ]);
 

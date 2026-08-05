@@ -451,7 +451,7 @@ deskPet 캐릭터에 성향 발견형 성장 요소를 추가한다. 사용자�
 
 구현 완료:
 
-- SYSTEM 화면에 Claude 사용량·CODEX 행 추가. 게이지·상세 드롭다운은 기존 지표와 같은 형태
+- SYSTEM 화면에 Claude·CODEX 행 추가. 게이지·상세 드롭다운은 기존 지표와 같은 형태
 - CPU·메모리와 달리 **폴링하지 않는다.** 창을 열 때 1회 + 행마다 있는 수동 새로고침 버튼을 누를 때만 읽는다
 - 상세에 "마지막 확인" 시각을 상대 시간("3분 전")으로 표시해, 값이 그대로여도 확인 여부를 알 수 있게 함
 - 조회 경로는 `src/main/ai-usage.js` → `system:get-ai-usage` IPC. 한쪽 읽기가 실패해도 다른 쪽은 표시하고, 실패 시 직전 스냅샷을 유지
@@ -459,16 +459,21 @@ deskPet 캐릭터에 성향 발견형 성장 요소를 추가한다. 사용자�
 Claude (`src/main/claude-usage-cache.js`):
 
 - 한도(%)는 로컬에 원본이 없어 **Claude Code의 statusLine이 남긴 캐시**(`~/.claude/usage-cache.json`)만 읽는다
-- 5시간·7일 사용률과 리셋 시각, 캐시 갱신 시각을 표시. 트레이 표시 경로에서 `claude` 프로세스·`/usage`·PTY를 실행하지 않는다
-- 캐시가 없으면 "Claude Code에서 메시지를 한 번 보낸 후 확인해 주세요" 안내
+- 헤더에 5시간(현재 세션) 사용률, 상세에 주간 사용률과 두 리셋 시각·마지막 확인 시각을 표시. 트레이 표시 경로에서 `claude` 프로세스·`/usage`·PTY를 실행하지 않는다
+- 캐시가 없으면 "확인 불가"만 표시한다. 원인 안내 문구는 두지 않는다 — statusLine이 자동 설치되지 않아서 "메시지를 보내세요" 류의 안내가 미설치 사용자에겐 틀린 말이 되기 때문
 - 캐시를 만들어 주는 statusLine 설치는 `npm run install:claude-statusline` (`scripts/install-claude-statusline.js` → `src/main/claude-statusline-installer.js`). `~/.claude/save-usage-statusline.mjs`를 쓰고 `~/.claude/settings.json`의 `statusLine`을 설정한다
+- statusLine 명령에는 인터프리터 경로를 박지 않는다(스크립트의 `#!/usr/bin/env node`가 실행 시점에 PATH에서 찾는다). node 버전을 지우거나 앱을 옮겨도 안 깨지게 하기 위함
+
+남은 확인:
+
+- 설치가 기존 `statusLine` 설정을 백업 없이 덮어쓴다 · 해제 경로가 없다 · README에 안내가 없다
 
 Codex (`src/main/codex-usage-cache.js`):
 
-- `~/.codex/sessions`의 `.jsonl` 세션 로그에서 `token_count` 이벤트를 읽어 **오늘치 입력/출력 토큰을 누계**
-- 파일별로 읽은 오프셋을 캐시해 새로 붙은 줄만 스트리밍으로 읽는다(수 MB 세션도 전부 메모리에 올리지 않음). 파일이 줄면 잘린 것으로 보고 처음부터 다시 읽음
-- 날짜가 바뀌면 캐시를 비워 어제 누계가 섞이지 않게 함
-- 한도(%)·플랜·리셋 시각은 가장 최근 로그의 `rate_limits.primary` **스냅샷**이라 실시간 값이 아니다
+- 설치·설정이 필요 없다. Codex가 평소 동작하며 `~/.codex/sessions`에 남기는 `.jsonl` 세션 로그를 읽기만 한다
+- 한도는 계정 단위라 **가장 최근에 쓰인 파일 하나만** 읽고, 거기서 마지막 `rate_limits.primary` 스냅샷(한도%·플랜·리셋 시각)을 취한다
+- 읽은 오프셋을 캐시해 새로 붙은 줄만 스트리밍으로 읽는다(수 MB 세션도 전부 메모리에 올리지 않음). 파일이 줄면 잘린 것으로 보고, 새 세션 파일이 생기면 그쪽으로 갈아탄다
+- 스냅샷이라 실시간 값이 아니다. `resetsAt`이 이미 지났으면 그 수치는 만료된 것이므로 퍼센트 대신 "갱신 필요"를 표시한다(Codex를 한 번 써야 새 값이 로그에 남는다)
 
 ---
 

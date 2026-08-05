@@ -26,10 +26,16 @@ const codexLine = (usedPercent, inputTokens) =>
     timestamp: new Date(now).toISOString(),
     payload: {
       type: "token_count",
-      info: { last_token_usage: { input_tokens: inputTokens, output_tokens: 0 } },
+      info: {
+        last_token_usage: { input_tokens: inputTokens, output_tokens: 0 },
+      },
       rate_limits: {
         plan_type: "pro",
-        primary: { used_percent: usedPercent, window_minutes: 10080, resets_at: 1 },
+        primary: {
+          used_percent: usedPercent,
+          window_minutes: 10080,
+          resets_at: 1,
+        },
       },
     },
   });
@@ -50,9 +56,8 @@ test("조회할 때마다 두 도구의 파일을 다시 읽어 퍼센트를 갱
   assert.equal(usage.claude.fiveHourPercentage, 10);
   assert.equal(usage.claude.sevenDayPercentage, 20);
   assert.equal(usage.codex.limit.usedPercent, 30);
-  assert.equal(usage.codex.input, 100);
 
-  // 두 도구가 각자 파일을 갱신한 상황(Claude=statusLine, Codex=토큰 소비)
+  // 두 도구가 각자 파일을 갱신한 상황(Claude=statusLine, Codex=새 token_count 이벤트)
   fs.writeFileSync(claudeFile, claudeJson(55, 66));
   fs.appendFileSync(codexFile, codexLine(77, 400) + "\n");
 
@@ -60,7 +65,6 @@ test("조회할 때마다 두 도구의 파일을 다시 읽어 퍼센트를 갱
   assert.equal(usage.claude.fiveHourPercentage, 55);
   assert.equal(usage.claude.sevenDayPercentage, 66);
   assert.equal(usage.codex.limit.usedPercent, 77);
-  assert.equal(usage.codex.input, 500);
 
   // 파일이 그대로면 값도 그대로여야 한다(중복 집계 없음)
   const again = await getAiUsage();
@@ -75,5 +79,7 @@ test("한쪽 파일을 읽지 못해도 다른 쪽은 계속 보여준다", asyn
   const usage = await getAiUsage();
 
   assert.equal(usage.codex.limit.usedPercent, 77); // Codex는 정상
-  assert.ok(usage.claude.error); // Claude는 안내 문구를 단다
+  // 읽기 실패로 화면을 비우지 않는다 — 마지막으로 읽은 값을 그대로 유지한다
+  assert.equal(usage.claude.fiveHourPercentage, 41);
+  assert.equal(usage.claude.sevenDayPercentage, 42);
 });
