@@ -1981,6 +1981,23 @@ body {
   color: #1b1b16;
 }
 
+.sys-refresh-btn {
+  margin-top: 4px;
+  padding: 7px 9px;
+  border: 2px solid #1b1b16;
+  background: #f2ede1;
+  color: #1b1b16;
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 #1b1b16;
+}
+
+.sys-refresh-btn:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 #1b1b16;
+}
+
 .sys-glyph {
   width: 16px;
   height: 16px;

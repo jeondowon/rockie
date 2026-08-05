@@ -902,10 +902,15 @@ window.trayAPI.onWillHide(() => {
 // ---------- 시스템 모니터 (SYSTEM 화면) ----------
 const SYS_POLL_MS = 2000;
 let sysTimer = null;
+let aiTicking = false;
+let aiCheckedAt = null; // 사용량 파일을 마지막으로 읽어본 시각
 
 function startSystemMonitor() {
   if (sysTimer) return;
   tickSystem(); // 즉시 1회 갱신 후 주기 폴링
+  // AI 사용량은 로그를 읽어 집계하므로 폴링하지 않는다.
+  // 이 창을 열 때 1회, 그리고 수동 새로고침을 누를 때만 확인한다.
+  tickAiUsage();
   sysTimer = setInterval(tickSystem, SYS_POLL_MS);
 }
 
@@ -916,8 +921,30 @@ function stopSystemMonitor() {
 }
 
 async function tickSystem() {
+  renderCheckedAt(); // "n분 전"이 흐르도록 텍스트만 갱신(파일을 읽지 않는다)
   const stats = await window.trayAPI.getSystemStats();
   if (stats) renderSystem(stats); // 조회 실패(null)면 이전 값 유지
+}
+
+// 사용량 파일을 마지막으로 읽어본 시각. 값이 그대로여도 이 표시로 확인 여부를 안다.
+function renderCheckedAt() {
+  const text = aiCheckedAt == null ? "—" : relativeTime(aiCheckedAt);
+  setText("sc-claude-checked", text);
+  setText("sc-codex-checked", text);
+}
+
+async function tickAiUsage() {
+  if (aiTicking) return;
+  aiTicking = true;
+  try {
+    const usage = await window.trayAPI.getAiUsage(); // 호출 시점에 파일을 다시 읽는다
+    if (usage) {
+      aiCheckedAt = Date.now();
+      renderAiUsage(usage);
+    }
+  } finally {
+    aiTicking = false;
+  }
 }
 
 const byId = (id) => document.getElementById(id);
@@ -1047,6 +1074,111 @@ function renderMood(load) {
   setText("sys-mood-desc", desc);
 }
 
+// 토큰 수는 자릿수가 커서 K/M으로 줄여 보여준다
+function tokens(n) {
+  if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
+  if (n >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
+  return `${n}`;
+}
+
+function clock(ms) {
+  const d = new Date(ms);
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${d.getMonth() + 1}/${d.getDate()} ${hh}:${mm}`;
+}
+
+function usagePercent(value) {
+  return typeof value === "number" && Number.isFinite(value)
+    ? `${Math.round(value)}%`
+    : "확인 불가";
+}
+
+function relativeTime(ms) {
+  if (typeof ms !== "number" || !Number.isFinite(ms)) return "확인 불가";
+  const diff = Math.max(0, Date.now() - ms);
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return "방금 전";
+  if (minutes < 60) return `${minutes}분 전`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}시간 전`;
+  return `${Math.floor(hours / 24)}일 전`;
+}
+
+function resetTime(epochSeconds) {
+  if (typeof epochSeconds !== "number" || !Number.isFinite(epochSeconds)) {
+    return "확인 불가";
+  }
+  const diff = epochSeconds * 1000 - Date.now();
+  if (diff <= 0) return "갱신 필요";
+  if (diff < 24 * 60 * 60 * 1000) {
+    const totalMinutes = Math.max(1, Math.floor(diff / 60000));
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    if (hours > 0 && minutes > 0) return `${hours}시간 ${minutes}분 후`;
+    if (hours > 0) return `${hours}시간 후`;
+    return `${minutes}분 후`;
+  }
+  return new Date(epochSeconds * 1000).toLocaleString("ko-KR", {
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function renderAiUsage(u) {
+  renderCheckedAt();
+
+  // Claude: statusLine이 저장한 캐시를 그때그때 읽어 표시한다.
+  const c = u.claude;
+  if (!c || c.updatedAt == null) {
+    setText("sc-claude-val", "—");
+    setText("sc-claude-sub", "확인 불가");
+    setFill("sc-claude-fill", 0);
+    paint("claude", "green");
+    setText("sc-claude-output", "확인 불가");
+    setText("sc-claude-input", "확인 불가");
+    setText("sc-claude-cache", "확인 불가");
+    setText("sc-claude-sessions", "확인 불가");
+  } else {
+    const fiveHour = c.fiveHourPercentage;
+    const pct = typeof fiveHour === "number" ? fiveHour : 0;
+    setText("sc-claude-val", usagePercent(fiveHour));
+    setText("sc-claude-sub", "현재 세션");
+    setFill("sc-claude-fill", pct);
+    paint("claude", loadClass(pct));
+    setText("sc-claude-output", usagePercent(c.fiveHourPercentage));
+    setText("sc-claude-input", usagePercent(c.sevenDayPercentage));
+    setText("sc-claude-cache", resetTime(c.fiveHourResetsAt));
+    setText("sc-claude-sessions", resetTime(c.sevenDayResetsAt));
+  }
+
+  // Codex: 로컬 세션 로그에 남은 rate_limits 스냅샷을 표시한다.
+  const x = u.codex;
+  const lim = x.available ? x.limit : null;
+  if (lim) {
+    const used = lim.usedPercent;
+    setText("sc-codex-val", `${Math.round(used)}%`);
+    setFill("sc-codex-fill", lim.usedPercent);
+    paint("codex", loadClass(used));
+    setText("sc-codex-sub", "주간");
+    setText("sc-codex-plan", lim.planType || "—");
+    setText(
+      "sc-codex-reset",
+      lim.resetsText || (lim.resetsAt ? clock(lim.resetsAt * 1000) : "—"),
+    );
+  } else {
+    setText("sc-codex-val", "—");
+    setFill("sc-codex-fill", 0);
+    paint("codex", "green");
+    setText("sc-codex-sub", "기록 없음");
+    setText("sc-codex-plan", "—");
+    setText("sc-codex-reset", "—");
+  }
+  setText("sc-codex-today", x.available ? tokens(x.input + x.output) : "—");
+}
+
 // 항목 박스 클릭 → 세부 정보 드롭다운 토글
 document.querySelectorAll(".sys-row").forEach((row) => {
   row.addEventListener("click", () => {
@@ -1054,5 +1186,24 @@ document.querySelectorAll(".sys-row").forEach((row) => {
     const metric = head.dataset.metric;
     const open = byId(`sc-${metric}-detail`).classList.toggle("open");
     head.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+});
+
+// 수동 새로고침: 값이 그대로일 수도 있으므로 버튼 자체로 진행 상황을 알린다
+document.querySelectorAll(".sys-refresh-btn").forEach((btn) => {
+  btn.addEventListener("click", async (event) => {
+    event.stopPropagation(); // 상세 드롭다운이 닫히지 않도록
+    if (btn.disabled) return;
+    btn.disabled = true;
+    btn.textContent = "확인 중…";
+    try {
+      await tickAiUsage();
+      btn.textContent = "확인 완료";
+    } finally {
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.textContent = "새로고침";
+      }, 1200);
+    }
   });
 });

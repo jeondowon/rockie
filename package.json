@@ -7,6 +7,7 @@
     "start": "electron .",
     "dev": "DEV_RELOAD=1 electron .",
     "test": "node --test",
+    "install:claude-statusline": "node scripts/install-claude-statusline.js",
     "build:helper": "mkdir -p assets/helper/KeyBlocker.app/Contents/MacOS && swiftc -swift-version 5 -O assets/helper/keyblocker.swift -o assets/helper/KeyBlocker.app/Contents/MacOS/keyblocker && codesign --force --deep --sign \"${KEYBLOCKER_CODESIGN_IDENTITY:--}\" --identifier com.dowon.deskpet.keyblocker assets/helper/KeyBlocker.app"
   },
   "devDependencies": {

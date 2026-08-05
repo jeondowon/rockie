@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld("trayAPI", {
     ipcRenderer.on("tray-popup-will-hide", () => callback());
   },
   getSystemStats: () => ipcRenderer.invoke("system:get-stats"),
+  getAiUsage: () => ipcRenderer.invoke("system:get-ai-usage"),
   resizePopup: (height) => ipcRenderer.send("tray-popup-resize", height),
   getPetDisplaySprite: () => ipcRenderer.invoke("pet:get-display-sprite"),
   onPetDisplaySprite: (callback) => {

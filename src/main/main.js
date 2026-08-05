@@ -18,6 +18,7 @@ const store = require("./store");
 const evolution = require("./evolution");
 const { startDockTracker } = require("./dock-tracker");
 const { getSystemStats } = require("./system-stats");
+const { getAiUsage, startAiUsage } = require("./ai-usage");
 
 // 개발 모드 여부: `npm run dev`(DEV_RELOAD=1)로 실행하면 파일 저장 시 자동 새로고침
 const isDev = !app.isPackaged && process.env.DEV_RELOAD === "1";
@@ -914,6 +915,10 @@ ipcMain.handle("settings:reset", () => {
 // 시스템 모니터: 트레이 SYSTEM 화면이 열려 있는 동안 렌더러가 주기적으로 호출한다.
 ipcMain.handle("system:get-stats", () => getSystemStats());
 
+// AI 사용량: 호출될 때마다 Claude statusLine 캐시와 Codex 로컬 로그를 다시 읽는다.
+// 트레이를 열 때와 수동 새로고침을 누를 때만 호출된다.
+ipcMain.handle("system:get-ai-usage", () => getAiUsage());
+
 ipcMain.handle("app:get-idle-time", () => powerMonitor.getSystemIdleTime());
 
 ipcMain.handle("get-screen-permission", () => {
@@ -996,6 +1001,9 @@ function startActiveWindowWatcher() {
 
 app.whenReady().then(() => {
   store.load();
+  startAiUsage().catch((err) => {
+    console.warn("[claude-usage] 초기화 실패:", err.message);
+  });
   createWindow();
   createTray();
   applyStartupSettings();
