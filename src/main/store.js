@@ -127,7 +127,10 @@ function preserveCorruptFile(err) {
         `원본을 ${backup}에 보관하고 기본값으로 시작합니다.`,
     );
   } catch (_e) {
-    console.error("[store] 저장 파일을 읽지도 보관하지도 못했습니다:", err.message);
+    console.error(
+      "[store] 저장 파일을 읽지도 보관하지도 못했습니다:",
+      err.message,
+    );
   }
 }
 
