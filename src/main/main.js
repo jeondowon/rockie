@@ -147,6 +147,10 @@ function startDevReload() {
       files: [
         "../renderer/tray/tray.html",
         "../renderer/tray/tray-data.js",
+        "../renderer/tray/tray-onboarding.js",
+        "../renderer/tray/tray-pet.js",
+        "../renderer/tray/tray-system.js",
+        "../renderer/tray/tray-settings.js",
         "../renderer/tray/tray.js",
         "../renderer/tray/tray.css",
         "../renderer/shared/sprites.js",

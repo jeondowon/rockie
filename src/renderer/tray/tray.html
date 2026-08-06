@@ -850,9 +850,15 @@
         </div>
       </div>
     </div>
+    <!-- 로드 순서 계약: 공용 → 데이터 → 화면별 → 셸(tray.js).
+         전역 스코프를 공유하므로 같은 이름을 두 파일에서 선언하면 렌더러가 통째로 죽는다. -->
     <script src="../shared/sprites.js"></script>
     <script src="../shared/icons.js"></script>
     <script src="tray-data.js"></script>
+    <script src="tray-onboarding.js"></script>
+    <script src="tray-pet.js"></script>
+    <script src="tray-system.js"></script>
+    <script src="tray-settings.js"></script>
     <script src="tray.js"></script>
   </body>
 </html>
