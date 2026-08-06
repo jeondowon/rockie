@@ -1,5 +1,8 @@
 # Rockie 개발 계획
 
+------------미구현으로 결정됨--------------
+
+
 현재 MVP(마우스 추적 + 말풍선 + 활성 앱 반응)에 이어 붙일 기능들을 정리한 문서입니다.
 아키텍처 세부는 `README.md` 참고.
 
@@ -109,6 +112,5 @@ onModelDownloadProgress: (cb) => ipcRenderer.on("model:download-progress", (_e, 
 
 ## 5. 기타 향후 확장 (README에서 이어짐)
 
-- 클릭 시 캐릭터 드래그 이동.
 - 앱별 메시지 규칙을 JSON 설정 파일로 분리.
 - 자유 배회 모드 등 행동 패턴 다양화.
