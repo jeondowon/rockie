@@ -112,6 +112,27 @@ test("pending 진화 연출을 완료하면 대기 상태를 해제하고 완료
   assert.deepEqual(data.pet.presentedEvolutionStages, [1]);
 });
 
+test("진화가 시작되면 착용 중이던 스킨을 벗고, 카드를 끝낼 때까지 스킨을 잠근다", () => {
+  const data = makeData();
+  data.pet.evolutionStage = 1;
+  data.pet.stoneType = "basalt";
+  evolution.setActiveSkin(data, 0); // 조약돌 스킨 착용
+  assert.equal(data.pet.activeSkinStage, 0);
+
+  answerIds(data, eiIds(), "외향"); // 2단계 진화 시작(카드 대기)
+
+  assert.equal(data.pet.activeSkinStage, null);
+  assert.equal(data.pet.pendingEvolution.from.stage, 1);
+
+  // 카드 대기 중 스킨 변경 요청은 무시된다 (카드가 공개할 모습을 앞질러 보여주지 않도록)
+  const state = evolution.setActiveSkin(data, 0);
+  assert.equal(state.activeSkinStage, null);
+  assert.equal(data.pet.activeSkinStage, null);
+
+  evolution.completePendingEvolution(data);
+  assert.equal(evolution.setActiveSkin(data, 0).activeSkinStage, 0);
+});
+
 test("본 질문 2개 돌 동점이면 해당 타이브레이커를 우선 삽입하고 답변 후 확정한다", () => {
   const data = makeData();
   const ids = mainIds();

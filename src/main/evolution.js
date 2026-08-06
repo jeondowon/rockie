@@ -253,6 +253,9 @@ function evolutionSnapshot(data) {
 function queuePendingEvolution(data, from) {
   const existingFrom = data.pet.pendingEvolution?.from;
   const to = evolutionSnapshot(data);
+  // 진화가 시작되면 착용 중이던 스킨은 벗는다. 이 순간부터 펫·트레이는 모두
+  // pendingEvolution.from(진화 직전 실제 모습)을 그리므로 스킨 단계가 남아 있으면 어긋난다.
+  data.pet.activeSkinStage = null;
   data.pet.pendingEvolution = {
     stage: to.stage,
     from: existingFrom || from,
@@ -303,8 +306,6 @@ function completePendingEvolution(data) {
     data.pet.presentedEvolutionStages.push(pending.stage);
   }
   data.pet.pendingEvolution = null;
-  // 새 단계로 진화하면 착용 중이던 이전 스킨을 벗고 새 형태를 보여준다
-  data.pet.activeSkinStage = null;
   return { completed: pending, state: getState(data) };
 }
 
@@ -602,6 +603,8 @@ function getState(data) {
 // 스킨 착용/해제: 현재 단계 이하의 해금된 단계만 표시 형태로 지정할 수 있다.
 // stage가 null이거나 현재 단계와 같으면 해제(실제 단계 표시)로 취급한다.
 function setActiveSkin(data, stage) {
+  // 진화 카드를 기다리는 동안은 잠근다 — 지금 바꾸면 카드가 공개할 새 모습을 미리 보여주게 된다
+  if (data.pet.pendingEvolution) return getState(data);
   const current = data.pet.evolutionStage;
   data.pet.activeSkinStage =
     stage != null && stage >= 0 && stage < current ? stage : null;

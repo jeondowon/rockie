@@ -594,11 +594,14 @@ ipcMain.handle("evolution:set-skin", (_event, stage) => {
   const data = store.get();
   const state = evolution.setActiveSkin(data, stage);
   store.save();
-  sendToPet("pet:skin-change", {
-    stage: state.activeSkinStage ?? state.stage,
-    stoneType: state.stoneType,
-    variant: state.variant,
-  });
+  // 진화 카드 대기 중이면 setActiveSkin이 요청을 무시한다 — 펫에 알릴 변화도 없다
+  if (!state.pendingEvolution) {
+    sendToPet("pet:skin-change", {
+      stage: state.activeSkinStage ?? state.stage,
+      stoneType: state.stoneType,
+      variant: state.variant,
+    });
+  }
   return state;
 });
 ipcMain.handle("evolution:complete-pending", () => {

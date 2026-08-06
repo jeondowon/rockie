@@ -20,6 +20,25 @@ function wornStage(state) {
   return state.activeSkinStage != null ? state.activeSkinStage : state.stage;
 }
 
+// 아직 진화 카드를 끝내지 않았으면(pendingEvolution) 새 단계는 카드에서 처음 공개해야 한다.
+// 그때까지 트레이는 진화 직전 단계를 "지금 단계"로 취급한다(해금·진행 힌트 기준).
+function revealedStage(state) {
+  return state.pendingEvolution
+    ? state.pendingEvolution.from.stage
+    : state.stage;
+}
+
+// 히어로·스킨 칸에 그릴 형태(단계·돌 종류·변형).
+// 진화 카드 대기 중에는 진화 직전 모습 = 데스크톱 펫이 지금 보여주는 모습과 같다.
+function displayForm(state) {
+  if (state.pendingEvolution) return state.pendingEvolution.from;
+  return {
+    stage: wornStage(state),
+    stoneType: state.stoneType,
+    variant: state.variant,
+  };
+}
+
 // 단계별 상태 라벨
 function statusLabel(stage, stoneType, variant) {
   if (stage >= 3 && stoneType && variant) {
@@ -98,27 +117,27 @@ async function showPet() {
   refreshPetDisplaySprite();
 }
 
-// 히어로 아래 형태 설명(상태 라벨·진화 근거·성향 설명)은 표시 단계 = 스킨 착용 시 그 단계
-// (activeSkinStage), 없으면 실제 단계를 따른다. 진행도 힌트·성향 태그는 실제 상태 기준.
-// 스킨 변경 시에도 재호출해 히어로 이미지와 설명의 단계를 일치시킨다.
+// 히어로 아래 형태 설명(상태 라벨·진화 근거·성향 설명)은 표시 형태(displayForm) 기준,
+// 성향 태그는 실제 상태 기준. 진화 안내 문구는 아직 공개된 단계(revealedStage)를 따른다.
+// 스킨 변경·진화 시작 시에도 재호출해 히어로 이미지와 설명의 단계를 일치시킨다.
 function renderHeroText(state) {
-  const displayStage = wornStage(state);
+  const form = displayForm(state);
   petStatusLabel.textContent = statusLabel(
-    displayStage,
-    state.stoneType,
-    state.variant,
+    form.stage,
+    form.stoneType,
+    form.variant,
   );
   heroMood.textContent = evolveRationale(
-    displayStage,
-    state.stoneType,
-    state.variant,
+    form.stage,
+    form.stoneType,
+    form.variant,
   );
-  petEvoHint.textContent = evoHint(state.stage);
-  if (state.stoneType) {
+  petEvoHint.textContent = evoHint(revealedStage(state));
+  if (form.stoneType) {
     petPersonality.textContent = traitDescription(
-      displayStage,
-      state.stoneType,
-      state.variant,
+      form.stage,
+      form.stoneType,
+      form.variant,
     );
     renderTags(state.tags || []);
     petPersonalityTags.classList.remove("hidden");
@@ -128,10 +147,18 @@ function renderHeroText(state) {
   }
 }
 
+// 형태에 딸린 표시(상태 라벨·설명·스킨 그리드)를 한 번에 갱신한다.
+// 스킨 착용·진화 시작처럼 "지금 보이는 형태"가 바뀌는 순간에 쓴다.
+function renderForm(state) {
+  renderHeroText(state);
+  renderSkins(state);
+}
+
 function renderPet(state) {
+  const form = displayForm(state);
   heroImg.src =
     displaySpriteUrl(currentPetDisplaySprite) ||
-    heroSprite(state.stage, state.stoneType, state.variant);
+    heroSprite(form.stage, form.stoneType, form.variant);
 
   // 이름 (표시/입력/타이틀바) — 화면을 다시 그릴 땐 편집 모드를 닫는다
   applyNames(state.userName, state.petName);
@@ -145,8 +172,8 @@ function renderPet(state) {
     ? `${Math.round((progress / total) * 100)}%`
     : "0%";
 
-  // 상태 라벨·진화 근거·성향 설명은 "지금 보이는 형태" 기준(스킨 착용 시 그 단계),
-  // 진행도 힌트·성향 태그는 실제 상태 기준. renderHeroText가 이 구분을 담당한다.
+  // 상태 라벨·진화 근거·성향 설명은 "지금 보이는 형태" 기준(displayForm),
+  // 성향 태그는 실제 상태 기준. renderHeroText가 이 구분을 담당한다.
   renderHeroText(state);
 
   renderAffinity(state.affinityPoints);
@@ -161,17 +188,19 @@ function renderPet(state) {
 }
 
 // 스킨 그리드: 내 계열(조약돌→돌→변성체→보석) 4칸을 현재 단계 기준으로 렌더.
-// state.stage >= 칸 단계면 해금(이미지·이름 표시), 아니면 불투명 커버로 가린다.
+// revealedStage >= 칸 단계면 해금(이미지·이름 표시), 아니면 불투명 커버로 가린다.
+// 진화 카드를 끝내기 전에는 새 단계 칸이 잠긴 채로 남아 새 모습을 미리 노출하지 않는다.
 let lastPetState = null;
 
 function renderSkins(state) {
   lastPetState = state;
-  // 착용 중인 스킨이 있으면 그 단계가 "착용중", 없으면 현재 실제 단계가 "착용중"
-  const worn = wornStage(state);
+  // 지금 보이는 형태의 단계가 "착용중" (스킨 착용 시 그 단계, 진화 카드 대기 중엔 진화 직전 단계)
+  const form = displayForm(state);
+  const unlockedUpTo = revealedStage(state);
   document.querySelectorAll(".skin-cell").forEach((cell) => {
     const s = Number(cell.dataset.stage);
-    const unlocked = state.stage >= s;
-    const isCurrent = worn === s;
+    const unlocked = unlockedUpTo >= s;
+    const isCurrent = form.stage === s;
     const box = cell.querySelector(".skin-box");
     const img = cell.querySelector(".skin-img");
     const nameEl = cell.querySelector(".skin-name");
@@ -202,11 +231,12 @@ document.querySelector(".skin-grid").addEventListener("click", async (e) => {
   const cell = e.target.closest(".skin-cell");
   if (!cell || !lastPetState) return;
   const s = Number(cell.dataset.stage);
-  if (lastPetState.stage < s) return; // 잠긴 스킨
-  if (wornStage(lastPetState) === s) return; // 이미 착용 중이면 무반응
+  if (revealedStage(lastPetState) < s) return; // 잠긴 스킨
+  if (displayForm(lastPetState).stage === s) return; // 이미 착용 중이면 무반응
   const state = await window.trayAPI.setActiveSkin(s);
-  renderSkins(state); // 배지 즉시 갱신 (히어로 이미지는 펫 브로드캐스트로 반영)
-  renderHeroText(state); // 형태 설명(라벨·근거·성향)을 착용 단계에 맞춰 갱신
+  // 배지·형태 설명 즉시 갱신 (히어로 이미지는 펫 브로드캐스트로 반영).
+  // 진화 카드 대기 중이면 main이 요청을 무시하므로 원래 상태가 그대로 다시 그려진다.
+  renderForm(state);
 });
 
 async function refreshPetDisplaySprite() {
@@ -370,11 +400,15 @@ nameEditBtn.addEventListener("click", async () => {
     enterNameEdit();
     return;
   }
-  await window.trayAPI.setName("user", userNameInput.value);
+  const userResult = await window.trayAPI.setName("user", userNameInput.value);
   const result = await window.trayAPI.setName("pet", petNameInput.value);
   applyNames(result.userName, result.petName);
   renderAffinity(result.affinityPoints); // 최초 지정 보상이 게이지에 바로 반영
   exitNameEdit();
+  // 이름 보상으로 호감도가 차서 진화가 걸리면 형태 표시(라벨·스킨)도 같이 맞춘다
+  if (userResult.evolved || result.evolved) {
+    renderForm(await window.trayAPI.getEvolutionState());
+  }
 });
 
 nameCancelBtn.addEventListener("click", cancelNameEdit);
@@ -387,14 +421,16 @@ petCallout.addEventListener("click", () => {
 // 닦아주기/쓰다듬기 → 호감도 +3 (하루 1회). 게이지·버튼을 즉시 갱신한다.
 // 90 도달로 진화하면 펫 창이 축하 연출을 띄운다(메인의 notifyEvolved).
 cleanBtn.addEventListener("click", async () => {
-  const { state } = await window.trayAPI.cleanPet();
+  const { state, evolved } = await window.trayAPI.cleanPet();
   renderAffinity(state.affinityPoints);
   renderCareButtons(state.dailyCleanDone, state.dailyPetDone);
+  if (evolved) renderForm(state);
 });
 petBtn.addEventListener("click", async () => {
-  const { state } = await window.trayAPI.petPet();
+  const { state, evolved } = await window.trayAPI.petPet();
   renderAffinity(state.affinityPoints);
   renderCareButtons(state.dailyCleanDone, state.dailyPetDone);
+  if (evolved) renderForm(state);
 });
 
 // 펫 화면 후원 카드 → 홈페이지
