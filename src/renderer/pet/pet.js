@@ -3,6 +3,17 @@ const heart = document.getElementById("heart");
 const bubble = document.getElementById("bubble");
 const qcard = document.getElementById("qcard");
 
+// 펫 창은 화면 전체를 덮으므로, 평소엔 클릭을 뒤쪽 앱으로 흘려보내고
+// 캐릭터·카드·오버레이 위에 있을 때만 창이 클릭을 받아야 한다.
+// 인자만으로는 어느 쪽이 통과인지 읽히지 않아 이름을 붙여 쓴다.
+function passThroughClicks() {
+  window.petAPI.setIgnoreMouseEvents(true, { forward: true });
+}
+
+function captureClicks() {
+  window.petAPI.setIgnoreMouseEvents(false);
+}
+
 // ---------- 1. 캐릭터 위치 및 마우스 추적 로직 ----------
 
 let CHAR_SIZE = 128; // 실제 렌더링 크기(style.css의 .character width/height)와 일치시켜야 좌표 계산이 정확함. 설정 '크기'로 바뀔 수 있음
@@ -222,7 +233,7 @@ function setOnboardingLocked(locked) {
   document.body.classList.toggle("onboarding-locked", locked);
   if (locked) {
     hideQuestionCard();
-    window.petAPI.setIgnoreMouseEvents(true, { forward: true });
+    passThroughClicks();
   } else {
     placeCharacter();
     applySprite();
@@ -664,7 +675,7 @@ let overCharacter = false; // 말풍선 컨트롤을 닫을 때 클릭 통과로
 character.addEventListener("mouseenter", () => {
   overCharacter = true;
   if (activeMode && activeMode !== "focus") return; // 청소/쪽잠 중엔 모드 UI가 마우스 상태를 관리한다
-  window.petAPI.setIgnoreMouseEvents(false);
+  captureClicks();
 });
 
 character.addEventListener("mouseleave", () => {
@@ -675,7 +686,7 @@ character.addEventListener("mouseleave", () => {
   // 드래그 중에는 커서가 잠깐 캐릭터를 벗어나도 클릭 통과로 돌리지 않는다
   // (돌리면 창이 커서 이벤트를 못 받아 드래그가 끊긴다).
   if (holdTimer || dragging) return;
-  window.petAPI.setIgnoreMouseEvents(true, { forward: true });
+  passThroughClicks();
 });
 
 // 더블클릭 → 모드 선택 옵션창
@@ -1066,7 +1077,7 @@ function hideQuestionCard() {
   evolutionCardStep = 0;
   // 카드가 커서 밑에서 숨겨지면 mouseleave가 안 fires → 클릭 통과가 꺼진 채 고정돼
   // 전체 화면이 클릭을 먹는다. 숨길 때 통과를 직접 복구한다.
-  window.petAPI.setIgnoreMouseEvents(true, { forward: true });
+  passThroughClicks();
 }
 
 async function openQuestionCard() {
@@ -1280,10 +1291,10 @@ function renderConfirm(state) {
 
 // 카드 위에 마우스가 있을 때만 클릭을 받도록(캐릭터와 동일 패턴)
 qcard.addEventListener("mouseenter", () => {
-  window.petAPI.setIgnoreMouseEvents(false);
+  captureClicks();
 });
 qcard.addEventListener("mouseleave", () => {
-  window.petAPI.setIgnoreMouseEvents(true, { forward: true });
+  passThroughClicks();
 });
 
 // ---------- 9. 설정 (위치 · 크기) ----------
@@ -1394,14 +1405,12 @@ function setModeStatus(status) {
 // 오버레이가 아닌 작은 요소(패널·pill)는 마우스가 올라온 동안만 클릭을 받는다.
 // (평소 펫 창은 클릭 통과라, 안 그러면 버튼을 못 누른다 — 질문 카드와 같은 방식)
 function captureOnHover(el) {
-  el.addEventListener("mouseenter", () => {
-    window.petAPI.setIgnoreMouseEvents(false);
-  });
+  el.addEventListener("mouseenter", captureClicks);
   el.addEventListener("mouseleave", () => {
     // 옵션창에서 모드를 고르면 패널이 사라진 뒤에 mouseleave가 뒤늦게 오는데,
     // 그때 클릭 통과로 되돌리면 청소·쪽잠 오버레이가 클릭을 못 받는다.
     if (activeMode && activeMode !== "focus") return;
-    window.petAPI.setIgnoreMouseEvents(true, { forward: true });
+    passThroughClicks();
   });
 }
 captureOnHover(modePanel);
@@ -1456,7 +1465,7 @@ function closeModePanel() {
   modePanelOpen = false;
   modePanel.classList.add("hidden");
   modePanel.innerHTML = "";
-  window.petAPI.setIgnoreMouseEvents(true, { forward: true });
+  passThroughClicks();
 }
 
 // 펫 머리 위에 붙이되, 공간이 부족하면 발밑으로 옮긴다(카드와 달리 화면 상단에 붙지 않음).
@@ -1523,10 +1532,9 @@ function renderPermissionNotice() {
   const box = cleanPermsEl.parentElement;
   box.parentElement.classList.add("perms");
   // 카드 위에서만 클릭을 받는다 → 카드 밖(시스템 설정 창)은 그대로 조작할 수 있다.
-  window.petAPI.setIgnoreMouseEvents(true, { forward: true });
-  box.onmouseenter = () => window.petAPI.setIgnoreMouseEvents(false);
-  box.onmouseleave = () =>
-    window.petAPI.setIgnoreMouseEvents(true, { forward: true });
+  passThroughClicks();
+  box.onmouseenter = captureClicks;
+  box.onmouseleave = passThroughClicks;
 
   const btn = cardEl("button", "clean-perm", "손쉬운 사용 열기");
   btn.tabIndex = -1; // 닫기 버튼과 같은 이유: 키보드로 눌리지 않게
@@ -1548,7 +1556,7 @@ function clearPermissionNotice() {
   box.parentElement.classList.remove("perms");
   box.onmouseenter = null;
   box.onmouseleave = null;
-  window.petAPI.setIgnoreMouseEvents(false); // 잠금 중엔 화면 전체가 클릭을 삼킨다
+  captureClicks(); // 잠금 중엔 화면 전체가 클릭을 삼킨다
 }
 
 // 메인(네이티브 헬퍼)이 알려주는 차단 상태를 오버레이에 반영한다.
@@ -1592,7 +1600,7 @@ function enterCleanMode() {
   buildCleanOverlay();
   cleanOverlay.classList.remove("hidden");
   // 전체 창이 클릭을 받도록(뒤 앱으로 통과 X). 키보드는 메인이 네이티브 헬퍼(CGEventTap)로 삼킨다.
-  window.petAPI.setIgnoreMouseEvents(false);
+  captureClicks();
   window.petAPI.cleanEnter(CLEAN_LOCK_TTL_MS);
   // 닫을 때까지 잠금을 유지하기 위해 상한을 주기적으로 뒤로 민다
   cleanHeartbeat = setInterval(
@@ -1619,7 +1627,7 @@ function exitCleanMode() {
   cleanOverlay.classList.add("hidden");
   cleanOverlay.innerHTML = "";
   clearCleanStatusRefs();
-  window.petAPI.setIgnoreMouseEvents(true, { forward: true });
+  passThroughClicks();
   window.petAPI.cleanExit(); // 키보드 원복
 }
 
@@ -1726,7 +1734,7 @@ function setFocusControls(open) {
   bubble.classList.toggle("interactive", open);
   // 커서가 펫 위에 있으면 클릭 통과로 되돌리지 않는다(되돌리면 펫이 클릭을 못 받는다).
   if (!open && !overCharacter) {
-    window.petAPI.setIgnoreMouseEvents(true, { forward: true });
+    passThroughClicks();
   }
   renderFocusBubble(); // 높이가 바뀌므로 위치 재계산
 }
@@ -1979,7 +1987,7 @@ function enterNapMode() {
   buildNapOverlay();
   napOverlay.classList.remove("hidden");
   // 전체 창이 클릭을 받도록(뒤 앱으로 통과 X). 키보드는 메인이 네이티브 헬퍼로 삼킨다.
-  window.petAPI.setIgnoreMouseEvents(false);
+  captureClicks();
   setDnd(true); // 자는 동안 앱 배너 알림 억제
   primeAudio(); // 알람이 울릴 땐 클릭이 없으므로 지금(클릭 직후) 오디오를 깨워 둔다
   startNapTimer(napDurationMs()); // 키보드 잠금(cleanEnter)도 여기서 함께 시작한다
@@ -1996,7 +2004,7 @@ function exitNapMode() {
   napOverlay.classList.add("hidden");
   napOverlay.innerHTML = "";
   clearCleanStatusRefs(); // 쪽잠 오버레이도 같은 차단 상태 줄을 쓴다
-  window.petAPI.setIgnoreMouseEvents(true, { forward: true });
+  passThroughClicks();
   window.petAPI.cleanExit(); // 키보드 원복
   setDnd(false);
 }
