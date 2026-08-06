@@ -1,7 +1,7 @@
 // 애완돌 상태를 userData 하위 단일 JSON 파일로 영속화한다.
-// dataschema.md의 루트 구조를 그대로 기본값으로 둔다. 이번 범위에서 실제로
-// 읽고 쓰는 건 pet/traits/questions 일부지만, 나중 기능이 쓸 자리는 미리 채워
-// 파일 구조 변경(마이그레이션)을 줄인다.
+// 기본값에는 실제로 읽고 쓰는 필드만 둔다 — load()가 저장 파일에 없는 섹션·필드를
+// defaultData()에서 백필하므로, 나중 기능이 생기면 그때 여기에 줄을 추가하기만 하면
+// 기존 사용자 파일에도 자동으로 채워진다(미리 자리를 잡아둘 이유가 없다).
 const { app } = require("electron");
 const path = require("path");
 const fs = require("fs");
@@ -52,19 +52,8 @@ function defaultData() {
       affinityPoints: 0,
       dailyCleanDone: false,
       dailyPetDone: false,
-      dailyChatCount: 0,
-      dailyInteractionCount: 0,
-      lastChatAt: null,
-      lastInteractionAt: null,
-      dailyCounterResetAt: now,
     },
-    items: { unlockedItems: [], equippedItem: null },
     notifications: { hasUnreadBadge: false, notificationsEnabled: true },
-    chat: {
-      recentChatContext: [],
-      chatSummary: null,
-      turnsSinceLastSummary: 0,
-    },
     settings: {
       autoLaunch: true,
       soundEnabled: true,

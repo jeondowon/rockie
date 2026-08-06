@@ -63,27 +63,13 @@
 
   "affinity": {
     "affinityPoints": 0,
-    "dailyChatCount": 0,
-    "dailyInteractionCount": 0,
-    "lastChatAt": null,
-    "lastInteractionAt": null,
-    "dailyCounterResetAt": "2026-07-06T00:00:00.000Z"
-  },
-
-  "items": {
-    "unlockedItems": [],
-    "equippedItem": null
+    "dailyCleanDone": false,
+    "dailyPetDone": false
   },
 
   "notifications": {
     "hasUnreadBadge": false,
     "notificationsEnabled": true
-  },
-
-  "chat": {
-    "recentChatContext": [],
-    "chatSummary": null,
-    "turnsSinceLastSummary": 0
   },
 
   "settings": {
@@ -142,38 +128,20 @@
 
 ### 2.5 `affinity` — 호감도(관계) 트랙
 
-| 필드                    | 타입                 | 기본값    | 설명                                          |
-| ----------------------- | -------------------- | --------- | --------------------------------------------- |
-| `affinityPoints`        | int                  | `0`       | 누적 호감도 포인트 (**상한 100**). 레벨(낯가림~각별, 균등 20점 5구간)은 저장하지 않고 `tray.js`에서 파생 |
-| `dailyChatCount`        | int                  | `0`       | 오늘 채팅 횟수. 자정에 리셋, 일일 상한 계산용 |
-| `dailyInteractionCount` | int                  | `0`       | 오늘 상호작용(닦아주기 등) 횟수. 자정에 리셋  |
-| `lastChatAt`            | ISO datetime \| null | `null`    | 마지막 채팅 시각                              |
-| `lastInteractionAt`     | ISO datetime \| null | `null`    | 마지막 상호작용 시각 (쿨다운 계산용)          |
-| `dailyCounterResetAt`   | ISO datetime         | 설치 시각 | 일일 카운터 마지막 리셋 시각                  |
+| 필드               | 타입    | 기본값  | 설명                                          |
+| ------------------ | ------- | ------- | --------------------------------------------- |
+| `affinityPoints`   | int     | `0`     | 누적 호감도 포인트 (**상한 100**). 레벨(낯가림~각별, 균등 20점 5구간)은 저장하지 않고 `tray.js`에서 파생 |
+| `dailyCleanDone`   | boolean | `false` | 오늘 닦아주기를 했는지 (하루 1회 제한). 오전 8시 갱신 때 리셋 |
+| `dailyPetDone`     | boolean | `false` | 오늘 쓰다듬기를 했는지 (하루 1회 제한). 오전 8시 갱신 때 리셋 |
 
-### 2.6 `items` — 아이템/외형
-
-| 필드            | 타입           | 기본값 | 설명                     |
-| --------------- | -------------- | ------ | ------------------------ |
-| `unlockedItems` | array          | `[]`   | 언락된 아이템 ID 목록    |
-| `equippedItem`  | string \| null | `null` | 현재 착용 중인 아이템 ID |
-
-### 2.7 `notifications` — 알림/UI 상태
+### 2.6 `notifications` — 알림/UI 상태
 
 | 필드                   | 타입    | 기본값  | 설명                                      |
 | ---------------------- | ------- | ------- | ----------------------------------------- |
 | `hasUnreadBadge`       | boolean | `false` | 트레이 메뉴 "안 읽은 질문" 배지 표시 여부 (배지는 항상 표시가 기본) |
 | `notificationsEnabled` | boolean | `true`  | 새 질문 시 OS **배너 알림** on/off (트레이 배지 표시와 무관) |
 
-### 2.8 `chat` — 채팅 컨텍스트 (선택적)
-
-| 필드                    | 타입           | 기본값 | 설명                                                                                     |
-| ----------------------- | -------------- | ------ | ---------------------------------------------------------------------------------------- |
-| `recentChatContext`     | array          | `[]`   | 최근 6~10개 메시지만 유지 (role/content 형태). 전체 히스토리 무제한 저장은 지양          |
-| `chatSummary`           | string \| null | `null` | 오래된 대화를 로컬 모델이 3줄 내외로 요약한 결과. 원본 메시지 대신 이 요약본만 장기 보관 |
-| `turnsSinceLastSummary` | int            | `0`    | 마지막 요약 이후 누적된 대화 턴 수. 임계값 도달 시 요약 트리거                           |
-
-### 2.9 `settings` — 앱 설정 (트레이 "설정" 화면)
+### 2.7 `settings` — 앱 설정 (트레이 "설정" 화면)
 
 | 필드            | 타입    | 기본값     | 설명                                                                          |
 | --------------- | ------- | ---------- | ----------------------------------------------------------------------------- |
@@ -201,7 +169,11 @@ function setUserName(newName):
 // NAME_SET_BONUS = 5, 상한 100. 구현: main.js `evolution:set-name` + `awardAffinity()`
 ```
 
-## 4. 채팅 기록 관리 방식 (최근 대화 유지 + 주기적 요약)
+## 4. 채팅 기록 관리 방식 (최근 대화 유지 + 주기적 요약) — **보류 설계**
+
+> 채팅 기능은 보류 상태이고, `chat` 섹션은 §1 스키마에서 제외돼 있습니다. 아래는 기능을 시작할 때
+> 되살릴 설계안입니다. `store.load()`가 신규 섹션을 자동 백필하므로, 그때 `defaultData()`에
+> `chat`을 다시 추가하기만 하면 기존 사용자 파일에도 채워집니다.
 
 벡터 DB 없이도 충분한 규모라, 아래 두 가지를 조합해 채팅 기록을 관리합니다.
 
@@ -241,4 +213,4 @@ function buildModelContext():
 ## 5. 참고
 
 - 위 스키마는 하나의 로컬 파일(예: `electron-store`의 기본 JSON)로 관리 가능한 규모입니다.
-- `answeredQuestions`와 `recentChatContext`처럼 계속 늘어나는 배열은 추후 용량 관리를 위해 상한(예: 채팅은 최근 10개, 답변 로그는 전체 유지하되 UI에서는 최근 N개만 표시)을 두는 걸 권장합니다.
+- `answeredQuestions`처럼 계속 늘어나는 배열은 추후 용량 관리를 위해 상한(전체 유지하되 UI에서는 최근 N개만 표시)을 두는 걸 권장합니다. 채팅을 시작하면 `recentChatContext`도 같은 대상입니다.
