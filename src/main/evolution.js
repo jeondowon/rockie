@@ -146,6 +146,16 @@ function validTodayQuestions(data) {
   return data.questions.todaysQuestions.filter((id) => QUESTION_BY_ID[id]);
 }
 
+// 남은 질문(remaining)에 오늘 한도까지 부족분만 채운다. 한도를 이미 채웠으면 손대지 않는다.
+function refillToday(data, remaining) {
+  const need = maxDailyQuestions(data.pet.evolutionStage) - remaining.length;
+  if (need > 0) {
+    data.questions.todaysQuestions = remaining.concat(
+      pickNextQuestions(data, need),
+    );
+  }
+}
+
 function pickNextQuestions(data, count) {
   if (count <= 0) return [];
   if (data.pet.evolutionStage === 0)
@@ -172,13 +182,7 @@ function onDailyReset(data, nowIso) {
   } else {
     data.questions.todaysQuestions = validTodayQuestions(data);
   }
-  const remaining = data.questions.todaysQuestions;
-  const need = maxDailyQuestions(data.pet.evolutionStage) - remaining.length;
-  if (need > 0) {
-    data.questions.todaysQuestions = remaining.concat(
-      pickNextQuestions(data, need),
-    );
-  }
+  refillToday(data, data.questions.todaysQuestions);
   data.affinity.dailyCleanDone = false;
   data.affinity.dailyPetDone = false;
   data.notifications.hasUnreadBadge =
@@ -454,13 +458,7 @@ function answer(data, { questionId, value }) {
 }
 
 function fillTodayAfterOnboarding(data) {
-  const remaining = validTodayQuestions(data);
-  const need = maxDailyQuestions(data.pet.evolutionStage) - remaining.length;
-  if (need > 0) {
-    data.questions.todaysQuestions = remaining.concat(
-      pickNextQuestions(data, need),
-    );
-  }
+  refillToday(data, validTodayQuestions(data));
   data.notifications.hasUnreadBadge = validTodayQuestions(data).length > 0;
 }
 
@@ -477,6 +475,14 @@ function setOnboardingStep(data, step) {
     data.onboarding.step = Math.max(data.onboarding.step || 0, step);
   }
   return getOnboardingState(data);
+}
+
+// 온보딩 질문 중 실제로 답한 개수. 완료 상태면 전부 답한 것으로 본다.
+function onboardingAnswerCount(data) {
+  if (onboardingCompleted(data)) return ONBOARDING_QUESTIONS.length;
+  return ONBOARDING_QUESTIONS.filter((oq) =>
+    data.questions.answeredQuestions.some((a) => a.questionId === oq.id),
+  ).length;
 }
 
 function answerOnboarding(data, { questionId, value, nextStep }) {
@@ -499,23 +505,17 @@ function answerOnboarding(data, { questionId, value, nextStep }) {
     });
   }
 
-  const answeredCount = ONBOARDING_QUESTIONS.filter((oq) =>
-    data.questions.answeredQuestions.some((a) => a.questionId === oq.id),
-  ).length;
   data.onboarding.step =
     nextStep != null
       ? nextStep
-      : Math.max(data.onboarding.step || 0, answeredCount);
+      : Math.max(data.onboarding.step || 0, onboardingAnswerCount(data));
 
   return getOnboardingState(data);
 }
 
 function completeOnboarding(data) {
   if (onboardingCompleted(data)) return getOnboardingState(data);
-  const answeredCount = ONBOARDING_QUESTIONS.filter((oq) =>
-    data.questions.answeredQuestions.some((a) => a.questionId === oq.id),
-  ).length;
-  if (answeredCount < ONBOARDING_QUESTIONS.length) {
+  if (onboardingAnswerCount(data) < ONBOARDING_QUESTIONS.length) {
     return getOnboardingState(data);
   }
   data.onboarding.completed = true;
@@ -523,13 +523,6 @@ function completeOnboarding(data) {
   data.onboarding.completedAt = new Date().toISOString();
   fillTodayAfterOnboarding(data);
   return getOnboardingState(data);
-}
-
-function onboardingAnswerCount(data) {
-  if (onboardingCompleted(data)) return ONBOARDING_QUESTIONS.length;
-  return ONBOARDING_QUESTIONS.filter((oq) =>
-    data.questions.answeredQuestions.some((a) => a.questionId === oq.id),
-  ).length;
 }
 
 // ---------- 상태 직렬화 ----------
