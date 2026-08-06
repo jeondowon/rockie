@@ -23,6 +23,8 @@ function startDockTracker(getWindow) {
   let scriptRunning = false;
   let lastScriptAt = 0; // 마지막 osascript 실행 시각 (호출 간격 제한용)
   let heuristicVisible = false;
+  let lastVisible = false; // 스크립트가 마지막으로 판정한 표시 여부
+  let lastHint = false; // 직전 틱의 커서 힌트 (바뀌는 순간에만 스크립트를 앞당긴다)
   // osascript 호출 간격. 자동 숨김 Dock은 올라옴/내려감을 따라가야 해서 자주 읽고,
   // 상시 표시 Dock은 위치가 거의 안 바뀌므로 드물게 읽는다.
   const SCRIPT_INTERVAL_AUTOHIDE = 500;
@@ -106,11 +108,11 @@ function startDockTracker(getWindow) {
     const winBounds =
       win && !win.isDestroyed() ? win.getBounds() : { x: 0, y: 0 };
     sendDockState({
-      // 표시 여부는 매 틱 공짜로 알 수 있다(자동 숨김은 커서, 상시 표시는 작업 영역).
-      // 캐시에서 재사용하는 건 osascript로만 알 수 있는 가로 범위·높이뿐이다.
-      visible: autohide
-        ? updateHeuristicVisible(lastRect.height)
-        : dockOccupiesWorkArea(),
+      // 자동 숨김 Dock의 표시 여부는 스크립트만이 안다. 커서로 추측하면
+      // Dock이 커서와 무관하게 떠 있는 상황(Launchpad·미션 컨트롤)에서 틱마다
+      // 스크립트와 반대 답을 내놔 캐릭터가 위아래로 진동한다.
+      // 상시 표시 Dock은 작업 영역만 보면 매 틱 공짜로 알 수 있다.
+      visible: autohide ? lastVisible : dockOccupiesWorkArea(),
       x: lastRect.x - winBounds.x, // 창(=렌더러) 기준 좌표로 변환
       width: lastRect.width,
       height: lastRect.height,
@@ -121,13 +123,23 @@ function startDockTracker(getWindow) {
     // 좌·우 Dock은 캐릭터 동선과 겹치지 않는다. 스크립트를 돌릴 이유가 없다.
     if (orientation !== "bottom") return sendDockState(HIDDEN);
 
-    // osascript 왕복은 한 번에 100ms를 넘긴다. 250ms마다 부르면 거의 상시 떠 있는 셈이라
-    // 호출 간격을 벌리고, 그 사이는 마지막으로 읽은 사각형을 재사용한다.
+    // osascript 왕복은 한 번에 150ms쯤 걸린다(대부분이 프로세스 기동 비용). 매 틱마다
+    // 부르면 거의 상시 떠 있는 셈이라 호출 간격을 벌리고, 그 사이는 마지막으로 읽은
+    // 사각형을 재사용한다.
     // 상시 표시 Dock은 위치가 거의 안 바뀌므로 훨씬 드물게 읽어도 된다.
     const scriptInterval = autohide
       ? SCRIPT_INTERVAL_AUTOHIDE
       : SCRIPT_INTERVAL_STATIC;
-    const due = Date.now() - lastScriptAt >= scriptInterval;
+    // 커서만으로 표시 여부를 단정하진 않되(위 sendCachedDockState 주석 참고), 커서가
+    // Dock을 올리거나 내릴 만한 자리로 막 옮겨간 순간에는 간격을 기다리지 않고 바로
+    // 확인한다. 덕분에 평소 Dock 반응 속도는 그대로 유지된다.
+    const hint = updateHeuristicVisible(
+      lastRect ? lastRect.height : Math.round(tileSize * 1.25),
+    );
+    const hintChanged = hint !== lastHint;
+    lastHint = hint;
+    const due =
+      (autohide && hintChanged) || Date.now() - lastScriptAt >= scriptInterval;
 
     // 최근에 osascript가 실패했으면 10초간 휴리스틱으로 동작 후 재시도
     // (앱 실행 중에 권한을 허용해주면 자동으로 정확한 방식으로 복귀)
@@ -162,6 +174,7 @@ function startDockTracker(getWindow) {
       const visible = dockY + dockH <= bounds.y + bounds.height + 2;
       // 숨은 상태의 y는 화면 밖이라 쓸모없지만 x·너비·높이는 그대로 유효하다
       lastRect = { x: dockX, width: dockW, height: dockH };
+      lastVisible = visible;
       heuristicVisible = visible;
 
       const win = getWindow();
@@ -174,7 +187,9 @@ function startDockTracker(getWindow) {
         height: dockH,
       });
     });
-  }, 250);
+    // 틱이 짧을수록 커서가 하단에 닿은 걸 빨리 알아채 Dock을 따라 올라가는 게 빨라진다.
+    // (osascript는 위 간격대로만 부르므로 틱을 줄여도 호출량은 늘지 않는다)
+  }, 100);
 
   return {
     stop() {
