@@ -1074,12 +1074,6 @@ function renderMood(load) {
   setText("sys-mood-desc", desc);
 }
 
-function usagePercent(value) {
-  return typeof value === "number" && Number.isFinite(value)
-    ? `${Math.round(value)}%`
-    : "확인 불가";
-}
-
 function relativeTime(ms) {
   if (typeof ms !== "number" || !Number.isFinite(ms)) return "확인 불가";
   const diff = Math.max(0, Date.now() - ms);
