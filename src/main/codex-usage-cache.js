@@ -82,7 +82,23 @@ async function readNewLines(filePath, offset, onLine) {
   return consumed;
 }
 
-// token_count 이벤트 한 줄 → 한도 스냅샷 (한도 정보가 없는 줄이면 null)
+// 한도 창은 primary/secondary 어느 자리에도 올 수 있다. 실제로 2026-07-14를 기점으로
+// 5시간이 primary에서 빠지고 주간이 그 자리로 올라왔다 — 자리 대신 window_minutes로
+// 판별해야 5시간 값을 "주간"이라 부르는 일이 없다.
+const WINDOW_KEY = { 300: "fiveHour", 10080: "weekly" };
+
+function parseWindow(w) {
+  if (!w || !Number.isFinite(w.used_percent) || !Number.isFinite(w.resets_at)) {
+    return null;
+  }
+  const key = WINDOW_KEY[w.window_minutes];
+  // 월간(43200) 같은 다른 창도 로그에 나타난다. 표시할 자리가 없으므로 버린다.
+  return key
+    ? [key, { usedPercent: w.used_percent, resetsAt: w.resets_at }]
+    : null;
+}
+
+// token_count 이벤트 한 줄 → 한도 스냅샷 (보여줄 창이 없는 줄이면 null)
 function parseLimit(line) {
   if (!line || !line.includes("token_count")) return null;
   let d;
@@ -95,12 +111,18 @@ function parseLimit(line) {
   if (d.payload.type !== "token_count") return null;
 
   const rl = d.payload.rate_limits;
-  if (!rl || !rl.primary) return null;
-  return {
-    usedPercent: rl.primary.used_percent,
-    resetsAt: rl.primary.resets_at,
-    planType: rl.plan_type || null,
-  };
+  if (!rl) return null;
+
+  const limit = { fiveHour: null, weekly: null };
+  let found = false;
+  for (const w of [rl.primary, rl.secondary]) {
+    const parsed = parseWindow(w);
+    if (parsed) {
+      limit[parsed[0]] = parsed[1];
+      found = true;
+    }
+  }
+  return found ? limit : null;
 }
 
 class CodexUsageCache {

@@ -18,6 +18,7 @@ contextBridge.exposeInMainWorld("petAPI", {
   // 집중 모드 상태를 트레이에 미러링 + 트레이 "종료" 신호 수신 + 펫 표시 토글
   setModeStatus: (status) => ipcRenderer.send("mode:set-status", status),
   togglePet: () => ipcRenderer.send("pet:toggle-visibility"),
+  showPet: () => ipcRenderer.send("pet:show"),
   onModeExitRequest: (callback) => {
     ipcRenderer.on("mode:exit-request", () => callback());
   },

@@ -620,62 +620,6 @@
                 </div>
               </div>
             </div>
-            <!-- CLAUDE -->
-            <div class="sys-row">
-              <button
-                class="sys-row-head"
-                data-metric="claude"
-                aria-expanded="false"
-              >
-                <span class="sys-arrow">▶</span>
-                <span class="sys-glyph" id="sc-claude-glyph"
-                  ><svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <path
-                      d="M12 3l2.2 5.8L20 11l-5.8 2.2L12 19l-2.2-5.8L4 11l5.8-2.2z"
-                    />
-                    <path
-                      d="M18.5 16.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"
-                    /></svg
-                ></span>
-                <span class="sys-label">Claude</span>
-                <span class="sys-sub" id="sc-claude-sub">—</span>
-                <span class="sys-val" id="sc-claude-val">—</span>
-              </button>
-              <div class="gauge sys-gauge">
-                <div
-                  class="gauge-fill green"
-                  id="sc-claude-fill"
-                  style="width: 0%"
-                ></div>
-                <div class="gauge-ticks"></div>
-              </div>
-              <div class="sys-detail" id="sc-claude-detail">
-                <div class="sys-detail-row">
-                  <span class="k">주간 사용</span
-                  ><span class="v" id="sc-claude-7d">—</span>
-                </div>
-                <div class="sys-detail-row">
-                  <span class="k">5시간 초기화</span
-                  ><span class="v" id="sc-claude-5h-reset">—</span>
-                </div>
-                <div class="sys-detail-row">
-                  <span class="k">주간 초기화</span
-                  ><span class="v" id="sc-claude-7d-reset">—</span>
-                </div>
-                <div class="sys-detail-row">
-                  <span class="k">마지막 확인</span
-                  ><span class="v" id="sc-claude-checked">—</span>
-                </div>
-                <button class="sys-refresh-btn" type="button">새로고침</button>
-              </div>
-            </div>
             <!-- CODEX 사용량 -->
             <div class="sys-row">
               <button
@@ -709,13 +653,19 @@
                 <div class="gauge-ticks"></div>
               </div>
               <div class="sys-detail" id="sc-codex-detail">
-                <div class="sys-detail-row">
-                  <span class="k">플랜</span
-                  ><span class="v" id="sc-codex-plan">—</span>
+                <!-- 값을 못 읽은 줄은 통째로 숨긴다 (tray.js renderAiUsage) -->
+                <!-- 헤더에 올리지 않은 쪽을 보여주는 줄이라 항목명도 바뀐다 -->
+                <div class="sys-detail-row" id="sc-codex-other-row">
+                  <span class="k" id="sc-codex-other-k">주간 세션 사용</span
+                  ><span class="v" id="sc-codex-other">—</span>
                 </div>
-                <div class="sys-detail-row">
-                  <span class="k">한도 리셋</span
-                  ><span class="v" id="sc-codex-reset">—</span>
+                <div class="sys-detail-row" id="sc-codex-5h-reset-row">
+                  <span class="k">5시간 초기화</span
+                  ><span class="v" id="sc-codex-5h-reset">—</span>
+                </div>
+                <div class="sys-detail-row" id="sc-codex-7d-reset-row">
+                  <span class="k">주간 초기화</span
+                  ><span class="v" id="sc-codex-7d-reset">—</span>
                 </div>
                 <div class="sys-detail-row">
                   <span class="k">마지막 확인</span
@@ -724,10 +674,37 @@
                 <button class="sys-refresh-btn" type="button">새로고침</button>
               </div>
             </div>
+            <!-- CLAUDE: 사용량을 읽을 공식 경로가 없어 안내만 둔다.
+                 접히지 않고, 게이지는 0% 자리만 지킨다(채우는 코드 없음) -->
+            <div class="sys-row">
+              <div class="sys-row-head sys-row-static">
+                <span class="sys-arrow"></span>
+                <span class="sys-glyph"
+                  ><svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path
+                      d="M12 2.5v5.5M12 16v5.5M2.5 12h5.5M16 12h5.5M6.3 6.3l3.2 3.2M14.5 14.5l3.2 3.2M17.7 6.3l-3.2 3.2M9.5 14.5l-3.2 3.2"
+                    /></svg
+                ></span>
+                <span class="sys-label">Claude</span>
+                <span class="sys-sub">공식 연동 대기 중</span>
+                <span class="sys-val">—</span>
+              </div>
+              <div class="gauge sys-gauge">
+                <div class="gauge-fill" style="width: 0%"></div>
+                <div class="gauge-ticks"></div>
+              </div>
+            </div>
           </div>
           <div class="sys-legend">
-            CPU·메모리는 실시간으로 갱신됩니다.<br />AI 사용량은 창을 열 때
-            확인하며, 새로고침으로 다시 확인할 수 있어요.
+            Claude 사용량은 아직 표시할 수 없어요.<br />Anthropic의 공식 연동이
+            열리기를 기다리는 중이에요.
           </div>
         </div>
 

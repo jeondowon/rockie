@@ -1942,6 +1942,11 @@ body {
   box-sizing: border-box;
 }
 
+/* 펼칠 내용이 없는 행(안내만 두는 자리). 화살표도 뜨지 않는다 */
+.sys-row-static {
+  cursor: default;
+}
+
 .sys-arrow {
   width: 13px;
   flex: none;
@@ -1982,15 +1987,23 @@ body {
 }
 
 .sys-refresh-btn {
+  /* 상세 목록의 좌측 padding(24px)을 되돌려 행 전체 폭을 쓴다 */
   margin-top: 4px;
+  margin-left: -24px;
   padding: 7px 9px;
   border: 2px solid #1b1b16;
   background: #f2ede1;
   color: #1b1b16;
   font: inherit;
   font-size: 10px;
+  line-height: 12px; /* 글자가 커져도 버튼 높이가 들썩이지 않게 고정 */
   cursor: pointer;
   box-shadow: 2px 2px 0 #1b1b16;
+}
+
+/* 새로고침 성공 표시(✓)만 키운다 */
+.sys-refresh-btn.done {
+  font-size: 15px;
 }
 
 .sys-refresh-btn:active {

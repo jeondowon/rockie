@@ -929,7 +929,6 @@ async function tickSystem() {
 // 사용량 파일을 마지막으로 읽어본 시각. 값이 그대로여도 이 표시로 확인 여부를 안다.
 function renderCheckedAt() {
   const text = aiCheckedAt == null ? "—" : relativeTime(aiCheckedAt);
-  setText("sc-claude-checked", text);
   setText("sc-codex-checked", text);
 }
 
@@ -1092,9 +1091,10 @@ function relativeTime(ms) {
   return `${Math.floor(hours / 24)}일 전`;
 }
 
+// 못 읽었으면 null — 부르는 쪽이 그 줄을 숨긴다
 function resetTime(epochSeconds) {
   if (typeof epochSeconds !== "number" || !Number.isFinite(epochSeconds)) {
-    return "확인 불가";
+    return null;
   }
   const diff = epochSeconds * 1000 - Date.now();
   if (diff <= 0) return "갱신 필요";
@@ -1117,51 +1117,61 @@ function resetTime(epochSeconds) {
 function renderAiUsage(u) {
   renderCheckedAt();
 
-  // Claude: statusLine이 저장한 캐시를 그때그때 읽어 표시한다.
-  const c = u.claude;
-  if (!c || c.updatedAt == null) {
-    setText("sc-claude-val", "—");
-    setText("sc-claude-sub", "확인 불가");
-    setFill("sc-claude-fill", 0);
-    paint("claude", "green");
-    setText("sc-claude-7d", "확인 불가");
-    setText("sc-claude-5h-reset", "확인 불가");
-    setText("sc-claude-7d-reset", "확인 불가");
-  } else {
-    // 헤더 값이 곧 5시간(현재 세션) 사용량이라 상세에 같은 값을 또 두지 않는다
-    const pct =
-      typeof c.fiveHourPercentage === "number" ? c.fiveHourPercentage : 0;
-    setText("sc-claude-val", usagePercent(c.fiveHourPercentage));
-    setText("sc-claude-sub", "현재 세션");
-    setFill("sc-claude-fill", pct);
-    paint("claude", loadClass(pct));
-    setText("sc-claude-7d", usagePercent(c.sevenDayPercentage));
-    setText("sc-claude-5h-reset", resetTime(c.fiveHourResetsAt));
-    setText("sc-claude-7d-reset", resetTime(c.sevenDayResetsAt));
-  }
-
   // Codex: 로컬 세션 로그에 남은 rate_limits 스냅샷을 표시한다.
   // 스냅샷은 "마지막으로 Codex를 쓴 시점"의 값이다. 그 뒤로 한도 창이 리셋됐다면
   // (resetsAt 경과) 로그의 퍼센트는 더 이상 사실이 아니다 — 새 값은 Codex를 한 번
   // 써야 로그에 남으므로, 만료된 수치를 그대로 보여주는 대신 모른다고 말한다.
   const lim = u.codex.limit;
-  const stale = !!lim && lim.resetsAt * 1000 <= Date.now();
-  if (lim && !stale) {
-    const used = lim.usedPercent;
-    setText("sc-codex-val", `${Math.round(used)}%`);
-    setFill("sc-codex-fill", used);
-    paint("codex", loadClass(used));
-    setText("sc-codex-sub", "주간");
-    setText("sc-codex-plan", lim.planType || "—");
-    setText("sc-codex-reset", resetTime(lim.resetsAt));
+  const fiveHour = freshWindow(lim && lim.fiveHour);
+  const weekly = freshWindow(lim && lim.weekly);
+  // 헤더에는 5시간 창을 올린다. 다만 Codex가 5시간 창을 로그에 남기지 않는
+  // 시기가 있어(주간만 기록됨) 그럴 땐 주간을 대신 올리고 sub로 어느 쪽인지 밝힌다.
+  const head = fiveHour || weekly;
+  const headIsFiveHour = head !== null && head === fiveHour;
+  if (head) {
+    setText("sc-codex-val", `${Math.round(head.usedPercent)}%`);
+    setFill("sc-codex-fill", head.usedPercent);
+    paint("codex", loadClass(head.usedPercent));
+    setText("sc-codex-sub", headIsFiveHour ? "5시간 세션" : "주간 세션");
   } else {
     setText("sc-codex-val", "—");
     setFill("sc-codex-fill", 0);
     paint("codex", "green");
-    setText("sc-codex-sub", stale ? "갱신 필요" : "기록 없음");
-    setText("sc-codex-plan", (lim && lim.planType) || "—");
-    setText("sc-codex-reset", stale ? resetTime(lim.resetsAt) : "—");
+    setText("sc-codex-sub", lim ? "갱신 필요" : "기록 없음");
   }
+  // 상세 첫 줄은 헤더에 올리지 않은 쪽을 보여준다. 주간이 헤더로 올라간 상황에서
+  // 주간을 또 적으면 같은 값이 두 번 나온다.
+  const other = headIsFiveHour ? weekly : fiveHour;
+  setText(
+    "sc-codex-other-k",
+    headIsFiveHour ? "주간 세션 사용" : "5시간 세션 사용",
+  );
+  detailRow(
+    "sc-codex-other-row",
+    "sc-codex-other",
+    other ? `${Math.round(other.usedPercent)}%` : null,
+  );
+  detailRow(
+    "sc-codex-5h-reset-row",
+    "sc-codex-5h-reset",
+    resetTime(lim && lim.fiveHour && lim.fiveHour.resetsAt),
+  );
+  detailRow(
+    "sc-codex-7d-reset-row",
+    "sc-codex-7d-reset",
+    resetTime(lim && lim.weekly && lim.weekly.resetsAt),
+  );
+}
+
+// 값을 못 읽은 줄은 "확인 불가"라고 적는 대신 줄째로 숨긴다
+function detailRow(rowId, valueId, value) {
+  byId(rowId).classList.toggle("hidden", value === null);
+  if (value !== null) setText(valueId, value);
+}
+
+// 한도 창이 이미 리셋됐으면 로그에 남은 퍼센트는 더 이상 사실이 아니다
+function freshWindow(w) {
+  return w && w.resetsAt * 1000 > Date.now() ? w : null;
 }
 
 // 항목 박스 클릭 → 세부 정보 드롭다운 토글
@@ -1183,10 +1193,12 @@ document.querySelectorAll(".sys-refresh-btn").forEach((btn) => {
     btn.textContent = "확인 중…";
     try {
       await tickAiUsage();
-      btn.textContent = "확인 완료";
+      btn.textContent = "✓";
+      btn.classList.add("done");
     } finally {
       setTimeout(() => {
         btn.disabled = false;
+        btn.classList.remove("done");
         btn.textContent = "새로고침";
       }, 1200);
     }

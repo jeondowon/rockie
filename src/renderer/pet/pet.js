@@ -1709,7 +1709,7 @@ function buildFocusBubble() {
   stop.addEventListener("click", () => exitMode());
   row.appendChild(stop);
   focusControlsEl.appendChild(row);
-  // 집중은 그대로 두고 펫만 감춘다. 다시 켜는 건 트레이 메뉴에서.
+  // 집중은 그대로 두고 펫만 감춘다. 타이머가 끝나면 자동으로 다시 나온다.
   const hide = cardEl("button", "focus-btn focus-btn-wide", "애완돌 숨기기");
   hide.addEventListener("click", () => {
     setFocusControls(false); // 다시 보일 때 버튼이 열린 채 남지 않게
@@ -1808,6 +1808,7 @@ function exitFocusMode() {
 
 function finishFocus() {
   exitMode(); // activeMode 해제 + 타이머/방해금지 정리
+  window.petAPI.showPet(); // 집중 중 숨겨뒀다면 되돌린다 — 안 그러면 아래 말풍선이 안 보인다
   showBubble("집중 시간이 끝났어요! 잠깐 쉬어가요 ☕", 6000);
 }
 

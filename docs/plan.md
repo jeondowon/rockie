@@ -447,26 +447,23 @@ deskPet 캐릭터에 성향 발견형 성장 요소를 추가한다. 사용자�
 
 - 장시간 사용 시 폴링 비용 실사용 검증
 
-### AI 사용량 (Claude / Codex)
+### AI 사용량 (Codex만)
 
 구현 완료:
 
-- SYSTEM 화면에 Claude·CODEX 행 추가. 게이지·상세 드롭다운은 기존 지표와 같은 형태
-- CPU·메모리와 달리 **폴링하지 않는다.** 창을 열 때 1회 + 행마다 있는 수동 새로고침 버튼을 누를 때만 읽는다
+- SYSTEM 화면에 CODEX 행 추가. 게이지·상세 드롭다운은 기존 지표와 같은 형태
+- CPU·메모리와 달리 **폴링하지 않는다.** 창을 열 때 1회 + 수동 새로고침 버튼을 누를 때만 읽는다
 - 상세에 "마지막 확인" 시각을 상대 시간("3분 전")으로 표시해, 값이 그대로여도 확인 여부를 알 수 있게 함
-- 조회 경로는 `src/main/ai-usage.js` → `system:get-ai-usage` IPC. 한쪽 읽기가 실패해도 다른 쪽은 표시하고, 실패 시 직전 스냅샷을 유지
+- 조회 경로는 `src/main/ai-usage.js` → `system:get-ai-usage` IPC. `reload()`가 던져도 조회 전체가 무너지지 않게 삼키고 직전 스냅샷을 유지한다(`test/ai-usage.test.js`가 고정)
 
-Claude (`src/main/claude-usage-cache.js`):
+**Claude Code는 지원하지 않는다 — 트레이 맨 아래에 "공식 연동 대기 중" 안내만 둔다.**
+가져올 방법이 없어서다. 다시 시도하기 전에 아래를 먼저 확인할 것:
 
-- 한도(%)는 로컬에 원본이 없어 **Claude Code의 statusLine이 남긴 캐시**(`~/.claude/usage-cache.json`)만 읽는다
-- 헤더에 5시간(현재 세션) 사용률, 상세에 주간 사용률과 두 리셋 시각·마지막 확인 시각을 표시. 트레이 표시 경로에서 `claude` 프로세스·`/usage`·PTY를 실행하지 않는다
-- 캐시가 없으면 "확인 불가"만 표시한다. 원인 안내 문구는 두지 않는다 — statusLine이 자동 설치되지 않아서 "메시지를 보내세요" 류의 안내가 미설치 사용자에겐 틀린 말이 되기 때문
-- 캐시를 만들어 주는 statusLine 설치는 `npm run install:claude-statusline` (`scripts/install-claude-statusline.js` → `src/main/claude-statusline-installer.js`). `~/.claude/save-usage-statusline.mjs`를 쓰고 `~/.claude/settings.json`의 `statusLine`을 설정한다
-- statusLine 명령에는 인터프리터 경로를 박지 않는다(스크립트의 `#!/usr/bin/env node`가 실행 시점에 PATH에서 찾는다). node 버전을 지우거나 앱을 옮겨도 안 깨지게 하기 위함
-
-남은 확인:
-
-- 설치가 기존 `statusLine` 설정을 백업 없이 덮어쓴다 · 해제 경로가 없다 · README에 안내가 없다
+- 로컬 세션 로그(`~/.claude/projects/**/*.jsonl`)에는 `usage`(토큰 수)만 있고 `rate_limits` 키가 **없다**(2026-08-05 확인). Codex와 대칭이 아닌 이유가 이것
+- 공개 사용량/한도 API는 전부 **분당 RPM·ITPM·OTPM의 API 조직 한도**다. 5시간·주간 창은 **구독(Pro/Max)** 개념이라 결제 주체가 아예 다르다 — API 키로 조회하면 사용자의 Claude Code 구독이 아닌 무관한 값이 나온다. `Rate Limits API`도 설정된 한도값 조회지 사용량 조회가 아니다
+- 한도가 나오는 자리는 statusLine의 stdin뿐인데, 그러려면 **남의 앱 설정 파일(`~/.claude/settings.json`)에 손을 대야 한다.** 이 방식을 한 번 구현했다가(프롬프트 복사 → 앱이 직접 편집 순으로 두 번 설계) 유지 비용이 기능 가치를 넘어선다고 판단해 **전부 제거했다**(2026-08-05)
+- 제거 대상이었던 것: `claude-statusline-installer.js`, `claude-usage-cache.js`, `scripts/install-claude-statusline.js`, `npm run install:claude-statusline`, `claude:*` IPC 3개, 트레이의 Claude 게이지·상세·연동 버튼, `.sys-setup*` CSS
+- 트레이 행은 `sys-row-static`(접히지 않는 행)으로 CODEX 아래에 둔다. 값은 `—` 고정, sub만 "공식 연동 대기 중"
 
 Codex (`src/main/codex-usage-cache.js`):
 

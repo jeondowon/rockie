@@ -85,6 +85,9 @@ function createWindow() {
       // 효과음(Web Audio)이 트레이 '돌보기'처럼 펫 창 밖에서 트리거될 때도 재생되도록
       // 자동재생에 사용자 제스처를 요구하지 않는다.
       autoplayPolicy: "no-user-gesture-required",
+      // 창을 숨겨도(애완돌 숨기기) 집중·쪽잠 타이머가 제때 울려야 한다.
+      // 기본값(true)이면 숨은 창의 setTimeout이 최대 1분까지 밀린다.
+      backgroundThrottling: false,
     },
   });
 
@@ -437,6 +440,12 @@ function releaseModeLocks() {
 
 // 옵션창의 "애완돌 숨기기/보이기" (트레이 메뉴와 동일 동작)
 ipcMain.on("pet:toggle-visibility", () => togglePet());
+
+// 집중 모드가 끝나면 숨겨둔 펫을 되돌린다 (이미 보이면 그대로 둔다)
+ipcMain.on("pet:show", () => {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  if (!mainWindow.isVisible()) mainWindow.showInactive();
+});
 
 // 집중 모드 상태를 트레이 팝업에 미러링한다.
 // 펫 렌더러가 진입/해제 시 보내고(null=없음), 트레이는 이 값으로 배너를 그린다.
@@ -950,7 +959,7 @@ ipcMain.handle("settings:reset", () => {
 // 시스템 모니터: 트레이 SYSTEM 화면이 열려 있는 동안 렌더러가 주기적으로 호출한다.
 ipcMain.handle("system:get-stats", () => getSystemStats());
 
-// AI 사용량: 호출될 때마다 Claude statusLine 캐시와 Codex 로컬 로그를 다시 읽는다.
+// AI 사용량: 호출될 때마다 Codex 로컬 로그를 다시 읽는다.
 // 트레이를 열 때와 수동 새로고침을 누를 때만 호출된다.
 ipcMain.handle("system:get-ai-usage", () => getAiUsage());
 
@@ -1037,7 +1046,7 @@ function startActiveWindowWatcher() {
 app.whenReady().then(() => {
   store.load();
   startAiUsage().catch((err) => {
-    console.warn("[claude-usage] 초기화 실패:", err.message);
+    console.warn("[ai-usage] 초기화 실패:", err.message);
   });
   createWindow();
   createTray();
