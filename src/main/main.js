@@ -4,7 +4,6 @@ const {
   ipcMain,
   screen,
   Tray,
-  nativeImage,
   systemPreferences,
   desktopCapturer,
   Notification,
@@ -19,6 +18,12 @@ const evolution = require("./evolution");
 const { startDockTracker } = require("./dock-tracker");
 const { getSystemStats } = require("./system-stats");
 const { getAiUsage, startAiUsage } = require("./ai-usage");
+const { makeTrayIcon } = require("./tray-icon");
+const {
+  startKeyBlocker,
+  stopKeyBlocker,
+  openPermissionSettings,
+} = require("./keyblocker");
 
 // 개발 모드 여부: `npm run dev`(DEV_RELOAD=1)로 실행하면 파일 저장 시 자동 새로고침
 const isDev = !app.isPackaged && process.env.DEV_RELOAD === "1";
@@ -213,201 +218,19 @@ ipcMain.on("pet:set-dnd", (_event, on) => {
   dndActive = !!on;
 });
 
-// ---------- 키보드 청소 모드: 키보드 완전 차단 (CGEventTap 헬퍼) ----------
-// 네이티브 Swift 헬퍼(KeyBlocker.app)가 CGEventTap으로 모든 키 이벤트를
-// 삼킨다. WindowServer가 단축키를 처리하기 전 단계라 Cmd+Space(Spotlight)·Cmd+Tab까지
-// 막힌다(hidutil·globalShortcut로는 불가). 마우스는 살아 있어 해제 버튼을 누를 수 있다.
-// 헬퍼는 stop 파일 또는 부모 프로세스 종료를 감지하면 스스로 탭을 풀고 종료한다.
-// 손쉬운 사용 권한만 있으면 된다(이벤트를 소멸시키는 액티브 탭이라 '제어' 관할).
-// 없으면 헬퍼가 보고하고, 오버레이가 설정창을 여는 버튼을 띄운다.
-const { spawn } = require("child_process");
-
-let cleanHelper = null;
-let cleanAutoStopTimer = null;
+// ---------- 키보드 청소 모드: 키보드 완전 차단 ----------
+// 네이티브 헬퍼 제어는 keyblocker.js가 맡고, 여기서는 IPC 배선과 상태 전달만 한다.
 const CLEAN_MAX_DURATION_MS = 60 * 1000;
-const CLEAN_START_TIMEOUT_MS = 3000;
-const KEYBLOCKER_APP_PATH = path.join(
-  __dirname,
-  "../../assets/helper/KeyBlocker.app",
-);
-const KEYBLOCKER_EXEC_PATH = path.join(
-  KEYBLOCKER_APP_PATH,
-  "Contents/MacOS/keyblocker",
-);
 
 // 렌더러 오버레이가 차단 상태를 표시하도록 알린다.
 function sendCleanStatus(status) {
   sendToPet("clean:status", status);
 }
 
-function handleKeyBlockerStatus(helper, status) {
-  if (!status || status === helper.status) return;
-  helper.status = status;
-  console.error("[clean] keyblocker:", status);
-  if (status.startsWith("SPACE_TAP:")) {
-    // 비상 해제 제스처 진행 상황(0이면 초기화됨). 오버레이에 그대로 보여준다.
-    sendCleanStatus(`space-tap:${status.slice("SPACE_TAP:".length)}`);
-  } else if (status === "UNLOCK_REQUEST") {
-    // 헬퍼가 비상 해제 제스처(스페이스 10연타)를 감지했다. 잠금은 렌더러가 모드를
-    // 닫으면서 clean:exit로 푼다(여기서 바로 풀면 오버레이만 남는다).
-    sendCleanStatus("unlock-request");
-  } else if (status === "READY") {
-    sendCleanStatus("blocked");
-  } else if (status.startsWith("NO_PERMS:")) {
-    // 부족한 권한 목록을 그대로 넘긴다 — 렌더러가 어떤 항목을 켜야 하는지 안내 문구에
-    // 쓴다. 설정창은 렌더러 버튼으로 사용자가 직접 연다.
-    sendCleanStatus(`no-perms:${status.slice("NO_PERMS:".length)}`);
-  } else if (status === "NO_EVENT_TAP") {
-    sendCleanStatus("event-tap-failed");
-  } else {
-    sendCleanStatus("error");
-  }
-}
-
-// 앱이 멈춰도 키보드가 영영 잠기지 않도록 두는 최후 안전장치.
-// 상한은 모드가 정한다(청소는 짧게, 쪽잠은 설정한 수면 시간만큼).
-function armCleanAutoStop(maxMs) {
-  if (cleanAutoStopTimer) clearTimeout(cleanAutoStopTimer);
-  cleanAutoStopTimer = setTimeout(() => {
-    console.error("[clean] 자동 해제: 최대 잠금 시간을 초과했습니다.");
-    stopKeyBlocker();
-    // 실패가 아니라 시간이 다 된 것 — 렌더러가 "잠금 실패"로 오해하지 않도록 구분해서 알린다.
-    sendCleanStatus("time-limit");
-  }, maxMs);
-}
-
-function startKeyBlocker(maxMs) {
-  if (process.platform !== "darwin") return; // 헬퍼는 macOS 전용
-  stopKeyBlocker();
-  armCleanAutoStop(maxMs);
-
-  const sessionDir = fs.mkdtempSync(
-    path.join(app.getPath("temp"), "deskpet-keyblocker-"),
-  );
-  const statusPath = path.join(sessionDir, "status");
-  const stopPath = path.join(sessionDir, "stop");
-
-  let child;
-  try {
-    child = spawn(
-      "/usr/bin/open",
-      [
-        "-n",
-        "-W",
-        KEYBLOCKER_APP_PATH,
-        "--args",
-        statusPath,
-        stopPath,
-        String(process.pid),
-      ],
-      { stdio: "ignore" },
-    );
-    cleanHelper = {
-      child,
-      sessionDir,
-      statusPath,
-      stopPath,
-      status: null,
-      statusTimer: null,
-      startTimer: null,
-    };
-  } catch (err) {
-    console.error("[clean] keyblocker 실행 실패:", err.message);
-    sendCleanStatus("error");
-    return;
-  }
-
-  cleanHelper.statusTimer = setInterval(() => {
-    if (!cleanHelper || cleanHelper.statusPath !== statusPath) return;
-    try {
-      handleKeyBlockerStatus(
-        cleanHelper,
-        fs.readFileSync(statusPath, "utf8").trim(),
-      );
-    } catch (_err) {}
-  }, 100);
-
-  cleanHelper.startTimer = setTimeout(() => {
-    if (
-      !cleanHelper ||
-      cleanHelper.statusPath !== statusPath ||
-      cleanHelper.status
-    ) {
-      return;
-    }
-    console.error("[clean] keyblocker 시작 시간 초과");
-    stopKeyBlocker();
-    sendCleanStatus("error");
-  }, CLEAN_START_TIMEOUT_MS);
-
-  cleanHelper.child.on("error", (err) => {
-    console.error("[clean] keyblocker 오류:", err.message);
-    stopKeyBlocker();
-    sendCleanStatus("error");
-  });
-  cleanHelper.child.on("exit", (code, signal) => {
-    const helper =
-      cleanHelper && cleanHelper.child === child ? cleanHelper : null;
-    if (helper) {
-      try {
-        handleKeyBlockerStatus(
-          helper,
-          fs.readFileSync(statusPath, "utf8").trim(),
-        );
-      } catch (_err) {}
-    }
-    if (code !== 0) {
-      console.error("[clean] keyblocker 종료:", { code, signal });
-    }
-    if (helper) {
-      clearInterval(helper.statusTimer);
-      clearTimeout(helper.startTimer);
-      if (cleanAutoStopTimer) {
-        clearTimeout(cleanAutoStopTimer);
-        cleanAutoStopTimer = null;
-      }
-      cleanHelper = null;
-    }
-  });
-}
-
-function stopKeyBlocker() {
-  if (cleanAutoStopTimer) {
-    clearTimeout(cleanAutoStopTimer);
-    cleanAutoStopTimer = null;
-  }
-  if (!cleanHelper) return;
-  const helper = cleanHelper;
-  cleanHelper = null;
-  clearInterval(helper.statusTimer);
-  clearTimeout(helper.startTimer);
-  try {
-    fs.writeFileSync(helper.stopPath, "stop");
-    helper.child.kill();
-    spawn("/usr/bin/pkill", ["-f", KEYBLOCKER_EXEC_PATH], { stdio: "ignore" });
-  } catch (_e) {
-    // 이미 죽었으면 무시
-  }
-}
-
-// 필요한 권한이 '손쉬운 사용' 하나뿐이라 그 페이지를 바로 연다.
-// 목록 등록은 따로 하지 않는다 — 모드 진입 때 실행된 헬퍼의 AXIsProcessTrusted가
-// 이미 KeyBlocker를 이 목록에 올려 놓으므로, 창이 열리면 토글만 켜면 된다.
-function openPermissionSettings() {
-  shell.openExternal(
-    "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
-  );
-}
-
 ipcMain.on("clean:enter", (_event, maxMs) => {
   const limit = Number(maxMs) > 0 ? Number(maxMs) : CLEAN_MAX_DURATION_MS;
-  // 이미 잠금 중이면(쪽잠의 스누즈·재개) 헬퍼는 그대로 두고 상한만 늘린다.
-  if (cleanHelper) {
-    armCleanAutoStop(limit);
-    return;
-  }
-  // 권한 판단은 헬퍼가 실제 CGEventTap 생성 결과로 한다.
-  startKeyBlocker(limit);
+  // 이미 잠금 중이면(쪽잠의 스누즈·청소의 하트비트) 헬퍼는 그대로 두고 상한만 늘린다.
+  startKeyBlocker(limit, sendCleanStatus);
 });
 
 ipcMain.on("clean:exit", () => {
@@ -477,69 +300,8 @@ function togglePet() {
   mainWindow.isVisible() ? mainWindow.hide() : mainWindow.showInactive();
 }
 
-// 이미지 주위의 투명 여백을 잘라내 실제 그림이 프레임에 꽉 차게 만든다.
-// (template.png는 캔버스 중앙에 캐릭터만 있고 둘레가 투명이라, 그대로 축소하면
-//  메뉴바에서 아주 작게 보인다)
-function trimTransparent(image) {
-  const { width, height } = image.getSize();
-  const bmp = image.toBitmap(); // 픽셀당 4바이트, 알파는 마지막 바이트
-  let minX = width,
-    minY = height,
-    maxX = -1,
-    maxY = -1;
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const alpha = bmp[(y * width + x) * 4 + 3];
-      if (alpha > 10) {
-        if (x < minX) minX = x;
-        if (x > maxX) maxX = x;
-        if (y < minY) minY = y;
-        if (y > maxY) maxY = y;
-      }
-    }
-  }
-  if (maxX < 0) return image; // 전부 투명하면 원본 그대로
-  return image.crop({
-    x: minX,
-    y: minY,
-    width: maxX - minX + 1,
-    height: maxY - minY + 1,
-  });
-}
-
-// 메뉴바에 표시될 논리 높이(pt). 이 크기로 보이되 Retina에선 2배 해상도로 렌더된다.
-const TRAY_ICON_PT = 15;
-
-// 맥 메뉴바 / 윈도우 시스템 트레이에 아이콘을 띄운다 (Tray API는 양쪽 공용)
-// assets/tray의 PNG 한 장을 트레이용 nativeImage로 만든다.
-// Retina(2x) 대응: 표시 크기는 TRAY_ICON_PT(pt)로 유지하되 1x/2x를 함께 담아 고밀도에서 안 흐리게.
-// 맥: 템플릿 이미지는 다크/라이트 메뉴바에 맞춰 자동 반전(단색). 컬러 배지 아이콘은 비-템플릿이어야 한다.
-// 원본 PNG(320×320) 읽기 + 전 픽셀 알파 스캔 + 2회 리사이즈·PNG 인코딩은 꽤 무거운데,
-// 결과는 파일마다 고정이다. 배지가 켜지고 꺼질 때마다 다시 만들지 않도록 캐시한다.
-const trayIconCache = new Map();
-
-function makeTrayIcon(fileName, isTemplate) {
-  const cached = trayIconCache.get(fileName);
-  if (cached) return cached;
-
-  let src = nativeImage.createFromPath(
-    path.join(__dirname, "../../assets/tray", fileName),
-  );
-  src = trimTransparent(src); // 투명 여백 제거 → 그림이 꽉 참
-  const icon = nativeImage.createEmpty();
-  icon.addRepresentation({
-    scaleFactor: 1,
-    buffer: src.resize({ height: TRAY_ICON_PT, quality: "best" }).toPNG(),
-  });
-  icon.addRepresentation({
-    scaleFactor: 2,
-    buffer: src.resize({ height: TRAY_ICON_PT * 2, quality: "best" }).toPNG(),
-  });
-  if (process.platform === "darwin") icon.setTemplateImage(isTemplate);
-  trayIconCache.set(fileName, icon);
-  return icon;
-}
-
+// 맥 메뉴바 / 윈도우 시스템 트레이에 아이콘을 띄운다 (Tray API는 양쪽 공용).
+// 아이콘 이미지 생성·캐시는 tray-icon.js가 맡는다.
 // 오늘 답할 질문이 남아 있으면(hasBadge) 빨간 N 배지 아이콘, 없으면 기본 템플릿 아이콘.
 // 배지는 비-템플릿이라 자동 반전이 안 되므로 메뉴바 테마에 맞춰 밝은/어두운 글리프를 고른다.
 function refreshTrayIcon() {
