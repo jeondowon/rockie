@@ -7,7 +7,7 @@
 	<key>CFBundleExecutable</key>
 	<string>keyblocker</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.dowon.deskpet.keyblocker</string>
+	<string>com.jeondowon.rockie.keyblocker</string>
 	<key>CFBundleName</key>
 	<string>KeyBlocker</string>
 	<key>CFBundlePackageType</key>

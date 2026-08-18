@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Electron/V8이 실행 중 코드를 생성한다. 없으면 앱이 아예 뜨지 않는다. -->
+	<key>com.apple.security.cs.allow-jit</key>
+	<true/>
+	<key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+	<true/>
+	<key>com.apple.security.cs.allow-dyld-environment-variables</key>
+	<true/>
+	<!-- active-win의 네이티브 .node 모듈을 로드하려면 필요하다. -->
+	<key>com.apple.security.cs.disable-library-validation</key>
+	<true/>
+	<!-- dock-tracker.js가 osascript로 System Events를 제어한다. -->
+	<key>com.apple.security.automation.apple-events</key>
+	<true/>
+</dict>
+</plist>

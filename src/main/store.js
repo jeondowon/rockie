@@ -91,8 +91,13 @@ function load() {
     // 업데이트 전부터 이미 키우던 사용자는 온보딩 없이 기존 상태를 유지한다.
     // reset()으로 새로 시작한 데이터는 answeredQuestions/progress가 비어 있으므로
     // defaultData의 completed:false 상태로 온보딩을 보게 된다.
+    //
+    // step > 0이면 이 온보딩을 진행하던 중이다(온보딩 질문 답변도 answeredQuestions에
+    // 쌓이므로 아래 조건에 걸린다). 권한 화면에서 앱이 재시작되는 경로가 생겨 로드가
+    // 두 번 이상 일어나므로, 진행 중인 온보딩을 완료 처리해 건너뛰지 않도록 제외한다.
     if (
       !data.onboarding.completed &&
+      !(data.onboarding.step > 0) &&
       (data.pet.evolutionStage > 0 ||
         data.questions.mainQuestionProgress > 0 ||
         data.questions.eiQuestionProgress > 0 ||

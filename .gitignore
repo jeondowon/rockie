@@ -5,4 +5,5 @@ release.md
 chatting.md
 
 node_modules/
+dist/
 .DS_Store

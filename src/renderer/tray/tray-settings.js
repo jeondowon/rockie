@@ -7,6 +7,8 @@ const permRow = document.getElementById("perm-row");
 const permBox = document.getElementById("perm-box");
 const permHint = document.getElementById("perm-hint");
 const DEFAULT_HINT = "활성 앱 감지(말풍선)에 필요합니다.";
+// 이 설정 화면에서 권한 요청을 이미 한 번 보냈는지. 두 번째 클릭은 시스템 설정을 연다.
+let permRequested = false;
 
 function setPermBox(granted) {
   permBox.classList.toggle("on", granted);
@@ -21,6 +23,7 @@ async function refreshPermToggle() {
 async function showSettings() {
   showScreen("settings");
   permHint.textContent = DEFAULT_HINT;
+  permRequested = false; // 화면을 새로 열면 다시 요청부터 시작한다
   refreshPermToggle();
   refreshSettings();
 }
@@ -160,17 +163,26 @@ permRow.addEventListener("click", async () => {
   const status = await window.trayAPI.getScreenPermission();
 
   if (status === "granted") {
-    // macOS는 권한을 코드로 해제할 수 없다
-    permHint.textContent =
-      "해제는 시스템 설정 > 개인정보 보호 및 보안 > 화면 기록에서만 가능합니다.";
+    // macOS는 권한을 코드로 해제할 수 없다. 경로를 안내하는 대신 그 화면을 바로 연다.
+    window.trayAPI.openScreenPermissionSettings();
+    permHint.textContent = "해제하려면 열린 설정 창에서 체크를 해제해 주세요.";
     return;
   }
+
+  // 요청했는데도 허용으로 안 읽히면 "허용했지만 재시작 전"인지 "거부"인지 알 수 없다.
+  // 추측해서 설정을 열지 않고, 한 번 더 눌렀을 때만 연다.
+  if (permRequested) {
+    window.trayAPI.openScreenPermissionSettings();
+    permHint.textContent =
+      "열린 설정 창에서 Rockie를 허용한 뒤 앱을 재시작해 주세요.";
+    return;
+  }
+  permRequested = true;
 
   // 시스템 권한 팝업 유도 (이미 거부된 상태면 macOS가 다시 띄우지 않음)
   const after = await window.trayAPI.requestScreenPermission();
   setPermBox(after === "granted");
-  if (after !== "granted") {
-    permHint.textContent =
-      "권한 요청이 거부된 상태입니다. 시스템 설정 > 화면 기록에서 직접 허용해 주세요.";
-  }
+  if (after === "granted") return;
+  permHint.textContent =
+    "허용하셨다면 앱을 재시작해야 적용됩니다. 아직이라면 한 번 더 눌러 설정을 여세요.";
 });

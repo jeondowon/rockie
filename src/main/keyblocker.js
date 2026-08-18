@@ -13,10 +13,13 @@ const { spawn } = require("child_process");
 let cleanHelper = null;
 let cleanAutoStopTimer = null;
 const CLEAN_START_TIMEOUT_MS = 3000;
-const KEYBLOCKER_APP_PATH = path.join(
-  __dirname,
-  "../../assets/helper/KeyBlocker.app",
-);
+// 패키징하면 __dirname이 asar 안이라 이 경로도 app.asar 아래로 잡힌다. 헬퍼는
+// asarUnpack으로 app.asar.unpacked에 실제 파일로 빠져 있고, 실행에 쓰는 /usr/bin/open은
+// 외부 명령이라 asar를 못 읽으므로 경로를 unpacked 쪽으로 돌려준다.
+// 개발 실행에는 경로에 app.asar가 없어 아무 일도 일어나지 않는다.
+const KEYBLOCKER_APP_PATH = path
+  .join(__dirname, "../../assets/helper/KeyBlocker.app")
+  .replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`);
 const KEYBLOCKER_EXEC_PATH = path.join(
   KEYBLOCKER_APP_PATH,
   "Contents/MacOS/keyblocker",

@@ -7,6 +7,7 @@ const onboardingMeteor = document.getElementById("onboarding-meteor");
 const onboardingSpeaker = document.getElementById("onboarding-speaker");
 const onboardingText = document.getElementById("onboarding-text");
 const onboardingOptions = document.getElementById("onboarding-options");
+const onboardingPerms = document.getElementById("onboarding-perms");
 const onboardingNext = document.getElementById("onboarding-next");
 let onboardingState = null;
 let onboardingLandHandler = null; // 운석 착지(animationend)에 맞춰 문구를 노출하는 1회성 리스너
@@ -48,8 +49,19 @@ function renderOnboardingStep() {
   onboardingText.classList.remove("hidden");
   onboardingOptions.classList.add("hidden");
   onboardingOptions.replaceChildren();
+  onboardingPerms.classList.add("hidden");
   onboardingNext.classList.remove("hidden");
+  onboardingNext.disabled = false;
   onboardingNext.textContent = step.button || "클릭하여 진행";
+
+  // 마지막 단계: 권한을 모두 허용해야 시작할 수 있다.
+  if (step.permissions) {
+    onboardingText.textContent = step.text;
+    onboardingPerms.classList.remove("hidden");
+    renderPermissionRows(); // 먼저 뼈대를 그리고
+    loadPermissionState(); // 조회가 끝나면 체크 표시와 버튼 상태를 갱신
+    return;
+  }
 
   if (step.question != null) {
     const q = onboardingState.questions[step.question];
@@ -102,12 +114,109 @@ function renderOnboardingStep() {
   onboardingText.textContent = step.text;
 }
 
+// ---------- 마지막 단계: 권한 ----------
+let permGranted = { screen: false, dock: false };
+// 항목별로 "허용" 요청을 이미 한 번 보냈는지. 두 번째 클릭은 시스템 설정 열기로 바뀐다.
+let permTried = { screen: false, dock: false };
+// 화면 기록은 요청 팝업이 뜨지 않는 상태(이미 거부됨)면 설정에서 켜야 하는데,
+// 그 변경은 앱을 재시작해야 읽힌다. 그때는 시작하기 대신 재시작 버튼을 준다.
+let permRelaunchMode = false;
+
+function syncStartButton() {
+  const allGranted = ONBOARDING_PERMISSIONS.every((p) => permGranted[p.key]);
+  permRelaunchMode = !allGranted && permRelaunchMode;
+  if (allGranted) {
+    onboardingNext.textContent = "시작하기";
+    onboardingNext.disabled = false;
+  } else if (permRelaunchMode) {
+    onboardingNext.textContent = "재시작하고 시작하기";
+    onboardingNext.disabled = false;
+  } else {
+    onboardingNext.textContent = "시작하기";
+    onboardingNext.disabled = true;
+  }
+}
+
+function renderPermissionRows() {
+  onboardingPerms.replaceChildren(
+    ...ONBOARDING_PERMISSIONS.map((perm) => {
+      const granted = permGranted[perm.key];
+      const row = document.createElement("div");
+      row.className = "onboarding-perm";
+
+      const box = document.createElement("span");
+      box.className = "onboarding-perm-box";
+      box.classList.toggle("on", granted);
+      box.textContent = granted ? "[✓]" : "[  ]";
+
+      const body = document.createElement("div");
+      body.className = "onboarding-perm-body";
+      const label = document.createElement("div");
+      label.className = "onboarding-perm-label";
+      label.textContent = perm.label;
+      const desc = document.createElement("div");
+      desc.className = "onboarding-perm-desc";
+      desc.textContent = perm.desc;
+      body.append(label, desc);
+
+      row.append(box, body);
+      if (!granted) {
+        const btn = document.createElement("button");
+        btn.className = "onboarding-perm-btn";
+        btn.textContent = permTried[perm.key] ? "설정 열기" : "허용";
+        btn.addEventListener("click", () => requestPermission(perm.key));
+        row.append(btn);
+      }
+      return row;
+    }),
+  );
+}
+
+// dock 조회는 실제로 스크립트를 돌리는 것이라, 아직 허용 전이면 이 호출이
+// 시스템 권한 창을 띄우는 역할까지 한다(권한 화면을 보고 있는 중이라 맥락이 맞다).
+async function loadPermissionState() {
+  const [screenStatus, dock] = await Promise.all([
+    window.trayAPI.getScreenPermission(),
+    window.trayAPI.checkDockPermission(),
+  ]);
+  permGranted = { screen: screenStatus === "granted", dock };
+  renderPermissionRows();
+  syncStartButton();
+}
+
+async function requestPermission(key) {
+  // 한 번 요청했는데도 허용으로 안 읽히면 두 경우가 섞여 있고 앱은 구분할 수 없다.
+  //  (1) 허용했지만 macOS가 재시작을 요구해 아직 반영이 안 됨 → 아래 재시작 버튼
+  //  (2) 실제로 거부함 → 시스템 설정에서 직접 켜야 함
+  // 그래서 추측해서 설정을 열지 않고, 두 번째 클릭에서만 설정을 연다.
+  if (permTried[key]) {
+    if (key === "dock") window.trayAPI.openDockPermissionSettings();
+    else window.trayAPI.openScreenPermissionSettings();
+    return;
+  }
+  permTried[key] = true;
+
+  if (key === "dock") {
+    permGranted.dock = await window.trayAPI.checkDockPermission();
+  } else {
+    const after = await window.trayAPI.requestScreenPermission();
+    permGranted.screen = after === "granted";
+    if (!permGranted.screen) permRelaunchMode = true;
+  }
+  renderPermissionRows();
+  syncStartButton();
+}
+
 async function advanceOnboarding() {
   const stepIndex = Math.min(
     onboardingState?.step || 0,
     ONBOARDING_FLOW.length - 1,
   );
   const step = ONBOARDING_FLOW[stepIndex];
+  if (step.permissions && permRelaunchMode) {
+    window.trayAPI.relaunchApp(); // 설정에서 허용한 값을 읽으려면 재시작해야 한다
+    return;
+  }
   if (step.complete) {
     onboardingState = await window.trayAPI.completeOnboarding();
     if (onboardingState.completed) {

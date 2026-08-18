@@ -15,7 +15,7 @@ const path = require("path");
 const fs = require("fs");
 const store = require("./store");
 const evolution = require("./evolution");
-const { startDockTracker } = require("./dock-tracker");
+const { startDockTracker, probeDockPermission } = require("./dock-tracker");
 const { getSystemStats } = require("./system-stats");
 const { getAiUsage, startAiUsage } = require("./ai-usage");
 const { makeTrayIcon } = require("./tray-icon");
@@ -752,22 +752,57 @@ ipcMain.handle("request-screen-permission", async () => {
   return systemPreferences.getMediaAccessStatus("screen");
 });
 
+// 한 번 거부된 뒤에는 시스템 팝업이 다시 뜨지 않으므로, 안내 문구만 띄우는 대신
+// 화면 기록 설정 화면을 직접 열어준다. (청소 모드 권한 안내와 같은 방식)
+ipcMain.on("open-screen-permission-settings", () => {
+  shell.openExternal(
+    "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture",
+  );
+});
+
+// Dock 위치 읽기(손쉬운 사용 + 자동화). 확인과 요청이 같은 동작이라 핸들러도 하나다.
+ipcMain.handle("check-dock-permission", () => probeDockPermission());
+
+ipcMain.on("open-dock-permission-settings", () => {
+  shell.openExternal(
+    "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
+  );
+});
+
+// 화면 기록 권한은 허용해도 앱을 재시작해야 반영된다. 온보딩에서 사용자를 가두지
+// 않으려면 앱이 스스로 재시작해야 한다. 온보딩 진행 상태는 저장돼 있어 그대로 이어진다.
+ipcMain.on("app:relaunch", () => {
+  app.relaunch();
+  app.exit(0);
+});
+
 // macOS에서 활성 창의 "제목"을 읽으려면 화면 기록(Screen Recording) 권한이 필요하다.
-// 권한이 없으면 active-win이 매번 예외를 던져 앱 감지 기능 전체가 동작하지 않으므로,
-// 시작 시 권한 상태를 확인해 렌더러에 알리고(말풍선 안내) 로그도 남긴다.
-function checkScreenRecordingPermission() {
-  if (process.platform !== "darwin") return;
-  const status = systemPreferences.getMediaAccessStatus("screen");
-  if (status === "granted") return;
+// 아직 물어본 적 없으면(not-determined) 화면 캡처를 한 번 시도해 시스템 팝업을 띄운다.
+// 그래도 허용이 아니면 false를 돌려 감시 자체를 시작하지 않게 한다 — 거부된 뒤에는
+// macOS가 팝업을 다시 띄우지 않고, 설정에서 허용해도 앱을 재시작해야 반영되므로,
+// 3초마다 재시도해봤자 실패만 반복하며 헬퍼 프로세스만 띄운다.
+async function ensureScreenRecordingPermission() {
+  if (process.platform !== "darwin") return true;
+
+  let status = systemPreferences.getMediaAccessStatus("screen");
+  if (status === "not-determined") {
+    try {
+      await desktopCapturer.getSources({ types: ["screen"] });
+    } catch (_err) {
+      // 권한 없음 등으로 실패해도 아래에서 현재 상태만 다시 읽으면 된다
+    }
+    status = systemPreferences.getMediaAccessStatus("screen");
+  }
+  if (status === "granted") return true;
 
   console.warn(
-    `[active-window] 화면 기록 권한 없음(상태: ${status}). ` +
-      "시스템 설정 > 개인정보 보호 및 보안 > 화면 기록에서 이 앱을 허용해야 " +
-      "활성 앱 감지(유튜브 등 말풍선)가 동작합니다.",
+    `[active-window] 화면 기록 권한 없음(상태: ${status}). 활성 앱 감지를 시작하지 않습니다. ` +
+      "메뉴바 > 설정 > 화면 기록 권한에서 허용한 뒤 앱을 재시작하면 동작합니다.",
   );
   mainWindow.webContents.once("did-finish-load", () => {
     sendToPet("screen-permission-missing");
   });
+  return false;
 }
 
 // active-win은 ESM이라 동적 import로만 불러올 수 있다. 3초마다 부르므로 한 번만 로드한다.
@@ -786,8 +821,8 @@ function loadActiveWin() {
   return activeWinPromise;
 }
 
-function startActiveWindowWatcher() {
-  checkScreenRecordingPermission();
+async function startActiveWindowWatcher() {
+  if (!(await ensureScreenRecordingPermission())) return;
 
   let loggedError = false; // 같은 에러를 3초마다 반복 출력하지 않도록 1회만 로그
 

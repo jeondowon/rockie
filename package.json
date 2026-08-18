@@ -7,13 +7,46 @@
     "start": "electron .",
     "dev": "DEV_RELOAD=1 electron .",
     "test": "node --test",
-    "build:helper": "mkdir -p assets/helper/KeyBlocker.app/Contents/MacOS && swiftc -swift-version 5 -O assets/helper/keyblocker.swift -o assets/helper/KeyBlocker.app/Contents/MacOS/keyblocker && codesign --force --deep --sign \"${KEYBLOCKER_CODESIGN_IDENTITY:--}\" --identifier com.dowon.deskpet.keyblocker assets/helper/KeyBlocker.app"
+    "dist": "electron-builder --mac",
+    "build:helper": "mkdir -p assets/helper/KeyBlocker.app/Contents/MacOS && swiftc -swift-version 5 -O assets/helper/keyblocker.swift -o assets/helper/KeyBlocker.app/Contents/MacOS/keyblocker && codesign --force --deep --options runtime --sign \"${KEYBLOCKER_CODESIGN_IDENTITY:--}\" --identifier com.jeondowon.rockie.keyblocker assets/helper/KeyBlocker.app"
   },
   "devDependencies": {
-    "electron": "^43.2.0"
+    "electron": "^43.2.0",
+    "electron-builder": "^26.15.3"
   },
   "dependencies": {
     "active-win": "^8.2.1",
     "systeminformation": "^5.31.15"
+  },
+  "build": {
+    "appId": "com.jeondowon.rockie",
+    "productName": "Rockie",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "!docs/**",
+      "!test/**",
+      "!scripts/**"
+    ],
+    "asarUnpack": [
+      "assets/helper/**",
+      "node_modules/active-win/main",
+      "node_modules/active-win/lib/binding/**"
+    ],
+    "mac": {
+      "target": "dmg",
+      "icon": "build/icon.icns",
+      "category": "public.app-category.entertainment",
+      "extendInfo": {
+        "LSUIElement": 1,
+        "NSAppleEventsUsageDescription": "펫이 Dock 위에 올라설 수 있도록 Dock의 위치와 크기를 읽는 데 사용합니다."
+      },
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.inherit.plist",
+      "notarize": true
+    }
   }
 }

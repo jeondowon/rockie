@@ -1238,6 +1238,86 @@ body {
   background: #3a382e;
 }
 
+/* 권한을 다 허용하기 전까지는 시작할 수 없다 */
+.onboarding-next:disabled {
+  cursor: default;
+  background: #cbc4b1;
+  border-color: #cbc4b1;
+  color: #faf7ef;
+}
+
+.onboarding-next:disabled:hover {
+  background: #cbc4b1;
+}
+
+/* ---------- 온보딩 마지막: 권한 목록 ---------- */
+.onboarding-perms {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 10px;
+  border: 2px solid #1b1b16;
+  border-top: none;
+  background: #faf7ef;
+}
+
+.onboarding-perm {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 9px 10px;
+  border-top: 2px dashed #cbc4b1;
+}
+
+.onboarding-perm:first-child {
+  border-top: none;
+}
+
+.onboarding-perm-box {
+  flex: none;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #a9a294;
+}
+
+.onboarding-perm-box.on {
+  color: #1b1b16;
+}
+
+.onboarding-perm-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.onboarding-perm-label {
+  font-size: 11px;
+  line-height: 1.5;
+  color: #1b1b16;
+}
+
+.onboarding-perm-desc {
+  font-size: 10px;
+  line-height: 1.5;
+  color: #6b6557;
+  word-break: keep-all;
+}
+
+.onboarding-perm-btn {
+  all: unset;
+  box-sizing: border-box;
+  flex: none;
+  cursor: pointer;
+  align-self: center;
+  padding: 5px 10px;
+  border: 2px solid #1b1b16;
+  background: #faf7ef;
+  font-size: 10px;
+  color: #1b1b16;
+}
+
+.onboarding-perm-btn:hover {
+  background: #e7e1d2;
+}
+
 /* ---------- 공용 패널 ---------- */
 .panel {
   padding: 14px 16px;

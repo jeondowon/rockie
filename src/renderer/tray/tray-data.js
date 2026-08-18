@@ -269,14 +269,30 @@ const ONBOARDING_FLOW = [
   {
     scene: "scene-pebble",
     speaker: "PROLOGUE",
-    text: "작은 조약돌이 당신의 곁에 자리를 잡았습니다.",
+    text: "작은 조약돌이 당신의 곁에 자리를 잡았습니다.\n이제부터 ROCKIE와 함께 지내보세요.",
   },
   {
     scene: "scene-pebble",
-    speaker: "ROCKIE",
-    text: "이제부터 ROCKIE와 함께 지내보세요.",
+    speaker: "PROLOGUE",
+    text: "함께 지내려면 두 가지 허락이 필요해요.",
+    permissions: true,
     button: "시작하기",
     complete: true,
+  },
+];
+
+// 온보딩 마지막 권한 화면에 표시할 항목.
+// screen = 화면 기록, dock = 손쉬운 사용 + 자동화(둘 다 Dock 좌표 읽기에만 쓰인다).
+const ONBOARDING_PERMISSIONS = [
+  {
+    key: "screen",
+    label: "화면 기록",
+    desc: "지금 보고 있는 앱을 알아채고 말을 걸어요.",
+  },
+  {
+    key: "dock",
+    label: "손쉬운 사용",
+    desc: "Dock 위치를 읽어서 가리지 않게 피해 다녀요.",
   },
 ];
 

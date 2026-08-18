@@ -7,6 +7,12 @@ contextBridge.exposeInMainWorld("trayAPI", {
   getScreenPermission: () => ipcRenderer.invoke("get-screen-permission"),
   requestScreenPermission: () =>
     ipcRenderer.invoke("request-screen-permission"),
+  openScreenPermissionSettings: () =>
+    ipcRenderer.send("open-screen-permission-settings"),
+  checkDockPermission: () => ipcRenderer.invoke("check-dock-permission"),
+  openDockPermissionSettings: () =>
+    ipcRenderer.send("open-dock-permission-settings"),
+  relaunchApp: () => ipcRenderer.send("app:relaunch"),
   onWillShow: (callback) => {
     ipcRenderer.on("tray-popup-will-show", () => callback());
   },
