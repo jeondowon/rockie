@@ -141,13 +141,13 @@ function renderPermissionRows() {
   onboardingPerms.replaceChildren(
     ...ONBOARDING_PERMISSIONS.map((perm) => {
       const granted = permGranted[perm.key];
-      const row = document.createElement("div");
-      row.className = "onboarding-perm";
+      // 허용된 항목은 클릭할 게 없으니 div로, 미허용 항목은 행 전체를 버튼으로 둔다.
+      const row = document.createElement(granted ? "div" : "button");
+      row.className = granted ? "onboarding-perm granted" : "onboarding-perm";
 
-      const box = document.createElement("span");
-      box.className = "onboarding-perm-box";
-      box.classList.toggle("on", granted);
-      box.textContent = granted ? "[✓]" : "[  ]";
+      const mark = document.createElement("span");
+      mark.className = "onboarding-perm-mark";
+      mark.textContent = granted ? "✓" : "▶";
 
       const body = document.createElement("div");
       body.className = "onboarding-perm-body";
@@ -159,16 +159,32 @@ function renderPermissionRows() {
       desc.textContent = perm.desc;
       body.append(label, desc);
 
-      row.append(box, body);
+      row.append(mark, body);
       if (!granted) {
-        const btn = document.createElement("button");
-        btn.className = "onboarding-perm-btn";
-        btn.textContent = permTried[perm.key] ? "설정 열기" : "허용";
-        btn.addEventListener("click", () => requestPermission(perm.key));
-        row.append(btn);
+        const hint = document.createElement("span");
+        hint.className = "onboarding-perm-hint";
+        hint.textContent = permTried[perm.key] ? "설정 열기" : "허용";
+        row.append(hint);
+        row.addEventListener("click", () => requestPermission(perm.key));
       }
       return row;
     }),
+  );
+  resizeOnboardingPerms();
+}
+
+// 권한 단계는 씬+안내문+권한 목록을 합치면 기본 팝업 높이(540px)를 넘을 수 있고,
+// 온보딩 화면은 overflow:hidden이라 스크롤로 대응할 수 없다. 메뉴 화면처럼 실제
+// 렌더링된 높이를 측정해 이 스텝에서만 창을 그만큼 키운다(허용 상태가 바뀌어
+// 행이 줄어들면 다시 줄어든다).
+function resizeOnboardingPerms() {
+  if (onboardingPerms.classList.contains("hidden")) return;
+  window.trayAPI.resizePopup(
+    document.querySelector(".titlebar").offsetHeight +
+      onboardingScene.offsetHeight +
+      document.querySelector(".onboarding-dialog").offsetHeight +
+      6 + // #popup 상하 테두리(3px×2)
+      10, // 창 = #popup + 10px (하드 섀도우 여백)
   );
 }
 

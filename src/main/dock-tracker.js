@@ -8,22 +8,20 @@
 // 2순위(권한 없을 때): Electron API + 커서 위치 휴리스틱으로 근사한다.
 //   - 상시 표시 Dock: 화면 크기 - 작업 영역 차이로 높이 계산 (가로 범위는 전체로 간주)
 //   - 자동 숨김 Dock: 커서가 화면 맨 아래에 닿으면 "올라옴", Dock 높이 위로 벗어나면 "내려감"
-const { screen } = require("electron");
+const { screen, systemPreferences } = require("electron");
 const { execFile } = require("child_process");
 
-// Dock의 실제 사각형을 읽는 스크립트. 손쉬운 사용/자동화 권한이 여기에만 쓰이므로,
-// 권한 확인도 이 스크립트를 실제로 한 번 돌려보는 것으로 갈음한다(아래 probeDockPermission).
+// Dock의 실제 사각형을 읽는 스크립트. 손쉬운 사용/자동화 권한이 여기에만 쓰인다.
 const DOCK_SCRIPT =
   'tell application "System Events" to tell process "Dock" to get {position, size} of list 1';
 
-// 온보딩 권한 화면용. 스크립트를 한 번 실행해 성공하면 손쉬운 사용·자동화가 모두
-// 허용된 것이다. 두 권한 모두 이 호출 하나를 위해 존재하므로 따로 조회할 이유가 없고,
-// 허용 전이라면 이 호출이 시스템 권한 창을 띄우는 역할까지 겸한다.
+// 온보딩 권한 화면용. AppleScript 성공 여부로 간접 추론하면 자동화(Automation)만
+// 허용돼도 성공해버려 손쉬운 사용(Accessibility) 목록과 어긋난다. macOS의 손쉬운
+// 사용 목록을 직접 확인하는 API를 쓴다. 허용 전이라면 이 호출이 시스템 권한 창을
+// 띄우는 역할까지 겸한다.
 function probeDockPermission() {
   if (process.platform !== "darwin") return Promise.resolve(true);
-  return new Promise((resolve) => {
-    execFile("osascript", ["-e", DOCK_SCRIPT], (err) => resolve(!err));
-  });
+  return Promise.resolve(systemPreferences.isTrustedAccessibilityClient(true));
 }
 
 // getWindow: 상태를 보낼 BrowserWindow를 돌려주는 함수 (없거나 파괴됐으면 전송 생략).

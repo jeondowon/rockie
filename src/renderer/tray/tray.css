@@ -1164,9 +1164,10 @@ body {
   word-break: keep-all;
 }
 
-/* 질문 단계: 질문 텍스트 + 선택지를 펫 창 질문 카드(qcard)와 같은
-   한 장의 카드로 묶고, 항목은 점선으로 구분한다 */
-.onboarding-dialog:has(.onboarding-options:not(.hidden)) .onboarding-text {
+/* 질문 단계 / 권한 단계: 안내 텍스트 + 선택지(또는 권한 목록)를 펫 창 질문 카드(qcard)와
+   같은 한 장의 카드로 묶고, 항목은 점선으로 구분한다 */
+.onboarding-dialog:has(.onboarding-options:not(.hidden)) .onboarding-text,
+.onboarding-dialog:has(.onboarding-perms:not(.hidden)) .onboarding-text {
   min-height: 0;
   padding: 10px 12px;
   border: 2px solid #1b1b16;
@@ -1261,10 +1262,13 @@ body {
 }
 
 .onboarding-perm {
+  all: unset;
+  box-sizing: border-box;
   display: flex;
   align-items: flex-start;
+  width: 100%;
   gap: 8px;
-  padding: 9px 10px;
+  padding: 9px 12px;
   border-top: 2px dashed #cbc4b1;
 }
 
@@ -1272,15 +1276,26 @@ body {
   border-top: none;
 }
 
-.onboarding-perm-box {
+/* 미허용 항목은 행 전체가 버튼(허용/설정 열기 클릭 대상) */
+.onboarding-perm:not(.granted) {
+  cursor: pointer;
+}
+
+.onboarding-perm:not(.granted):hover {
+  background: #e7e1d2;
+}
+
+.onboarding-perm-mark {
   flex: none;
-  font-size: 11px;
-  line-height: 1.5;
+  width: 12px;
+  padding-top: 1px;
+  font-size: 8px;
   color: #a9a294;
 }
 
-.onboarding-perm-box.on {
-  color: #1b1b16;
+.onboarding-perm.granted .onboarding-perm-mark {
+  font-size: 11px;
+  color: #4f7a3f;
 }
 
 .onboarding-perm-body {
@@ -1301,21 +1316,12 @@ body {
   word-break: keep-all;
 }
 
-.onboarding-perm-btn {
-  all: unset;
-  box-sizing: border-box;
+.onboarding-perm-hint {
   flex: none;
-  cursor: pointer;
   align-self: center;
-  padding: 5px 10px;
-  border: 2px solid #1b1b16;
-  background: #faf7ef;
   font-size: 10px;
-  color: #1b1b16;
-}
-
-.onboarding-perm-btn:hover {
-  background: #e7e1d2;
+  letter-spacing: 0.3px;
+  color: #4f7a3f;
 }
 
 /* ---------- 공용 패널 ---------- */
