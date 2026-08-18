@@ -6,7 +6,7 @@
 const permRow = document.getElementById("perm-row");
 const permBox = document.getElementById("perm-box");
 const permHint = document.getElementById("perm-hint");
-const DEFAULT_HINT = "활성 앱 감지(말풍선)에 필요합니다.";
+// 문구는 언어에 따라 달라지므로 상수로 굳히지 않고 그릴 때 t()로 읽는다.
 // 이 설정 화면에서 권한 요청을 이미 한 번 보냈는지. 두 번째 클릭은 시스템 설정을 연다.
 let permRequested = false;
 
@@ -22,7 +22,7 @@ async function refreshPermToggle() {
 
 async function showSettings() {
   showScreen("settings");
-  permHint.textContent = DEFAULT_HINT;
+  permHint.textContent = t("settings.screenPermissionDesc");
   permRequested = false; // 화면을 새로 열면 다시 요청부터 시작한다
   refreshPermToggle();
   refreshSettings();
@@ -33,6 +33,7 @@ const settingToggles = document.querySelectorAll(".set-row[data-setting]");
 const placeChips = document.querySelectorAll(".chip[data-place]");
 const sizeChips = document.querySelectorAll(".chip[data-size]");
 const focusMinuteChips = document.querySelectorAll(".chip[data-focus-minutes]");
+const languageChips = document.querySelectorAll(".chip[data-language]");
 const napRange = document.getElementById("nap-minutes-range");
 const napValueEl = document.getElementById("nap-minutes-value");
 const resetBtn = document.getElementById("reset-btn");
@@ -67,6 +68,9 @@ async function refreshSettings() {
       Number(chip.dataset.focusMinutes) === Number(s.focusMinutes || 25),
     ),
   );
+  languageChips.forEach((chip) =>
+    chip.classList.toggle("on", chip.dataset.language === getLocale()),
+  );
   napRange.value = String(Number(s.napMinutes) || 20);
   napValueEl.textContent = napRange.value; // 슬라이더가 값을 범위 안으로 다듬은 뒤 읽는다
 }
@@ -90,6 +94,13 @@ sizeChips.forEach((chip) => {
   chip.addEventListener("click", () => {
     sizeChips.forEach((c) => c.classList.toggle("on", c === chip));
     window.trayAPI.setSetting("petSize", chip.dataset.size);
+  });
+});
+
+languageChips.forEach((chip) => {
+  chip.addEventListener("click", () => {
+    languageChips.forEach((c) => c.classList.toggle("on", c === chip));
+    window.trayAPI.setSetting("language", chip.dataset.language);
   });
 });
 
@@ -165,7 +176,7 @@ permRow.addEventListener("click", async () => {
   if (status === "granted") {
     // macOS는 권한을 코드로 해제할 수 없다. 경로를 안내하는 대신 그 화면을 바로 연다.
     window.trayAPI.openScreenPermissionSettings();
-    permHint.textContent = "해제하려면 열린 설정 창에서 체크를 해제해 주세요.";
+    permHint.textContent = t("settings.permRevokeHint");
     return;
   }
 
@@ -173,8 +184,7 @@ permRow.addEventListener("click", async () => {
   // 추측해서 설정을 열지 않고, 한 번 더 눌렀을 때만 연다.
   if (permRequested) {
     window.trayAPI.openScreenPermissionSettings();
-    permHint.textContent =
-      "열린 설정 창에서 Rockie를 허용한 뒤 앱을 재시작해 주세요.";
+    permHint.textContent = t("settings.permAllowThenRestart");
     return;
   }
   permRequested = true;
@@ -183,6 +193,5 @@ permRow.addEventListener("click", async () => {
   const after = await window.trayAPI.requestScreenPermission();
   setPermBox(after === "granted");
   if (after === "granted") return;
-  permHint.textContent =
-    "허용하셨다면 앱을 재시작해야 적용됩니다. 아직이라면 한 번 더 눌러 설정을 여세요.";
+  permHint.textContent = t("settings.permRestartNote");
 });

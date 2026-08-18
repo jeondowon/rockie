@@ -14,10 +14,10 @@ const screens = {
   settings: document.getElementById("settings-view"),
 };
 
-const SCREEN_TITLES = {
-  pet: "나의 애완돌",
-  system: "시스템 모니터",
-  settings: "설정",
+const SCREEN_TITLE_KEYS = {
+  pet: "menu.myPet",
+  system: "menu.systemMonitor",
+  settings: "menu.settings",
 };
 
 // 진행 중 모드 배너 (집중)
@@ -74,8 +74,10 @@ function renderModeBanner(status) {
     return;
   }
   modeBannerIc.innerHTML = svgIcon(ICON_TARGET);
-  modeBannerLabel.textContent = "집중 모드";
-  modeBannerPause.textContent = status.paused ? "계속하기" : "일시정지";
+  modeBannerLabel.textContent = t("mode.focus");
+  modeBannerPause.textContent = status.paused
+    ? t("mode.resume")
+    : t("mode.pause");
   modeBanner.classList.remove("hidden");
   if (status.paused) {
     // 일시정지 중엔 남은 시간을 멈춘 채로 표시한다(초당 갱신 없음)
@@ -122,7 +124,9 @@ function showScreen(name) {
     backBar.classList.add("hidden");
   } else {
     backBar.classList.remove("hidden");
-    screenTitle.textContent = SCREEN_TITLES[name] || "";
+    screenTitle.textContent = SCREEN_TITLE_KEYS[name]
+      ? t(SCREEN_TITLE_KEYS[name])
+      : "";
   }
   // 메뉴는 항목 높이에 맞춰 짧게, 하위 화면은 기존 높이(0 = full)로 창 리사이즈
   window.trayAPI.resizePopup(name === "menu" ? menuWindowHeight() : 0);
@@ -162,7 +166,7 @@ async function refreshBadge() {
   try {
     const state = await window.trayAPI.getEvolutionState();
     statusItem.classList.toggle("has-badge", !!state.hasBadge);
-    petNameTitle.textContent = state.petName || "애완돌"; // 메뉴 화면 타이틀바에도 반영
+    petNameTitle.textContent = state.petName || t("pet.defaultName"); // 메뉴 화면 타이틀바에도 반영
     renderAffinity(state.affinityPoints); // 타이틀바 호감도 pip(레벨)은 항상 보이므로 여기서도 갱신
   } catch (_err) {
     // 상태를 못 읽으면 배지 없이 둔다
@@ -189,4 +193,15 @@ window.trayAPI.onWillHide(() => {
   popupVisible = false;
   stopSystemMonitor();
   stopModeCountdown();
+});
+
+// ---------- 표시 언어 ----------
+// HTML에 박힌 정적 문구를 현재 언어로 채운다(첫 페인트 직후 1회).
+applyStaticI18n();
+
+// 언어가 바뀌면 정적 문구는 i18n이 알아서 갈아끼우고, JS로 그린 부분만 여기서 되살린다.
+onLocaleChange(() => {
+  if (!screens.menu.classList.contains("hidden")) resizeMenuIfActive();
+  if (!screens.settings.classList.contains("hidden")) showSettings();
+  if (!screens.pet.classList.contains("hidden")) showPet();
 });

@@ -135,6 +135,52 @@ body {
   display: none;
 }
 
+/* 프롤로그 중에만 보이는 종료 버튼. 완료 후엔 같은 자리를 titlebar-meta가 쓴다. */
+.onboarding-quit {
+  display: none;
+}
+
+/* 언어 토글은 종료 버튼 왼쪽에 붙는다. margin-left:auto는 둘 중 앞선 이 버튼이 갖는다. */
+.onboarding-lang {
+  display: none;
+}
+
+#popup:has(#onboarding-view:not(.hidden)) .onboarding-lang {
+  all: unset;
+  box-sizing: border-box;
+  display: block;
+  margin-left: auto;
+  margin-right: 6px;
+  cursor: pointer;
+  padding: 3px 8px;
+  border: 1px solid #514c3e;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  color: #b8b2a2;
+}
+
+#popup:has(#onboarding-view:not(.hidden)) .onboarding-lang:hover {
+  border-color: #b8b2a2;
+  color: #f2ede1;
+}
+
+#popup:has(#onboarding-view:not(.hidden)) .onboarding-quit {
+  all: unset;
+  box-sizing: border-box;
+  display: block;
+  cursor: pointer;
+  padding: 3px 8px;
+  border: 1px solid #514c3e;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  color: #b8b2a2;
+}
+
+#popup:has(#onboarding-view:not(.hidden)) .onboarding-quit:hover {
+  border-color: #b8b2a2;
+  color: #f2ede1;
+}
+
 /* ---------- 뒤로가기 바 ---------- */
 .back-bar {
   all: unset;
@@ -2203,6 +2249,12 @@ body {
   color: #6a6452;
   margin-top: 2px;
   line-height: 1.5;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 7px;
 }
 
 .grid-3 {

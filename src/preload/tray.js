@@ -37,6 +37,11 @@ contextBridge.exposeInMainWorld("trayAPI", {
   cleanPet: () => ipcRenderer.invoke("evolution:clean"),
   petPet: () => ipcRenderer.invoke("evolution:pet"),
   setActiveSkin: (stage) => ipcRenderer.invoke("evolution:set-skin", stage),
+  // 표시 언어. 첫 페인트 전에 필요해 동기 조회한다(앱 시작 시 1회).
+  getLocale: () => ipcRenderer.sendSync("i18n:get-locale-sync"),
+  onLocaleChanged: (callback) => {
+    ipcRenderer.on("i18n:locale-changed", (_event, locale) => callback(locale));
+  },
   getSettings: () => ipcRenderer.invoke("settings:get"),
   setSetting: (key, value) => ipcRenderer.send("settings:set", { key, value }),
   resetPet: () => ipcRenderer.invoke("settings:reset"),

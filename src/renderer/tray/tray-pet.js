@@ -42,39 +42,39 @@ function displayForm(state) {
 // 단계별 상태 라벨
 function statusLabel(stage, stoneType, variant) {
   if (stage >= 3 && stoneType && variant) {
-    return GEM_NAMES[stoneType][variant];
+    return pickText(GEM_NAMES[stoneType][variant]);
   }
   if (stage === 2 && stoneType && variant) {
-    return VARIANT_NAMES[stoneType][variant];
+    return pickText(VARIANT_NAMES[stoneType][variant]);
   }
-  if (stage >= 1 && stoneType) return STONE_NAMES[stoneType];
-  return "조약돌";
+  if (stage >= 1 && stoneType) return pickText(STONE_NAMES[stoneType]);
+  return t("pet.pebble");
 }
 
 function traitDescription(stage, stoneType, variant) {
-  if (!stoneType) return TRAIT_DESCRIPTIONS.rockie; // 실제 0단계: 발견 안내
-  if (stage < 1) return ROCKIE_SKIN_TRAIT; // 진화 후 조약돌 스킨 착용: 정체성 톤
+  if (!stoneType) return pickText(TRAIT_DESCRIPTIONS.rockie); // 실제 0단계: 발견 안내
+  if (stage < 1) return pickText(ROCKIE_SKIN_TRAIT); // 진화 후 조약돌 스킨 착용: 정체성 톤
   const desc = TRAIT_DESCRIPTIONS[stoneType];
-  if (stage >= 3 && variant) return desc[variant].stage3;
-  if (stage === 2 && variant) return desc[variant].stage2;
-  return desc.stage1;
+  if (stage >= 3 && variant) return pickText(desc[variant].stage3);
+  if (stage === 2 && variant) return pickText(desc[variant].stage2);
+  return pickText(desc.stage1);
 }
 
 function evolveRationale(stage, stoneType, variant) {
-  if (!stoneType) return TRAIT_DESCRIPTIONS.rockie; // 실제 0단계: 발견 안내
-  if (stage < 1) return ROCKIE_SKIN_BLURB; // 진화 후 조약돌 스킨 착용: 회상 톤
+  if (!stoneType) return pickText(TRAIT_DESCRIPTIONS.rockie); // 실제 0단계: 발견 안내
+  if (stage < 1) return pickText(ROCKIE_SKIN_BLURB); // 진화 후 조약돌 스킨 착용: 회상 톤
   const r = EVOLVE_RATIONALE[stoneType];
-  if (stage >= 3 && variant) return r[variant].stage3;
-  if (stage === 2 && variant) return r[variant].stage2;
-  return r.stage1;
+  if (stage >= 3 && variant) return pickText(r[variant].stage3);
+  if (stage === 2 && variant) return pickText(r[variant].stage2);
+  return pickText(r.stage1);
 }
 
 // 단계별 진화 안내 문구
 function evoHint(stage) {
-  if (stage >= 3) return "🜨 마지막 단계예요. 반짝이는 보석이 됐어요.";
-  if (stage === 2) return "🜨 호감도가 90에 닿으면 보석으로 피어나요.";
-  if (stage === 1) return "🜨 이제 E/I 질문에 답하면 변성체로 나아가요.";
-  return "🜨 질문에 답할수록 어떤 돌이 될지 뚜렷해져요.";
+  if (stage >= 3) return t("pet.evoHint3");
+  if (stage === 2) return t("pet.evoHint2");
+  if (stage === 1) return t("pet.evoHint1");
+  return t("pet.evoHint0");
 }
 
 // 나의 애완돌 화면의 동적 요소
@@ -142,7 +142,10 @@ function renderHeroText(state) {
     renderTags(state.tags || []);
     petPersonalityTags.classList.remove("hidden");
   } else {
-    petPersonality.textContent = `아직 알아가는 중이에요 (${state.progress || 0}/${state.total || 0})`;
+    petPersonality.textContent = t("pet.stillLearningProgress", {
+      done: state.progress || 0,
+      total: state.total || 0,
+    });
     petPersonalityTags.classList.add("hidden");
   }
 }
@@ -264,21 +267,22 @@ window.trayAPI.onPetDisplaySprite((sprite) => {
 function renderAnswerButton(ab) {
   petCallout.disabled = !ab.enabled;
   if (ab.enabled) {
-    calloutTitle.textContent = "새로운 질문에 답하기";
-    calloutSub.textContent = "애완돌 옆에서 답해 주세요 ▶";
+    calloutTitle.textContent = t("pet.answerNewQuestion");
+    calloutSub.textContent = t("pet.answerBesidePet");
   } else {
-    calloutTitle.textContent = "질문 완료";
+    calloutTitle.textContent = t("pet.questionDone");
     calloutSub.textContent = ab.note || "";
   }
 }
 
 // 성향 태그 칩을 다시 그린다.
 function renderTags(tags) {
+  // 매개변수 이름을 t로 두면 공용 번역 함수 t()를 가려 버린다(tag로 둘 것).
   petPersonalityTags.replaceChildren(
-    ...tags.map((t) => {
+    ...tags.map((tag) => {
       const el = document.createElement("span");
       el.className = "tag";
-      el.textContent = t;
+      el.textContent = tag;
       return el;
     }),
   );
@@ -297,7 +301,7 @@ function renderHistory(list) {
   if (!list.length) {
     const empty = document.createElement("div");
     empty.className = "history-empty";
-    empty.textContent = "아직 답한 질문이 없어요.";
+    empty.textContent = t("pet.historyEmpty");
     petHistory.replaceChildren(empty);
     return;
   }
@@ -331,10 +335,10 @@ function applyNames(userName, petName) {
   currentUserName = userName || "";
   currentPetName = petName || "";
   userNameValue.textContent = userName || "—";
-  petNameValue.textContent = petName || "애완돌";
+  petNameValue.textContent = petName || t("pet.defaultName");
   userNameInput.value = userName || "";
   petNameInput.value = petName || "";
-  petNameTitle.textContent = petName || "애완돌";
+  petNameTitle.textContent = petName || t("pet.defaultName");
   nameRewardNote.classList.toggle("hidden", !!userName && !!petName);
 }
 
@@ -345,7 +349,7 @@ function enterNameEdit() {
   petNameValue.classList.add("hidden");
   userNameInput.classList.remove("hidden");
   petNameInput.classList.remove("hidden");
-  nameEditBtn.textContent = "저장";
+  nameEditBtn.textContent = t("common.save");
   nameActions.classList.add("editing");
   nameEditBtn.classList.add("name-save-btn");
   nameCancelBtn.classList.add("name-cancel-btn");
@@ -360,7 +364,7 @@ function exitNameEdit() {
   petNameValue.classList.remove("hidden");
   userNameInput.classList.add("hidden");
   petNameInput.classList.add("hidden");
-  nameEditBtn.textContent = "✎ 이름 수정";
+  nameEditBtn.textContent = t("pet.nameEdit");
   nameActions.classList.remove("editing");
   nameEditBtn.classList.remove("name-save-btn");
   nameCancelBtn.classList.remove("name-cancel-btn");
@@ -375,7 +379,7 @@ function cancelNameEdit() {
 
 // 점수가 속한 가장 높은 구간의 명칭 (AFFINITY_LEVELS는 min 오름차순)
 function affinityLevelName(points) {
-  return AFFINITY_LEVELS.findLast((lv) => points >= lv.min).name;
+  return pickText(AFFINITY_LEVELS.findLast((lv) => points >= lv.min).name);
 }
 
 // 호감도 게이지·수치·레벨명을 실제 포인트(0~100)로 반영
@@ -389,9 +393,9 @@ function renderAffinity(points) {
 // 닦아주기/쓰다듬기 버튼 상태. 오늘 완료했으면 비활성 + 완료 문구.
 function renderCareButtons(cleanDone, petDone) {
   cleanBtn.disabled = !!cleanDone;
-  cleanBtn.textContent = cleanDone ? "깨끗해졌어요!" : "닦아주기";
+  cleanBtn.textContent = cleanDone ? t("pet.cleanDone") : t("pet.clean");
   petBtn.disabled = !!petDone;
-  petBtn.textContent = petDone ? "행복해요!" : "쓰다듬기";
+  petBtn.textContent = petDone ? t("pet.petDone") : t("pet.pet");
 }
 
 // "이름 수정" ↔ "저장" 토글. 저장 시에만 store에 반영한다.

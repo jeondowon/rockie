@@ -9,6 +9,8 @@ const onboardingText = document.getElementById("onboarding-text");
 const onboardingOptions = document.getElementById("onboarding-options");
 const onboardingPerms = document.getElementById("onboarding-perms");
 const onboardingNext = document.getElementById("onboarding-next");
+const onboardingQuit = document.getElementById("onboarding-quit");
+const onboardingLang = document.getElementById("onboarding-lang");
 let onboardingState = null;
 let onboardingLandHandler = null; // 운석 착지(animationend)에 맞춰 문구를 노출하는 1회성 리스너
 let onboardingLandTimer = null; // animationend가 오지 않는 경우를 대비한 폴백
@@ -52,11 +54,13 @@ function renderOnboardingStep() {
   onboardingPerms.classList.add("hidden");
   onboardingNext.classList.remove("hidden");
   onboardingNext.disabled = false;
-  onboardingNext.textContent = step.button || "클릭하여 진행";
+  onboardingNext.textContent = step.buttonKey
+    ? t(step.buttonKey)
+    : t("onboarding.next");
 
   // 마지막 단계: 권한을 모두 허용해야 시작할 수 있다.
   if (step.permissions) {
-    onboardingText.textContent = step.text;
+    onboardingText.textContent = t(step.textKey);
     onboardingPerms.classList.remove("hidden");
     renderPermissionRows(); // 먼저 뼈대를 그리고
     loadPermissionState(); // 조회가 끝나면 체크 표시와 버튼 상태를 갱신
@@ -98,7 +102,7 @@ function renderOnboardingStep() {
       clearOnboardingLandWait();
       onboardingSpeaker.classList.remove("hidden");
       onboardingText.classList.remove("hidden");
-      onboardingText.textContent = step.text;
+      onboardingText.textContent = t(step.textKey);
       onboardingNext.classList.remove("hidden");
     };
     onboardingLandHandler = (e) => {
@@ -111,7 +115,7 @@ function renderOnboardingStep() {
     return;
   }
 
-  onboardingText.textContent = step.text;
+  onboardingText.textContent = t(step.textKey);
 }
 
 // ---------- 마지막 단계: 권한 ----------
@@ -126,13 +130,13 @@ function syncStartButton() {
   const allGranted = ONBOARDING_PERMISSIONS.every((p) => permGranted[p.key]);
   permRelaunchMode = !allGranted && permRelaunchMode;
   if (allGranted) {
-    onboardingNext.textContent = "시작하기";
+    onboardingNext.textContent = t("onboarding.start");
     onboardingNext.disabled = false;
   } else if (permRelaunchMode) {
-    onboardingNext.textContent = "재시작하고 시작하기";
+    onboardingNext.textContent = t("onboarding.relaunchStart");
     onboardingNext.disabled = false;
   } else {
-    onboardingNext.textContent = "시작하기";
+    onboardingNext.textContent = t("onboarding.start");
     onboardingNext.disabled = true;
   }
 }
@@ -153,17 +157,19 @@ function renderPermissionRows() {
       body.className = "onboarding-perm-body";
       const label = document.createElement("div");
       label.className = "onboarding-perm-label";
-      label.textContent = perm.label;
+      label.textContent = t(perm.labelKey);
       const desc = document.createElement("div");
       desc.className = "onboarding-perm-desc";
-      desc.textContent = perm.desc;
+      desc.textContent = t(perm.descKey);
       body.append(label, desc);
 
       row.append(mark, body);
       if (!granted) {
         const hint = document.createElement("span");
         hint.className = "onboarding-perm-hint";
-        hint.textContent = permTried[perm.key] ? "설정 열기" : "허용";
+        hint.textContent = permTried[perm.key]
+          ? t("perm.openSettings")
+          : t("perm.allow");
         row.append(hint);
         row.addEventListener("click", () => requestPermission(perm.key));
       }
@@ -263,3 +269,23 @@ async function showOnboarding() {
 }
 
 onboardingNext.addEventListener("click", advanceOnboarding);
+onboardingQuit.addEventListener("click", () =>
+  window.trayAPI.sendAction("quit"),
+);
+
+// 프롤로그 중 언어 전환. 버튼에는 "지금 누르면 바뀔 언어"를 보여준다.
+function syncOnboardingLangLabel() {
+  onboardingLang.textContent = getLocale() === "ko" ? "EN" : "한국어";
+}
+
+onboardingLang.addEventListener("click", () => {
+  window.trayAPI.setSetting("language", getLocale() === "ko" ? "en" : "ko");
+});
+
+// 언어가 바뀌면 버튼 라벨과 현재 단계 문구를 다시 그린다.
+onLocaleChange(() => {
+  syncOnboardingLangLabel();
+  if (onboardingState) renderOnboardingStep();
+});
+
+syncOnboardingLangLabel();

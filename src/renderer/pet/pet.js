@@ -396,8 +396,8 @@ function dumpOffset() {
   console.log(text);
   navigator.clipboard
     .writeText(text)
-    .then(() => updateTuneHud("복사됨!"))
-    .catch(() => updateTuneHud("복사 실패(콘솔 확인)"));
+    .then(() => updateTuneHud(t("dev.copied")))
+    .catch(() => updateTuneHud(t("dev.copyFailed")));
 }
 
 // 화면 좌상단에 현재 캐릭터·오프셋·조작법을 보여주는 오버레이(개발용)
@@ -617,11 +617,15 @@ function currentClickReactions() {
 }
 
 function ownerDisplayName() {
-  return userName ? `${userName}님` : "주인님";
+  return userName
+    ? t("pet.ownerSuffix", { name: userName })
+    : t("pet.ownerDefault");
 }
 
 function formatMessage(message) {
-  return message.replaceAll("{owner}", ownerDisplayName());
+  // 말풍선 문구는 pet-data.js에 { ko, en }으로 들어 있다. 여기서 언어를 고르고
+  // {owner} 치환까지 끝낸다 — 말풍선으로 나가는 모든 문구가 이 함수를 지난다.
+  return pickText(message).replaceAll("{owner}", ownerDisplayName());
 }
 
 // 더블클릭이 옵션창을 여는 동안 말풍선이 같이 뜨지 않도록, 클릭 반응은
@@ -631,7 +635,7 @@ let clickReactionTimer = null;
 
 // 더블클릭으로 모드를 열 수 있다는 안내. 첫 클릭 때 클릭 대사 대신 한 번만 띄우고,
 // 띄운 시각을 메인에 기록해 다음 실행부터는 다시 나오지 않게 한다.
-const MODE_HINT = " 저를 더블클릭하면 여러 모드를 사용할 수 있어요!";
+const MODE_HINT = t("pet.modeHint");
 let modeHintPending = false;
 
 character.addEventListener("click", (e) => {
@@ -804,7 +808,7 @@ window.petAPI.onActiveWindowInfo(({ appName, title }) => {
     const stage = getStage(rule.stages, Date.now() - ruleEnteredAt);
     // 말풍선이 이미 떠 있어 건너뛰었으면 기록하지 않는다 — 3초 뒤 폴링에서 다시 시도한다.
     if (stage && announcedStage !== stage.after) {
-      if (showAutoBubble(pickRandom(stage.messages)))
+      if (showAutoBubble(formatMessage(pickRandom(stage.messages))))
         announcedStage = stage.after;
     }
     return;
@@ -813,17 +817,14 @@ window.petAPI.onActiveWindowInfo(({ appName, title }) => {
   // 일반 규칙: 카테고리에 새로 진입했을 때만 한 번 말한다
   // (quiet 규칙도 진입 멘트 한 번은 보여주고, 머무는 동안은 자연히 조용해진다)
   if (isNewRule) {
-    showAutoBubble(pickRandom(rule.messages));
+    showAutoBubble(formatMessage(pickRandom(rule.messages)));
   }
 });
 
 // macOS 화면 기록 권한이 없으면 활성 창 감지 자체가 실패해서
 // 위의 앱별 말풍선이 전부 동작하지 않는다. 사용자에게 해결 방법을 안내한다.
 window.petAPI.onScreenPermissionMissing(() => {
-  showAutoBubble(
-    "어떤 앱을 보고 계신지 알 수 없어요. 메뉴바 펫 아이콘 → '화면 기록 권한 설정 열기'에서 허용해주세요!",
-    8000,
-  );
+  showAutoBubble(t("pet.noScreenPerm"), 8000);
 });
 
 // ---------- 5. 배터리 상태 리액션 ----------
@@ -859,7 +860,8 @@ function updateBatteryState(battery) {
   setTiredSprite(tier.sprite);
   // 건너뛰었으면 기록하지 않는다 — 다음 배터리 변화 때 다시 시도한다.
   if (announcedTier !== tier.level) {
-    if (showAutoBubble(tier.message, 5000)) announcedTier = tier.level;
+    if (showAutoBubble(formatMessage(tier.message), 5000))
+      announcedTier = tier.level;
   }
 }
 
@@ -927,9 +929,10 @@ function setUserName(name) {
 }
 
 function evolveMessage({ stage, stoneType }) {
-  if (stage === 1) return `저, ${STONE_NAMES[stoneType]}이 됐어요!`;
-  if (stage === 2) return "저, 변성체가 됐어요!";
-  if (stage === 3) return "반짝… 드디어 보석이 됐어요! ✨";
+  if (stage === 1)
+    return t("pet.evolvedStone", { stone: pickText(STONE_NAMES[stoneType]) });
+  if (stage === 2) return t("pet.evolvedVariant");
+  if (stage === 3) return t("pet.evolvedGem");
   return "";
 }
 
@@ -959,7 +962,7 @@ function setPendingEvolution(pending) {
   pendingEvolution = pending;
   if (!pendingEvolution) return;
   applyEvolution(pendingEvolution.from);
-  showBubble(`${ownerDisplayName()}, 제 몸이 변하는 것 같아요...!`, 3000);
+  showBubble(t("pet.evolveStarting", { owner: ownerDisplayName() }), 3000);
 }
 
 function previewEvolution(to) {
@@ -1113,10 +1116,10 @@ function openEvolutionCard() {
   img.className = "evo-img";
   img.src = spriteUrlFor(pendingEvolution.from, "smile");
   setEvolutionCardImageLevel(img, pendingEvolution.from);
-  img.alt = "진화 중인 애완돌";
+  img.alt = t("pet.evolvingTitle");
   img.draggable = false;
 
-  const hint = cardEl("p", "evo-hint", "클릭해서 진화를 도와주세요!");
+  const hint = cardEl("p", "evo-hint", t("pet.evolveHelp"));
 
   qcard.append(close, img, hint);
   qcard.onclick = () => advanceEvolutionCard(img, hint);
@@ -1145,19 +1148,18 @@ async function advanceEvolutionCard(img, hint) {
   if (evolutionCardStep < 2) {
     // 앞의 두 번은 깜빡임이 같고 안내 문구를 바꾸는 시점만 다르다
     // (첫 번째는 깜빡이기 전에, 두 번째는 깜빡인 뒤에).
-    if (evolutionCardStep === 0)
-      hint.textContent = "좋아요, 힘이 모이고 있어요...";
+    if (evolutionCardStep === 0) hint.textContent = t("pet.evolveGathering");
     img.classList.add("blink-out");
     await wait(EVOLVE_BLINK_OUT_MS);
     img.classList.remove("blink-out");
     await wait(EVOLVE_BLINK_IN_MS);
     if (evolutionCardStep === 1) {
-      hint.textContent = "마지막으로 한 번 더 눌러\n힘을 모아주세요!";
+      hint.textContent = t("pet.evolveOnceMore");
     }
     evolutionCardStep += 1;
   } else if (evolutionCardStep === 2) {
     const nextSrc = spriteUrlFor(current.to, "smile");
-    hint.textContent = "(달그락..달그락...)";
+    hint.textContent = t("pet.evolveRattle");
     await preloadImage(nextSrc);
     img.classList.add("fade-out");
     await wait(EVOLVE_FADE_OUT_MS);
@@ -1175,7 +1177,7 @@ async function advanceEvolutionCard(img, hint) {
     });
     await wait(EVOLVE_FADE_IN_MS);
     img.classList.remove("reveal-in");
-    hint.textContent = "축하합니다, 애완돌이 진화했어요!";
+    hint.textContent = t("pet.evolveDone");
     if (!current.preview) {
       await window.petAPI.completePendingEvolution();
     }
@@ -1206,15 +1208,22 @@ function renderCard(state) {
 
   if (q.situation) {
     if (q.kind === "tiebreaker") {
-      qcard.appendChild(cardEl("p", "q-hint", "마지막 확인"));
+      qcard.appendChild(cardEl("p", "q-hint", t("pet.finalCheck")));
     } else {
       qcard.appendChild(
-        cardEl("p", "q-hint", `상황 ${state.progress + 1} / ${state.total}`),
+        cardEl(
+          "p",
+          "q-hint",
+          t("pet.situationCount", {
+            n: state.progress + 1,
+            total: state.total,
+          }),
+        ),
       );
     }
     qcard.appendChild(cardEl("p", "q-situation", q.situation));
 
-    const next = cardEl("button", "q-continue", "클릭하여 진행");
+    const next = cardEl("button", "q-continue", t("onboarding.next"));
     next.addEventListener("click", () => {
       renderQuestionContent(state, q);
       positionCard();
@@ -1235,13 +1244,15 @@ function renderQuestionContent(state, q) {
   qcard.appendChild(close);
 
   if (q.kind === "tiebreaker") {
-    qcard.appendChild(
-      cardEl("p", "q-hint", "마지막으로 하나만 더 골라주세요!"),
-    );
+    qcard.appendChild(cardEl("p", "q-hint", t("pet.lastOneMore")));
   } else {
     // progress는 "답 완료 개수"라, 지금 답하는 질문은 그 다음 순번(+1)
     qcard.appendChild(
-      cardEl("p", "q-hint", `질문 ${state.progress + 1} / ${state.total}`),
+      cardEl(
+        "p",
+        "q-hint",
+        t("pet.questionCount", { n: state.progress + 1, total: state.total }),
+      ),
     );
   }
   qcard.appendChild(cardEl("p", "q-text", q.text));
@@ -1257,7 +1268,7 @@ function renderQuestionContent(state, q) {
 
 async function answerQuestion(questionId, value) {
   const result = await window.petAPI.answerQuestion({ questionId, value });
-  // 오늘 답할 질문이 더 남아 있으면 "답변 완료" 안내 카드로 전환(다음/나중에 선택).
+  // 오늘 답할 질문이 더 남아 있으면 t("pet.answerDone") 안내 카드로 전환(다음/나중에 선택).
   if (result.state.question) {
     renderConfirm(result.state);
     positionCard();
@@ -1266,24 +1277,22 @@ async function answerQuestion(questionId, value) {
   // 남은 질문이 없으면(둘 다 답함·2단계 도달 등) 안내 없이 바로 닫는다.
   hideQuestionCard();
   // 진화하면 onEvolved가 축하 말풍선을 띄우므로 여기선 조용히 둔다
-  if (!result.evolved) showBubble("고마워요! 잘 기억해둘게요.", 3000);
+  if (!result.evolved) showBubble(t("pet.thanksRemember"), 3000);
 }
 
 // 한 문항을 답한 뒤, 남은 질문이 있을 때 보여주는 확인 카드.
 function renderConfirm(state) {
   qcard.innerHTML = "";
-  qcard.appendChild(cardEl("p", "q-hint", "답변 완료"));
-  qcard.appendChild(
-    cardEl("p", "q-text", "잘 기억해둘게요! 다음 질문에도 답해줄래요?"),
-  );
+  qcard.appendChild(cardEl("p", "q-hint", t("pet.answerDone")));
+  qcard.appendChild(cardEl("p", "q-text", t("pet.answerMore")));
 
   const actions = cardEl("div", "q-options");
-  const nextBtn = cardEl("button", "q-opt", "다음 질문 답하기");
+  const nextBtn = cardEl("button", "q-opt", t("pet.nextQuestion"));
   nextBtn.addEventListener("click", () => {
     renderCard(state);
     positionCard();
   });
-  const laterBtn = cardEl("button", "q-opt", "나중에 답하기");
+  const laterBtn = cardEl("button", "q-opt", t("pet.answerLater"));
   laterBtn.addEventListener("click", () => hideQuestionCard());
   actions.append(nextBtn, laterBtn);
   qcard.appendChild(actions);
@@ -1421,7 +1430,7 @@ function openModePanel() {
   if (activeMode || modePanelOpen) return;
   modePanelOpen = true;
   modePanel.innerHTML = "";
-  modePanel.appendChild(cardEl("div", "mode-title", "모드 선택"));
+  modePanel.appendChild(cardEl("div", "mode-title", t("pet.modeSelect")));
 
   for (const m of MODES) {
     const row = cardEl("button", "mode-row", null);
@@ -1441,10 +1450,8 @@ function openModePanel() {
   const toggle = cardEl("button", "mode-row", null);
   toggle.appendChild(iconEl(ICON_EYE));
   const toggleTxt = cardEl("span", "mode-txt", null);
-  toggleTxt.appendChild(cardEl("span", "mode-name", "애완돌 숨기기 / 보이기"));
-  toggleTxt.appendChild(
-    cardEl("span", "mode-desc", "잠깐 안 보이게 · 트레이에서 다시 켜기"),
-  );
+  toggleTxt.appendChild(cardEl("span", "mode-name", t("pet.hideToggle")));
+  toggleTxt.appendChild(cardEl("span", "mode-desc", t("pet.hideToggleDesc")));
   toggle.appendChild(toggleTxt);
   toggle.addEventListener("click", () => {
     closeModePanel();
@@ -1452,7 +1459,7 @@ function openModePanel() {
   });
   modePanel.appendChild(toggle);
 
-  const close = cardEl("button", "mode-close-row", "닫기");
+  const close = cardEl("button", "mode-close-row", t("common.close"));
   close.addEventListener("click", closeModePanel);
   modePanel.appendChild(close);
 
@@ -1500,7 +1507,7 @@ window.petAPI.onModePauseRequest(() => {
 });
 
 // ── 키보드 청소 모드 ───────────────────────────────────────
-// 잠금은 사용자가 "닫기"를 누를 때까지 유지된다(시간 제한 없음).
+// 잠금은 사용자가 t("common.close")를 누를 때까지 유지된다(시간 제한 없음).
 // 다만 앱이 멈추면 키보드가 영영 잠긴 채 남으므로, 메인의 자동 해제 상한을
 // 하트비트로 계속 밀어준다. 렌더러가 살아 있는 동안은 상한에 닿지 않고,
 // 멈추면 하트비트가 끊겨 CLEAN_LOCK_TTL_MS 안에 잠금이 풀린다.
@@ -1518,11 +1525,8 @@ function renderPermissionNotice() {
   if (!cleanPermsEl) return;
   // 쪽잠은 청소와 달리 하트비트로 재시도하지 않는다. 권한을 켜도 저절로 잠기지 않으니
   // 다시 시작해야 한다는 것과, 잠금과 무관하게 알람은 울린다는 것을 함께 알린다.
-  const napNote =
-    activeMode === "nap"
-      ? "\n\n키보드를 잠그지 않아도 알람은 그대로 울려요.\n잠금은 권한 부여 후 앱을 재시작하면 적용됩니다."
-      : "";
-  cleanStatusEl.textContent = `⚠️ 모든 키와 단축키를 잠그려면\n'개인정보 보호 및 보안' → '손쉬운 사용'에서\n'KeyBlocker'를 켜주세요.${napNote}`;
+  const napNote = activeMode === "nap" ? t("mode.napNote") : "";
+  cleanStatusEl.textContent = t("mode.keyPermNeeded", { note: napNote });
   cleanStatusEl.classList.add("warn");
 
   // 잠금 재시도(하트비트)로 같은 안내가 다시 와도 버튼을 새로 만들지 않는다.
@@ -1536,7 +1540,7 @@ function renderPermissionNotice() {
   box.onmouseenter = captureClicks;
   box.onmouseleave = passThroughClicks;
 
-  const btn = cardEl("button", "clean-perm", "손쉬운 사용 열기");
+  const btn = cardEl("button", "clean-perm", t("mode.openAccessibility"));
   btn.tabIndex = -1; // 닫기 버튼과 같은 이유: 키보드로 눌리지 않게
   btn.addEventListener("click", (e) => {
     if (e.detail === 0) return;
@@ -1581,17 +1585,16 @@ window.petAPI.onCleanStatus((status) => {
   if (status === "time-limit") {
     // 상한 도달로 메인이 잠금을 이미 풀었다(쪽잠을 오래 방치했거나, 청소 중
     // 하트비트가 끊길 만큼 렌더러가 멈췄던 경우).
-    cleanStatusEl.textContent = "⏱️ 키보드 잠금이 자동으로 풀렸어요.";
+    cleanStatusEl.textContent = t("mode.keyUnlocked");
     cleanStatusEl.classList.remove("warn");
   } else if (status === "blocked") {
-    cleanStatusEl.textContent = "🔒 키보드가 잠겼어요";
+    cleanStatusEl.textContent = t("mode.keyLocked");
     cleanStatusEl.classList.remove("warn");
   } else if (status === "event-tap-failed") {
-    cleanStatusEl.textContent =
-      "⚠️ 시스템 키 이벤트 차단을 시작하지 못했어요. \n권한을 다시 확인한 뒤 앱을 재시작해주세요.";
+    cleanStatusEl.textContent = t("mode.keyBlockFailedPerm");
     cleanStatusEl.classList.add("warn");
   } else {
-    cleanStatusEl.textContent = "⚠️ 키보드 차단을 시작하지 못했어요.";
+    cleanStatusEl.textContent = t("mode.keyBlockFailed");
     cleanStatusEl.classList.add("warn");
   }
 });
@@ -1615,7 +1618,7 @@ function renderGestureProgress(count) {
   if (!cleanGestureEl) return;
   cleanGestureEl.textContent = count
     ? "●".repeat(count) + "○".repeat(Math.max(0, UNLOCK_TAP_COUNT - count))
-    : "마우스를 못 쓰면 스페이스바를 10번 연속 눌러 주세요.";
+    : t("mode.spacebarHint");
   cleanGestureEl.classList.toggle("counting", count > 0);
 }
 
@@ -1647,26 +1650,22 @@ function buildCleanOverlay() {
   icon.src = "../../../assets/icon.png";
   icon.alt = "";
   box.appendChild(icon);
-  box.appendChild(cardEl("div", "clean-title", "키보드 청소 모드"));
-  box.appendChild(cardEl("div", "clean-desc", "키보드를 마음껏 닦으세요!"));
+  box.appendChild(cardEl("div", "clean-title", t("mode.cleanTitle")));
+  box.appendChild(cardEl("div", "clean-desc", t("mode.cleanBody")));
 
   // 비상 해제 안내 겸 연타 진행 표시
-  cleanGestureEl = cardEl(
-    "div",
-    "clean-gesture",
-    "스페이스바 10번 연속 누르기/닫기 버튼 클릭으로 해제할 수 있어요",
-  );
+  cleanGestureEl = cardEl("div", "clean-gesture", t("mode.cleanExit"));
   box.appendChild(cleanGestureEl);
 
   // 차단 상태 줄. 메인의 clean:status로 갱신된다(준비 중 → 잠김 / 권한 필요).
-  cleanStatusEl = cardEl("div", "clean-status", "키보드 차단 준비 중…");
+  cleanStatusEl = cardEl("div", "clean-status", t("mode.keyBlockPreparing"));
   box.appendChild(cleanStatusEl);
 
   // 권한이 부족할 때만 채워지는 설정창 열기 버튼 줄
   cleanPermsEl = cardEl("div", "clean-perms", null);
   box.appendChild(cleanPermsEl);
 
-  const btn = cardEl("button", "clean-unlock", "닫기");
+  const btn = cardEl("button", "clean-unlock", t("common.close"));
   btn.tabIndex = -1; // 키보드 포커스 대상에서 제외(Space/Enter로 눌리는 것 방지)
   btn.addEventListener("click", (e) => {
     // 키보드로 활성화된 클릭(detail===0)은 무시하고 실제 마우스 클릭만 센다.
@@ -1710,15 +1709,15 @@ function buildFocusBubble() {
 
   focusControlsEl = cardEl("div", "focus-ctrl hidden", null);
   const row = cardEl("div", "focus-ctrl-row", null);
-  focusPauseBtn = cardEl("button", "focus-btn", "일시정지");
+  focusPauseBtn = cardEl("button", "focus-btn", t("mode.pauseLabel"));
   focusPauseBtn.addEventListener("click", toggleFocusPause);
   row.appendChild(focusPauseBtn);
-  const stop = cardEl("button", "focus-btn", "중지");
+  const stop = cardEl("button", "focus-btn", t("mode.stop"));
   stop.addEventListener("click", () => exitMode());
   row.appendChild(stop);
   focusControlsEl.appendChild(row);
   // 집중은 그대로 두고 펫만 감춘다. 타이머가 끝나면 자동으로 다시 나온다.
-  const hide = cardEl("button", "focus-btn focus-btn-wide", "애완돌 숨기기");
+  const hide = cardEl("button", "focus-btn focus-btn-wide", t("mode.hidePet"));
   hide.addEventListener("click", () => {
     setFocusControls(false); // 다시 보일 때 버튼이 열린 채 남지 않게
     window.petAPI.togglePet();
@@ -1741,7 +1740,8 @@ function setFocusControls(open) {
 
 function renderFocusBubble() {
   if (activeMode !== "focus") return;
-  const label = focusPausedMs != null ? "일시정지" : "집중 중";
+  const label =
+    focusPausedMs != null ? t("mode.pauseLabel") : t("mode.focusing");
   focusTextEl.textContent = `${label} ${formatMMSS(focusRemainMs())}`;
   bubble.classList.remove("hidden");
   positionBubble();
@@ -1771,7 +1771,7 @@ function pauseFocus() {
   focusTimeout = null;
   clearInterval(focusBubbleTimer);
   focusBubbleTimer = null;
-  focusPauseBtn.textContent = "계속하기";
+  focusPauseBtn.textContent = t("mode.resume");
   setModeStatus({
     mode: "focus",
     focusEndAt: null,
@@ -1788,7 +1788,7 @@ function resumeFocus() {
   focusEndAt = Date.now() + remain;
   focusTimeout = setTimeout(finishFocus, remain);
   focusBubbleTimer = setInterval(renderFocusBubble, 1000);
-  focusPauseBtn.textContent = "일시정지";
+  focusPauseBtn.textContent = t("mode.pauseLabel");
   setModeStatus({ mode: "focus", focusEndAt, paused: false });
   renderFocusBubble();
 }
@@ -1817,7 +1817,7 @@ function exitFocusMode() {
 function finishFocus() {
   exitMode(); // activeMode 해제 + 타이머/방해금지 정리
   window.petAPI.showPet(); // 집중 중 숨겨뒀다면 되돌린다 — 안 그러면 아래 말풍선이 안 보인다
-  showBubble("집중 시간이 끝났어요! 잠깐 쉬어가요 ☕", 6000);
+  showBubble(t("mode.focusEnded"), 6000);
 }
 
 // ── 쪽잠 모드 (화면·키보드 잠금 + 타이머 + 알람) ─────────────
@@ -1875,31 +1875,33 @@ function buildNapOverlay() {
   napOverlay.innerHTML = "";
   napOverlay.classList.remove("perms");
   const box = cardEl("div", "nap-box", null);
-  napTitleEl = cardEl("div", "nap-title", "쪽잠 모드");
+  napTitleEl = cardEl("div", "nap-title", t("mode.napTitle"));
   napTimeEl = cardEl("div", "nap-time", "00:00");
-  napDescEl = cardEl("div", "nap-desc", "끝나면 알람이 울려요");
+  napDescEl = cardEl("div", "nap-desc", t("mode.napAlarmNote"));
   box.appendChild(napTitleEl);
   box.appendChild(napTimeEl);
   box.appendChild(napDescEl);
 
   napActionsEl = cardEl("div", "nap-actions", null);
-  napPauseBtn = napButton("일시정지", "nap-btn", toggleNapPause);
+  napPauseBtn = napButton(t("mode.pauseLabel"), "nap-btn", toggleNapPause);
   napActionsEl.appendChild(napPauseBtn);
-  napActionsEl.appendChild(napButton("중지", "nap-btn", () => exitMode()));
+  napActionsEl.appendChild(
+    napButton(t("mode.stop"), "nap-btn", () => exitMode()),
+  );
   box.appendChild(napActionsEl);
 
   // 알람이 울릴 때만 보이는 줄
   napAlarmActionsEl = cardEl("div", "nap-actions hidden", null);
   napAlarmActionsEl.appendChild(
-    napButton("알람 끄기", "nap-btn primary", () => exitMode()),
+    napButton(t("mode.stopAlarm"), "nap-btn primary", () => exitMode()),
   );
   napAlarmActionsEl.appendChild(
-    napButton("5분 후 다시 알림", "nap-btn", snoozeNap),
+    napButton(t("mode.snooze"), "nap-btn", snoozeNap),
   );
   box.appendChild(napAlarmActionsEl);
 
   // 키보드 차단 상태(권한 안내)는 청소 모드와 같은 줄·같은 메시지를 쓴다.
-  cleanStatusEl = cardEl("div", "clean-status", "키보드 차단 준비 중…");
+  cleanStatusEl = cardEl("div", "clean-status", t("mode.keyBlockPreparing"));
   box.appendChild(cleanStatusEl);
   cleanPermsEl = cardEl("div", "clean-perms", null);
   box.appendChild(cleanPermsEl);
@@ -1930,15 +1932,15 @@ function pauseNap() {
   napTimeout = null;
   clearInterval(napTick);
   napTick = null;
-  napPauseBtn.textContent = "계속하기";
-  napDescEl.textContent = "일시정지됨";
+  napPauseBtn.textContent = t("mode.resume");
+  napDescEl.textContent = t("mode.paused");
   renderNapTime();
 }
 
 function resumeNap() {
   if (napPausedMs == null) return;
-  napPauseBtn.textContent = "일시정지";
-  napDescEl.textContent = "끝나면 알람이 울려요";
+  napPauseBtn.textContent = t("mode.pauseLabel");
+  napDescEl.textContent = t("mode.napAlarmNote");
   startNapTimer(napPausedMs);
 }
 
@@ -1948,8 +1950,8 @@ function ringNapAlarm() {
   clearInterval(napTick);
   napTick = null;
   napTimeEl.textContent = "00:00";
-  napTitleEl.textContent = "일어날 시간이에요!";
-  napDescEl.textContent = "푹 쉬셨나요?";
+  napTitleEl.textContent = t("mode.wakeUp");
+  napDescEl.textContent = t("mode.restedWell");
   napActionsEl.classList.add("hidden");
   napAlarmActionsEl.classList.remove("hidden");
   napOverlay.classList.add("ringing");
@@ -1957,7 +1959,7 @@ function ringNapAlarm() {
   napAlarmTimer = setInterval(playAlarm, NAP_ALARM_REPEAT_MS);
   napAlarmStopTimer = setTimeout(() => {
     stopNapAlarm();
-    napDescEl.textContent = "알람을 멈췄어요. '알람 끄기'를 눌러 주세요.";
+    napDescEl.textContent = t("mode.alarmStopped");
   }, NAP_ALARM_MAX_MS);
 }
 
@@ -1975,9 +1977,9 @@ function stopNapAlarm() {
 
 function snoozeNap() {
   stopNapAlarm();
-  napTitleEl.textContent = "쪽잠 모드";
-  napDescEl.textContent = "5분 뒤에 다시 울려요";
-  napPauseBtn.textContent = "일시정지";
+  napTitleEl.textContent = t("mode.napTitle");
+  napDescEl.textContent = t("mode.snoozeSet");
+  napPauseBtn.textContent = t("mode.pauseLabel");
   napAlarmActionsEl.classList.add("hidden");
   napActionsEl.classList.remove("hidden");
   startNapTimer(NAP_SNOOZE_MS);

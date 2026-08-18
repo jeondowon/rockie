@@ -62,6 +62,7 @@ function defaultData() {
       petSize: "medium", // "small" | "medium" | "large"
       focusMinutes: 25,
       napMinutes: 20,
+      language: "ko", // "ko" | "en" (표시 언어. 저장 데이터의 키는 언어와 무관하게 유지된다)
     },
   };
 }

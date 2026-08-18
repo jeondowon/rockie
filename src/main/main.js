@@ -16,6 +16,7 @@ const fs = require("fs");
 const store = require("./store");
 const evolution = require("./evolution");
 const { startDockTracker, probeDockPermission } = require("./dock-tracker");
+const { pick, setLocale } = require("./i18n");
 const { getSystemStats } = require("./system-stats");
 const { getAiUsage, startAiUsage } = require("./ai-usage");
 const { makeTrayIcon } = require("./tray-icon");
@@ -136,6 +137,7 @@ function startDevReload() {
         "../renderer/pet/pet-data.js",
         "../renderer/pet/pet.js",
         "../renderer/pet/style.css",
+        "../renderer/shared/i18n.js",
         "../renderer/shared/sound.js",
         "../renderer/shared/sprites.js",
         "../renderer/shared/icons.js",
@@ -153,6 +155,7 @@ function startDevReload() {
         "../renderer/tray/tray-settings.js",
         "../renderer/tray/tray.js",
         "../renderer/tray/tray.css",
+        "../renderer/shared/i18n.js",
         "../renderer/shared/sprites.js",
         "../renderer/shared/icons.js",
       ],
@@ -472,16 +475,22 @@ function lastResetBoundary(nowMs) {
 
 // 질문 배너 알림. 실제 알림(매일 오전 8시)은 클릭하면 펫 창을 띄우고,
 // 설정에서 '질문 알림'을 켠 순간 보여주는 미리보기는 문구만 다르다.
-const QUESTION_BANNER_TITLE = "오늘도 나에 대해 알려주세요";
+// 알림은 메인이 직접 띄우므로 표시 언어도 여기서 고른다.
+const QUESTION_BANNER = {
+  title: { ko: "오늘도 나에 대해 알려주세요", en: "Tell me about you today" },
+  preview: { ko: "이렇게 표시됩니다", en: "This is how it will look" },
+  body: {
+    ko: "새 질문을 준비해뒀어요. 메뉴바에서 답해 주세요!",
+    en: "A new question is ready. Answer it from the menu bar!",
+  },
+};
 
 function showQuestionBanner({ preview = false } = {}) {
   if (!Notification.isSupported()) return;
   if (dndActive) return; // 집중 모드 중엔 알림을 띄우지 않는다
   const banner = new Notification({
-    title: QUESTION_BANNER_TITLE,
-    body: preview
-      ? "이렇게 표시됩니다"
-      : "새 질문을 준비해뒀어요. 메뉴바에서 답해 주세요!",
+    title: pick(QUESTION_BANNER.title),
+    body: preview ? pick(QUESTION_BANNER.preview) : pick(QUESTION_BANNER.body),
   });
   if (!preview) {
     banner.on("click", () => {
@@ -635,10 +644,23 @@ function sendPetSettings() {
   });
 }
 
+// 표시 언어. 렌더러는 첫 페인트 전에 알아야 하므로 동기 조회를 열어 둔다.
+ipcMain.on("i18n:get-locale-sync", (event) => {
+  event.returnValue = store.get().settings.language || "ko";
+});
+
+// 언어가 바뀌면 열려 있는 모든 창이 즉시 다시 그리도록 알린다.
+function broadcastLanguage(locale) {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) win.webContents.send("i18n:locale-changed", locale);
+  }
+}
+
 // 앱 시작 시 저장된 설정을 실제 OS 상태에 반영한다.
 // (창의 '항상 맨 위'는 설정이 아니라 항상 켜진 기본 동작이라 여기서 다루지 않음)
 function applyStartupSettings() {
   const s = store.get().settings;
+  setLocale(s.language); // 알림·질문 문구를 저장된 언어로 낸다
   app.setLoginItemSettings({ openAtLogin: !!s.autoLaunch });
   applyCaptureProtection(!!s.hideFromCapture);
 }
@@ -708,6 +730,12 @@ ipcMain.on("settings:set", (_event, { key, value }) => {
         Math.max(1, Number(value) || 20),
       );
       sendPetSettings();
+      break;
+    case "language":
+      // 표시 언어만 바꾼다. 저장된 성향 점수·답변 기록의 키는 한글 그대로 유지된다.
+      data.settings.language = value === "en" ? "en" : "ko";
+      setLocale(data.settings.language); // 메인이 만드는 문구(알림·질문)도 함께 전환
+      broadcastLanguage(data.settings.language);
       break;
     default:
       return; // 모르는 키는 무시 (저장 안 함)

@@ -2,10 +2,10 @@
 // 각 렌더러 HTML에서 본 스크립트(pet.js/tray.js)보다 먼저 로드한다.
 
 const STONE_NAMES = {
-  granite: "화강암",
-  basalt: "현무암",
-  marble: "대리석",
-  gneiss: "편마암",
+  granite: { ko: "화강암", en: "Granite" },
+  basalt: { ko: "현무암", en: "Basalt" },
+  marble: { ko: "대리석", en: "Marble" },
+  gneiss: { ko: "편마암", en: "Gneiss" },
 };
 
 // 1단계 돌 → 2단계 변성체 접두어 (파일명은 접두어_e/i_포즈)

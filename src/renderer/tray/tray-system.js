@@ -116,19 +116,26 @@ function renderSystem(s) {
   // 배터리
   if (s.battery.has) {
     const b = s.battery;
-    const state = b.charging ? "충전 중" : b.ac ? "전원 연결" : "충전 안 함";
+    const state = b.charging
+      ? t("system.charging")
+      : b.ac
+        ? t("system.acConnected")
+        : t("system.notCharging");
     setText("sc-bat-val", `${b.pct}%`);
     setFill("sc-bat-fill", b.pct);
     paint("bat", batteryClass(b.pct, b.charging));
     setText("sc-bat-sub", state);
     setText("sc-bat-power", state);
     setText("sc-bat-health", b.healthPct != null ? `${b.healthPct}%` : "—");
-    setText("sc-bat-cycles", b.cycles != null ? `${b.cycles}회` : "—");
+    setText(
+      "sc-bat-cycles",
+      b.cycles != null ? t("system.cyclesValue", { n: b.cycles }) : "—",
+    );
   } else {
     setText("sc-bat-val", "—");
     setFill("sc-bat-fill", 0);
     paint("bat", "green");
-    setText("sc-bat-sub", "배터리 없음");
+    setText("sc-bat-sub", t("system.noBattery"));
     setText("sc-bat-power", "—");
     setText("sc-bat-health", "—");
     setText("sc-bat-cycles", "—");
@@ -163,28 +170,29 @@ function renderPetMotion(load) {
 function renderMood(load) {
   let mood, desc;
   if (load < 25) {
-    mood = "새근새근 · 여유";
-    desc = "한가로워요. 돌이 느긋하게 쉬고 있어요.";
+    mood = t("system.moodIdle");
+    desc = t("system.moodIdleDesc");
   } else if (load < 70) {
-    mood = "달그락 달그락 · 활동적";
-    desc = "적당한 부하. 돌이 살짝 몸을 뒤척여요.";
+    mood = t("system.moodActive2");
+    desc = t("system.moodDesc");
   } else {
-    mood = "데굴데굴 · 바쁨";
-    desc = "부하가 높아요! 돌이 바쁘게 움직여요.";
+    mood = t("system.moodBusy");
+    desc = t("system.moodBusyDesc");
   }
   setText("sys-mood", mood);
   setText("sys-mood-desc", desc);
 }
 
 function relativeTime(ms) {
-  if (typeof ms !== "number" || !Number.isFinite(ms)) return "확인 불가";
+  if (typeof ms !== "number" || !Number.isFinite(ms))
+    return t("system.unknown");
   const diff = Math.max(0, Date.now() - ms);
   const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return "방금 전";
-  if (minutes < 60) return `${minutes}분 전`;
+  if (minutes < 1) return t("system.justNow");
+  if (minutes < 60) return t("system.minutesAgo", { n: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}시간 전`;
-  return `${Math.floor(hours / 24)}일 전`;
+  if (hours < 24) return t("system.hoursAgo", { n: hours });
+  return t("system.daysAgo", { n: Math.floor(hours / 24) });
 }
 
 // 못 읽었으면 null — 부르는 쪽이 그 줄을 숨긴다
@@ -193,21 +201,25 @@ function resetTime(epochSeconds) {
     return null;
   }
   const diff = epochSeconds * 1000 - Date.now();
-  if (diff <= 0) return "갱신 필요";
+  if (diff <= 0) return t("system.needsRefresh");
   if (diff < 24 * 60 * 60 * 1000) {
     const totalMinutes = Math.max(1, Math.floor(diff / 60000));
     const hours = Math.floor(totalMinutes / 60);
     const minutes = totalMinutes % 60;
-    if (hours > 0 && minutes > 0) return `${hours}시간 ${minutes}분 후`;
-    if (hours > 0) return `${hours}시간 후`;
-    return `${minutes}분 후`;
+    if (hours > 0 && minutes > 0)
+      return t("system.inHoursMinutes", { h: hours, m: minutes });
+    if (hours > 0) return t("system.inHours", { h: hours });
+    return t("system.inMinutes", { m: minutes });
   }
-  return new Date(epochSeconds * 1000).toLocaleString("ko-KR", {
-    month: "long",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return new Date(epochSeconds * 1000).toLocaleString(
+    getLocale() === "en" ? "en-US" : "ko-KR",
+    {
+      month: "long",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    },
+  );
 }
 
 function renderAiUsage(u) {
@@ -228,19 +240,27 @@ function renderAiUsage(u) {
     setText("sc-codex-val", `${Math.round(head.usedPercent)}%`);
     setFill("sc-codex-fill", head.usedPercent);
     paint("codex", loadClass(head.usedPercent));
-    setText("sc-codex-sub", headIsFiveHour ? "5시간 세션" : "주간 세션");
+    setText(
+      "sc-codex-sub",
+      headIsFiveHour
+        ? t("system.fiveHourSession")
+        : t("system.weeklySessionShort"),
+    );
   } else {
     setText("sc-codex-val", "—");
     setFill("sc-codex-fill", 0);
     paint("codex", "green");
-    setText("sc-codex-sub", lim ? "갱신 필요" : "기록 없음");
+    setText(
+      "sc-codex-sub",
+      lim ? t("system.needsRefresh") : t("system.noRecord"),
+    );
   }
   // 상세 첫 줄은 헤더에 올리지 않은 쪽을 보여준다. 주간이 헤더로 올라간 상황에서
   // 주간을 또 적으면 같은 값이 두 번 나온다.
   const other = headIsFiveHour ? weekly : fiveHour;
   setText(
     "sc-codex-other-k",
-    headIsFiveHour ? "주간 세션 사용" : "5시간 세션 사용",
+    headIsFiveHour ? t("system.weeklySession") : t("system.fiveHourUsage"),
   );
   detailRow(
     "sc-codex-other-row",
@@ -286,7 +306,7 @@ document.querySelectorAll(".sys-refresh-btn").forEach((btn) => {
     event.stopPropagation(); // 상세 드롭다운이 닫히지 않도록
     if (btn.disabled) return;
     btn.disabled = true;
-    btn.textContent = "확인 중…";
+    btn.textContent = t("system.checking");
     try {
       await tickAiUsage();
       btn.textContent = "✓";
@@ -295,7 +315,7 @@ document.querySelectorAll(".sys-refresh-btn").forEach((btn) => {
       setTimeout(() => {
         btn.disabled = false;
         btn.classList.remove("done");
-        btn.textContent = "새로고침";
+        btn.textContent = t("common.refresh");
       }, 1200);
     }
   });

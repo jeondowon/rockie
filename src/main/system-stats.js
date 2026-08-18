@@ -1,6 +1,13 @@
 // 시스템 모니터 데이터 조회 (트레이 SYSTEM 화면용).
 // 표시용 숫자만 추려서 반환하고, 서식/색상/기분 판정은 렌더러(tray.js)가 담당한다.
 const si = require("systeminformation");
+const { pick } = require("./i18n");
+
+// 네트워크 종류 라벨 (시스템 모니터 표시용)
+const NET_LABELS = {
+  wired: { ko: "유선", en: "Wired" },
+  fallback: { ko: "네트워크", en: "Network" },
+};
 
 const GB = 1024 ** 3;
 
@@ -58,10 +65,10 @@ async function getSystemStats() {
     );
     const netLabel =
       ni && ni.type === "wired"
-        ? "유선"
+        ? pick(NET_LABELS.wired)
         : ni && ni.type === "wireless"
           ? "Wi-Fi"
-          : (ni && ni.ifaceName) || def || "네트워크";
+          : (ni && ni.ifaceName) || def || pick(NET_LABELS.fallback);
     const st = (netStat && netStat[0]) || {};
 
     return {

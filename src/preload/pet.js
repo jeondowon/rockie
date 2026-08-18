@@ -1,6 +1,11 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("petAPI", {
+  // 표시 언어. 첫 페인트 전에 필요해 동기 조회한다(앱 시작 시 1회).
+  getLocale: () => ipcRenderer.sendSync("i18n:get-locale-sync"),
+  onLocaleChanged: (callback) => {
+    ipcRenderer.on("i18n:locale-changed", (_event, locale) => callback(locale));
+  },
   setIgnoreMouseEvents: (ignore, options) => {
     ipcRenderer.send("set-ignore-mouse-events", ignore, options);
   },

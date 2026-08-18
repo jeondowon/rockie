@@ -13,6 +13,7 @@ const {
   EI_QUESTIONS,
   EI_TIEBREAKER,
 } = require("./questions");
+const { pick, locale } = require("./i18n");
 
 // ---------- 상수 ----------
 const MAIN_QUESTION_COUNT = MAIN_QUESTIONS.length; // 0→1 본 질문 총 개수
@@ -61,6 +62,89 @@ const TAG_CATEGORY_ORDER = [
   ),
 ];
 
+// 성향 태그의 영어 표기 (표시 전용).
+// 한글 태그는 카테고리별 점수 집계의 키라서 그대로 두고, 화면에 낼 때만 갈아끼운다.
+const TRAIT_TAG_EN = {
+  "안전 확인형": "Safety-Checker",
+  "직접 탐색형": "Hands-On Explorer",
+  "보호 본능형": "Protective",
+  "흔적 분석형": "Trace Reader",
+  "신중 관찰형": "Careful Observer",
+  "즉시 확인형": "Quick Checker",
+  "구출 지향형": "Rescuer",
+  "패턴 추론형": "Pattern Reader",
+  "거리 확보형": "Distance Keeper",
+  "순간 대응형": "In-the-Moment",
+  "안심 유도형": "Reassurer",
+  "균열 관찰형": "Crack Watcher",
+  "보호 책임형": "Guardian",
+  "활기 반응형": "Lively Responder",
+  "따뜻한 환대형": "Warm Welcomer",
+  "정체 탐구형": "Truth Seeker",
+  "계획 완수형": "Plan Finisher",
+  "시작 우선형": "Starter",
+  "메시지 중심형": "Message-First",
+  "전략 설계형": "Strategist",
+  "실질 지원형": "Practical Helper",
+  "활력 전환형": "Mood Lifter",
+  "공감 경청형": "Empathic Listener",
+  "맥락 파악형": "Context Reader",
+  "기준 신뢰형": "Principled",
+  "현실 대응형": "Pragmatist",
+  "사람 우선형": "People-First",
+  "타당성 검증형": "Fact Checker",
+  "안정 루틴형": "Steady Routine",
+  "즉흥 충전형": "Spontaneous",
+  "정서 충전형": "Heart Recharger",
+  "몰입 충전형": "Deep Diver",
+  "우선순위 정리형": "Prioritizer",
+  "핵심 체감형": "Gut Tester",
+  "청중 공감형": "Audience-Minded",
+  "논증 구조형": "Argument Builder",
+  "준비 안정형": "Well-Prepared",
+  "즉흥 실행형": "Improviser",
+  "동행 조율형": "Group Harmonizer",
+  "조건 비교형": "Option Weigher",
+  "진행 조율형": "Facilitator",
+  "대화 촉진형": "Conversation Starter",
+  "목소리 배려형": "Voice Includer",
+  "쟁점 정리형": "Issue Clarifier",
+  "꾸준 성장형": "Steady Grower",
+  "기회 포착형": "Opportunist",
+  "가치 실현형": "Value Driven",
+  "체계 구축형": "System Builder",
+  "생활 정돈형": "Tidy Living",
+  "여운 확장형": "Afterglow Keeper",
+  "감정 음미형": "Feeling Savorer",
+  "내면 정리형": "Inner Sorter",
+  "매뉴얼 확인형": "Manual Reader",
+  "체험 학습형": "Learn-by-Doing",
+  "사용자 관찰형": "User Watcher",
+  "원리 이해형": "Principle Seeker",
+  "책임 우선형": "Duty-First",
+  "에너지 우선형": "Momentum-First",
+  "마음 균형형": "Balance Keeper",
+  "효율 최적형": "Optimizer",
+  신뢰형: "Dependable",
+  "상황 적응형": "Adaptable",
+  "마음 이해형": "Heart Reader",
+  "구조 파악형": "Structure Reader",
+  "사람 충전형": "People-Charged",
+  "혼자 충전형": "Solitude-Charged",
+  "먼저 연결형": "First to Connect",
+  "관찰 진입형": "Watch-Then-Join",
+  "대화 정리형": "Think-Aloud",
+  "활기 집중형": "Buzz Focuser",
+  "고요 집중형": "Quiet Focuser",
+  "표현 확장형": "Expressive",
+  "외부 연결형": "Outward Connector",
+  "자체 탐색형": "Self-Explorer",
+};
+
+function localizeTag(tag) {
+  return locale() === "en" ? (TRAIT_TAG_EN[tag] ?? tag) : tag;
+}
+
 // 저장된 답변 기록을 트레이 히스토리용으로 복원 (최근 답변이 먼저).
 function buildHistory(data) {
   return data.questions.answeredQuestions
@@ -69,8 +153,8 @@ function buildHistory(data) {
       if (!q) return null;
       const opt = q.options.find((o) => optValue(o) === a.selectedOption);
       return {
-        text: q.text,
-        label: opt ? opt.label : "",
+        text: pick(q.text),
+        label: opt ? pick(opt.label) : "",
         answeredAt: a.answeredAt,
       };
     })
@@ -97,7 +181,7 @@ function categoryTraitTags(data) {
     const [tag] = Object.entries(scores).sort(
       (a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ko"),
     )[0];
-    return tag;
+    return localizeTag(tag);
   }).filter(Boolean);
 }
 
@@ -543,26 +627,45 @@ function serialize(id) {
     id,
     kind,
     category: q.category ?? null,
-    situation: q.situation ?? null,
-    text: q.text,
-    options: q.options.map((o) => ({ value: optValue(o), label: o.label })),
+    situation: q.situation ? pick(q.situation) : null,
+    text: pick(q.text),
+    options: q.options.map((o) => ({
+      value: optValue(o),
+      label: pick(o.label),
+    })),
   };
 }
+
+// "새로운 질문에 답하기" 버튼의 안내 문구 (표시 전용)
+const ANSWER_NOTES = {
+  prologueFirst: {
+    ko: "프롤로그를 먼저 완료해 주세요.",
+    en: "Please finish the prologue first.",
+  },
+  allDone: {
+    ko: "질문을 모두 마쳤어요.",
+    en: "You've answered every question.",
+  },
+  todayDone: {
+    ko: "오늘의 질문을 모두 마쳤어요. \n내일 오전 8시에 새로운 질문을 준비해둘게요.",
+    en: "That's all of today's questions. \nNew ones will be ready at 8 AM tomorrow.",
+  },
+};
 
 // "새로운 질문에 답하기" 버튼 상태
 function answerButtonState(data) {
   if (!onboardingCompleted(data)) {
-    return { enabled: false, note: "프롤로그를 먼저 완료해 주세요." };
+    return { enabled: false, note: pick(ANSWER_NOTES.prologueFirst) };
   }
   if (data.pet.evolutionStage >= 2) {
-    return { enabled: false, note: "질문을 모두 마쳤어요." };
+    return { enabled: false, note: pick(ANSWER_NOTES.allDone) };
   }
   if (validTodayQuestions(data).length > 0) {
     return { enabled: true, note: null };
   }
   return {
     enabled: false,
-    note: "오늘의 질문을 모두 마쳤어요. \n내일 오전 8시에 새로운 질문을 준비해둘게요.",
+    note: pick(ANSWER_NOTES.todayDone),
   };
 }
 
