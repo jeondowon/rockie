@@ -378,9 +378,12 @@ const ONBOARDING_PERMISSIONS = [
     descKey: "perm.screenDesc",
   },
   {
-    key: "dock",
-    labelKey: "perm.dock",
-    descKey: "perm.dockDesc",
+    key: "automation",
+    labelKey: "perm.automation",
+    descKey: "perm.automationDesc",
+    // 없어도 Dock 회피가 근사치로 동작한다. 거부해도 온보딩을 끝낼 수 있어야 한다 —
+    // macOS는 자동화를 한 번 거부하면 다시 묻지 않으므로 필수로 두면 갇힌다.
+    optional: true,
   },
 ];
 

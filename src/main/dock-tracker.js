@@ -4,24 +4,48 @@
 //
 // 1순위: AppleScript(System Events)로 Dock의 실제 좌표를 읽는다.
 //   - 자동 숨김 Dock이 지금 올라와 있는지까지 정확히 알 수 있다.
-//   - 단, 손쉬운 사용(Accessibility)/자동화 권한이 필요하다.
+//   - 단, 자동화(Automation) 권한이 필요하다. 손쉬운 사용은 필요 없다
+//     (2026-08-21 실측: 손쉬운 사용만 꺼도 이 스크립트는 그대로 성공한다).
 // 2순위(권한 없을 때): Electron API + 커서 위치 휴리스틱으로 근사한다.
 //   - 상시 표시 Dock: 화면 크기 - 작업 영역 차이로 높이 계산 (가로 범위는 전체로 간주)
 //   - 자동 숨김 Dock: 커서가 화면 맨 아래에 닿으면 "올라옴", Dock 높이 위로 벗어나면 "내려감"
-const { screen, systemPreferences } = require("electron");
+const { screen } = require("electron");
 const { execFile } = require("child_process");
 
 // Dock의 실제 사각형을 읽는 스크립트. 손쉬운 사용/자동화 권한이 여기에만 쓰인다.
 const DOCK_SCRIPT =
   'tell application "System Events" to tell process "Dock" to get {position, size} of list 1';
 
-// 온보딩 권한 화면용. AppleScript 성공 여부로 간접 추론하면 자동화(Automation)만
-// 허용돼도 성공해버려 손쉬운 사용(Accessibility) 목록과 어긋난다. macOS의 손쉬운
-// 사용 목록을 직접 확인하는 API를 쓴다. 허용 전이라면 이 호출이 시스템 권한 창을
-// 띄우는 역할까지 겸한다.
-function probeDockPermission() {
-  if (process.platform !== "darwin") return Promise.resolve(true);
-  return Promise.resolve(systemPreferences.isTrustedAccessibilityClient(true));
+// 자동화(Apple Events) 권한 상태. 손쉬운 사용과 별개의 권한이라 따로 봐야 한다.
+// 손쉬운 사용만 허용하고 자동화를 거부하면 osascript가 계속 실패해 휴리스틱으로
+// 조용히 강등되는데, 사용자 눈에는 "Dock 위에 안 올라간다"로만 보인다.
+// 요청하는 API는 없다(첫 osascript 호출 때 macOS가 알아서 창을 띄운다). 그래서
+// 호출 결과로만 알 수 있고, 첫 호출 전에는 "unknown"이다.
+let automationStatus = "unknown"; // "granted" | "denied" | "unknown"
+
+function getAutomationStatus() {
+  return automationStatus;
+}
+
+// macOS는 자동화 거부를 errAEEventNotPermitted(-1743)로 돌려준다.
+// 그 외 실패(System Events 미기동 등)는 권한 문제가 아니므로 구분한다.
+function isPermissionError(stderr) {
+  return /-1743|Not authorized to send Apple events/.test(stderr || "");
+}
+
+// 온보딩 권한 화면용. 자동화 권한은 요청 API가 없고 첫 Apple Event를 보낼 때
+// macOS가 창을 띄우므로, 스크립트를 한 번 돌리는 것이 곧 요청이다.
+// 그래서 권한 화면을 보여주기 전에는 dock 추적을 시작하지 않는다(main.js) —
+// 안 그러면 프롤로그 도중에 맥락 없는 권한 창이 끼어든다.
+function probeAutomationPermission() {
+  if (process.platform !== "darwin") return Promise.resolve("granted");
+  return new Promise((resolve) => {
+    execFile("osascript", ["-e", DOCK_SCRIPT], (err, _out, stderr) => {
+      if (!err) automationStatus = "granted";
+      else if (isPermissionError(stderr)) automationStatus = "denied";
+      resolve(automationStatus);
+    });
+  });
 }
 
 // getWindow: 상태를 보낼 BrowserWindow를 돌려주는 함수 (없거나 파괴됐으면 전송 생략).
@@ -82,6 +106,17 @@ function startDockTracker(getWindow) {
     return heuristicVisible;
   };
 
+  // 자동 숨김 Dock의 높이 추정. tilesize는 아이콘의 "최대" 크기일 뿐이라 그대로
+  // 믿으면 안 된다 — 아이콘이 화면 폭에 안 들어가면 macOS가 타일을 줄인다.
+  // 실측 사례: tilesize 128인데 실제 Dock은 62px이라 펫이 100px 가까이 떠올랐다.
+  // 한 번이라도 osascript로 읽어낸 실제 높이가 있으면 그 값을 쓰고(권한을 나중에
+  // 잃은 경우), 없으면 상한을 씌워 크게 빗나가지 않게 한다.
+  const MAX_ESTIMATED_TILE = 64;
+  const estimateDockHeight = () =>
+    lastRect
+      ? lastRect.height
+      : Math.round(Math.min(tileSize, MAX_ESTIMATED_TILE) * 1.25);
+
   const heuristicTick = () => {
     const { bounds, workArea } = screen.getPrimaryDisplay();
     if (orientation !== "bottom") return sendDockState(HIDDEN);
@@ -94,7 +129,7 @@ function startDockTracker(getWindow) {
     }
 
     // 자동 숨김 Dock: 커서 위치로 표시 여부를 추정
-    const estHeight = Math.round(tileSize * 1.25); // 아이콘 크기 + 여백 근사치
+    const estHeight = estimateDockHeight();
     sendDockState({
       visible: updateHeuristicVisible(estHeight),
       x: 0,
@@ -143,9 +178,7 @@ function startDockTracker(getWindow) {
     // 커서만으로 표시 여부를 단정하진 않되(위 sendCachedDockState 주석 참고), 커서가
     // Dock을 올리거나 내릴 만한 자리로 막 옮겨간 순간에는 간격을 기다리지 않고 바로
     // 확인한다. 덕분에 평소 Dock 반응 속도는 그대로 유지된다.
-    const hint = updateHeuristicVisible(
-      lastRect ? lastRect.height : Math.round(tileSize * 1.25),
-    );
+    const hint = updateHeuristicVisible(estimateDockHeight());
     const hintChanged = hint !== lastHint;
     lastHint = hint;
     const due =
@@ -164,13 +197,15 @@ function startDockTracker(getWindow) {
 
     lastScriptAt = Date.now();
     scriptRunning = true;
-    execFile("osascript", ["-e", DOCK_SCRIPT], (err, out) => {
+    execFile("osascript", ["-e", DOCK_SCRIPT], (err, out, stderr) => {
       scriptRunning = false;
       if (err) {
+        if (isPermissionError(stderr)) automationStatus = "denied";
         scriptFailedAt = Date.now();
         return heuristicTick();
       }
       scriptFailedAt = 0;
+      automationStatus = "granted";
 
       const nums = out.trim().split(",").map(Number);
       if (nums.length !== 4 || nums.some(Number.isNaN)) return heuristicTick();
@@ -209,4 +244,8 @@ function startDockTracker(getWindow) {
   };
 }
 
-module.exports = { startDockTracker, probeDockPermission };
+module.exports = {
+  startDockTracker,
+  probeAutomationPermission,
+  getAutomationStatus,
+};

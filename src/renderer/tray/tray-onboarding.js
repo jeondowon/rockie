@@ -14,6 +14,10 @@ const onboardingLang = document.getElementById("onboarding-lang");
 let onboardingState = null;
 let onboardingLandHandler = null; // 운석 착지(animationend)에 맞춰 문구를 노출하는 1회성 리스너
 let onboardingLandTimer = null; // animationend가 오지 않는 경우를 대비한 폴백
+// 착지 연출을 이미 끝낸 단계를 다시 그리는 경우(언어 변경 등)를 구분하기 위한 상태.
+// 같은 단계를 다시 그릴 때 또 기다리면, 애니메이션은 재생되지 않으므로 화면이 빈 채로 멈춘다.
+let lastRenderedStep = null;
+let landRevealDone = false;
 const ONBOARDING_LAND_FALLBACK_MS = 4000; // 낙하 연출(지연 2.5s + 낙하 0.8s)보다 넉넉히
 
 function setOnboardingScene(scene) {
@@ -45,6 +49,11 @@ function renderOnboardingStep() {
     ONBOARDING_FLOW.length - 1,
   );
   const step = ONBOARDING_FLOW[stepIndex];
+  // 단계가 바뀌면 착지 연출을 처음부터 다시 본다(장면 클래스가 바뀌어 실제로 재생된다).
+  if (stepIndex !== lastRenderedStep) {
+    lastRenderedStep = stepIndex;
+    landRevealDone = false;
+  }
   setOnboardingScene(step.scene);
   onboardingSpeaker.textContent = step.speaker || "PROLOGUE";
   onboardingSpeaker.classList.remove("hidden");
@@ -62,7 +71,7 @@ function renderOnboardingStep() {
   if (step.permissions) {
     onboardingText.textContent = t(step.textKey);
     onboardingPerms.classList.remove("hidden");
-    renderPermissionRows(); // 먼저 뼈대를 그리고
+    renderPermissionRows(); // 먼저 뼈대를 그리고 (여기서 창 높이도 맞춘다)
     loadPermissionState(); // 조회가 끝나면 체크 표시와 버튼 상태를 갱신
     return;
   }
@@ -88,22 +97,33 @@ function renderOnboardingStep() {
         return btn;
       }),
     );
+    resizeOnboarding(); // 선택지가 길면(특히 영어) 기본 높이를 넘는다
     return;
   }
 
   // 운석 낙하 애니메이션(meteor-fall)이 끝나는 착지 순간에 맞춰
   // 문구/화자칩/버튼을 노출한다. 고정 타이머 대신 실제 착지에 동기화한다.
   if (step.revealOnLand) {
+    // 이미 착지를 본 단계를 다시 그리는 중이라면 기다리지 않는다. 같은 장면 클래스를
+    // 다시 붙여도 CSS 애니메이션은 재생되지 않아 animationend가 오지 않기 때문이다.
+    // (문구·화자칩·버튼은 이 함수 앞부분에서 이미 보이는 상태로 맞춰져 있다.)
+    if (landRevealDone) {
+      onboardingText.textContent = t(step.textKey);
+      resizeOnboarding();
+      return;
+    }
     onboardingSpeaker.classList.add("hidden");
     onboardingText.classList.add("hidden");
     onboardingText.textContent = "";
     onboardingNext.classList.add("hidden");
     const reveal = () => {
       clearOnboardingLandWait();
+      landRevealDone = true;
       onboardingSpeaker.classList.remove("hidden");
       onboardingText.classList.remove("hidden");
       onboardingText.textContent = t(step.textKey);
       onboardingNext.classList.remove("hidden");
+      resizeOnboarding();
     };
     onboardingLandHandler = (e) => {
       if (e.animationName !== "meteor-fall") return; // 꼬리 등 다른 애니메이션 무시
@@ -116,18 +136,22 @@ function renderOnboardingStep() {
   }
 
   onboardingText.textContent = t(step.textKey);
+  resizeOnboarding();
 }
 
 // ---------- 마지막 단계: 권한 ----------
-let permGranted = { screen: false, dock: false };
+let permGranted = { screen: false, automation: false };
 // 항목별로 "허용" 요청을 이미 한 번 보냈는지. 두 번째 클릭은 시스템 설정 열기로 바뀐다.
-let permTried = { screen: false, dock: false };
+let permTried = { screen: false, automation: false };
 // 화면 기록은 요청 팝업이 뜨지 않는 상태(이미 거부됨)면 설정에서 켜야 하는데,
 // 그 변경은 앱을 재시작해야 읽힌다. 그때는 시작하기 대신 재시작 버튼을 준다.
 let permRelaunchMode = false;
 
 function syncStartButton() {
-  const allGranted = ONBOARDING_PERMISSIONS.every((p) => permGranted[p.key]);
+  // 선택 권한(자동화)은 시작을 막지 않는다.
+  const allGranted = ONBOARDING_PERMISSIONS.filter((p) => !p.optional).every(
+    (p) => permGranted[p.key],
+  );
   permRelaunchMode = !allGranted && permRelaunchMode;
   if (allGranted) {
     onboardingNext.textContent = t("onboarding.start");
@@ -176,32 +200,46 @@ function renderPermissionRows() {
       return row;
     }),
   );
-  resizeOnboardingPerms();
+  resizeOnboarding();
 }
 
-// 권한 단계는 씬+안내문+권한 목록을 합치면 기본 팝업 높이(540px)를 넘을 수 있고,
-// 온보딩 화면은 overflow:hidden이라 스크롤로 대응할 수 없다. 메뉴 화면처럼 실제
-// 렌더링된 높이를 측정해 이 스텝에서만 창을 그만큼 키운다(허용 상태가 바뀌어
-// 행이 줄어들면 다시 줄어든다).
-function resizeOnboardingPerms() {
-  if (onboardingPerms.classList.contains("hidden")) return;
-  window.trayAPI.resizePopup(
+// 온보딩은 씬+안내문+선택지를 합치면 기본 팝업 높이(540px)를 넘을 수 있고, 이 화면은
+// overflow:hidden이라 스크롤로 대응할 수 없다(넘치면 그냥 잘린다). 영어는 같은 문장도
+// 길어져 줄이 늘기 때문에, 단계마다 실제 내용 높이를 재서 모자라면 창을 키운다.
+//
+// .onboarding-dialog는 flex:1이라 평소엔 "남은 공간"만큼의 높이로 측정된다. 그대로 재면
+// 지금 창 높이가 그대로 나와 한 번 커진 창이 다시 줄지 않으므로, 재는 동안만 flex를 꺼서
+// 내용 높이를 얻는다(중간에 페인트가 끼지 않아 깜빡임은 없다).
+const TRAY_POPUP_BASE_HEIGHT = 540; // main.js의 TRAY_POPUP_HEIGHT와 같아야 한다
+
+function resizeOnboarding() {
+  const dialog = document.querySelector(".onboarding-dialog");
+  const prevFlex = dialog.style.flex;
+  dialog.style.flex = "none";
+  const needed =
     document.querySelector(".titlebar").offsetHeight +
-      onboardingScene.offsetHeight +
-      document.querySelector(".onboarding-dialog").offsetHeight +
-      6 + // #popup 상하 테두리(3px×2)
-      10, // 창 = #popup + 10px (하드 섀도우 여백)
-  );
+    onboardingScene.offsetHeight +
+    dialog.offsetHeight +
+    6 + // #popup 상하 테두리(3px×2)
+    10; // 창 = #popup + 10px (하드 섀도우 여백)
+  dialog.style.flex = prevFlex;
+  // 0을 보내면 기본 높이로 돌아간다. 내용이 짧은 단계에서 이전 단계의 큰 창을 물려받지 않게.
+  window.trayAPI.resizePopup(needed > TRAY_POPUP_BASE_HEIGHT ? needed : 0);
 }
 
 // dock 조회는 실제로 스크립트를 돌리는 것이라, 아직 허용 전이면 이 호출이
 // 시스템 권한 창을 띄우는 역할까지 한다(권한 화면을 보고 있는 중이라 맥락이 맞다).
 async function loadPermissionState() {
-  const [screenStatus, dock] = await Promise.all([
+  // 자동화는 여기서 조회만 한다(requestDockAutomation이 아님). 조회는 권한 창을
+  // 띄우지 않으므로, 화면을 여는 것만으로 창이 뜨는 일이 없다.
+  const [screenStatus, automation] = await Promise.all([
     window.trayAPI.getScreenPermission(),
-    window.trayAPI.checkDockPermission(),
+    window.trayAPI.getDockAutomation(),
   ]);
-  permGranted = { screen: screenStatus === "granted", dock };
+  permGranted = {
+    screen: screenStatus === "granted",
+    automation: automation === "granted",
+  };
   renderPermissionRows();
   syncStartButton();
 }
@@ -212,14 +250,16 @@ async function requestPermission(key) {
   //  (2) 실제로 거부함 → 시스템 설정에서 직접 켜야 함
   // 그래서 추측해서 설정을 열지 않고, 두 번째 클릭에서만 설정을 연다.
   if (permTried[key]) {
-    if (key === "dock") window.trayAPI.openDockPermissionSettings();
+    if (key === "automation") window.trayAPI.openDockAutomationSettings();
     else window.trayAPI.openScreenPermissionSettings();
     return;
   }
   permTried[key] = true;
 
-  if (key === "dock") {
-    permGranted.dock = await window.trayAPI.checkDockPermission();
+  if (key === "automation") {
+    // 이 호출이 곧 요청이다 — 첫 Apple Event에서 macOS가 권한 창을 띄운다.
+    permGranted.automation =
+      (await window.trayAPI.requestDockAutomation()) === "granted";
   } else {
     const after = await window.trayAPI.requestScreenPermission();
     permGranted.screen = after === "granted";
@@ -283,9 +323,13 @@ onboardingLang.addEventListener("click", () => {
 });
 
 // 언어가 바뀌면 버튼 라벨과 현재 단계 문구를 다시 그린다.
-onLocaleChange(() => {
+onLocaleChange(async () => {
   syncOnboardingLangLabel();
-  if (onboardingState) renderOnboardingStep();
+  if (!onboardingState) return;
+  // 질문 문구·선택지 라벨은 메인이 pick()으로 미리 번역해 보낸 값이라(evolution.js의
+  // serialize), 렌더러가 다시 그리는 것만으로는 안 바뀐다. 상태를 새로 받아야 한다.
+  onboardingState = await window.trayAPI.getOnboardingState();
+  renderOnboardingStep();
 });
 
 syncOnboardingLangLabel();

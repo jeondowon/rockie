@@ -1185,6 +1185,9 @@ body {
   color: #1b1b16;
   white-space: pre-line;
   word-break: keep-all;
+  /* 마지막 줄에 단어 하나만 남는 것("...from the / sky.")을 막고 줄 길이를 고르게
+     나눈다. 영어에서 특히 자주 생기지만 한국어에도 도움이 된다. */
+  text-wrap: balance;
 }
 
 /* 첫 화면(scene-intro)에서는 타이틀이 이미 ROCKIE를 보여주므로
@@ -1197,6 +1200,15 @@ body {
   text-align: center;
   font-size: 13px;
   padding-top: 18px;
+}
+
+/* 영어는 같은 문장도 길어져 첫 화면 문구가 13px에서 두 줄이 된다. 본문과 같은 12px로
+   낮추면 한 줄에 들어간다(실측). 한국어는 13px 그대로 둔다. */
+html[lang="en"]
+  .onboarding-scene.scene-intro
+  ~ .onboarding-dialog
+  .onboarding-text {
+  font-size: 12px;
 }
 
 /* 앱 한 줄 소개: ROCKIE 타이틀 바로 아래(intro-panel 안이라 첫 화면에서만 노출).
@@ -2218,15 +2230,14 @@ body {
   border-bottom: 2px dashed #ded7c6;
 }
 
-.set-row:last-child {
+/* 마지막 행에는 구분선을 두지 않는다. :last-child만 보면 숨겨진 행(자동화 권한)이
+   마지막일 때 실제로 보이는 마지막 행에 선이 남으므로, "뒤에 보이는 행이 있는지"로
+   판단한다. */
+.set-row:not(:has(~ .set-row:not(.hidden))) {
   border-bottom: none;
 }
 
 /* set-list 밖(패널에 단독)으로 놓인 행(권한)은 직접 창 끝까지 뺀다 */
-.set-row-btn {
-  margin: 0 -16px;
-}
-
 .set-box {
   font-family: "Galmuri14", monospace;
   font-size: 14px;

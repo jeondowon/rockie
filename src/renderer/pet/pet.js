@@ -1436,8 +1436,9 @@ function openModePanel() {
     const row = cardEl("button", "mode-row", null);
     row.appendChild(iconEl(m.icon));
     const txt = cardEl("span", "mode-txt", null);
-    txt.appendChild(cardEl("span", "mode-name", m.label));
-    txt.appendChild(cardEl("span", "mode-desc", m.desc));
+    // MODES의 label·desc는 { ko, en } 객체다. 그대로 넘기면 [object Object]가 찍힌다.
+    txt.appendChild(cardEl("span", "mode-name", pickText(m.label)));
+    txt.appendChild(cardEl("span", "mode-desc", pickText(m.desc)));
     row.appendChild(txt);
     row.addEventListener("click", () => {
       closeModePanel();

@@ -15,7 +15,11 @@ const path = require("path");
 const fs = require("fs");
 const store = require("./store");
 const evolution = require("./evolution");
-const { startDockTracker, probeDockPermission } = require("./dock-tracker");
+const {
+  startDockTracker,
+  probeAutomationPermission,
+  getAutomationStatus,
+} = require("./dock-tracker");
 const { pick, setLocale } = require("./i18n");
 const { getSystemStats } = require("./system-stats");
 const { getAiUsage, startAiUsage } = require("./ai-usage");
@@ -41,6 +45,12 @@ let trayPopup; // 트레이 클릭 시 뜨는 커스텀 팝업 창
 let watcherInterval;
 let cursorInterval;
 let dockTracker;
+
+// 온보딩 완료 시점과 앱 시작 시점 양쪽에서 부르므로 중복 시작을 막는다.
+function startDockTracker0() {
+  if (dockTracker) return;
+  dockTracker = startDockTracker(() => mainWindow);
+}
 let dailyResetInterval;
 let petDisplaySprite = {
   level: "level0",
@@ -125,7 +135,9 @@ function createWindow() {
 
   startActiveWindowWatcher();
   startCursorTracker();
-  dockTracker = startDockTracker(() => mainWindow);
+  // 온보딩 중에는 시작하지 않는다 — 첫 틱의 osascript가 프롤로그 도중에
+  // 자동화 권한 창을 띄운다. 권한 화면에서 직접 요청하고, 완료 시 시작한다.
+  if (store.get().onboarding.completed) startDockTracker0();
   startDailyResetTimer();
 
   if (isDev) startDevReload();
@@ -589,6 +601,7 @@ ipcMain.handle("onboarding:complete", () => {
     }
     sendToPet("onboarding:completed");
   }
+  startDockTracker0(); // 권한 화면을 지난 뒤부터 Dock을 추적한다
   return state;
 });
 
@@ -821,11 +834,15 @@ ipcMain.on("open-screen-permission-settings", () => {
 });
 
 // Dock 위치 읽기(손쉬운 사용 + 자동화). 확인과 요청이 같은 동작이라 핸들러도 하나다.
-ipcMain.handle("check-dock-permission", () => probeDockPermission());
+// 자동화 권한은 손쉬운 사용과 별개다. 거부돼 있으면 Dock 좌표를 못 읽어 펫이
+// 자동 숨김 Dock을 엉뚱한 높이로 피한다. 요청 API가 없어 설정 창만 열어 준다.
+ipcMain.handle("get-dock-automation", () => getAutomationStatus());
 
-ipcMain.on("open-dock-permission-settings", () => {
+ipcMain.handle("request-dock-automation", () => probeAutomationPermission());
+
+ipcMain.on("open-dock-automation-settings", () => {
   shell.openExternal(
-    "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
+    "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation",
   );
 });
 

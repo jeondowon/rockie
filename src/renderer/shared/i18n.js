@@ -218,6 +218,9 @@ const I18N_STRINGS = {
     "settings.petPlacement": "애완돌 위치",
     "settings.petSize": "애완돌 크기",
     "settings.resetBtn": "↻ 처음부터 다시 키우기",
+    "settings.automationPermission": "자동화 권한",
+    "settings.automationPermissionDesc":
+      "Dock 위에 올라서려면 필요합니다. 눌러서 설정을 여세요.",
     "settings.screenPermission": "화면 기록 권한",
     "settings.screenPermissionDesc": "활성 앱 감지(말풍선)에 필요합니다.",
     "settings.sizeLarge": "크게",
@@ -249,8 +252,9 @@ const I18N_STRINGS = {
     "onboarding.relaunchStart": "재시작하고 시작하기",
     "perm.screen": "화면 기록",
     "perm.screenDesc": "지금 보고 있는 앱을 알아채고 말을 걸어요.",
-    "perm.dock": "손쉬운 사용",
-    "perm.dockDesc": "Dock 위치를 읽어서 가리지 않게 피해 다녀요.",
+    "perm.automation": "자동화 권한 (선택)",
+    "perm.automationDesc":
+      "Dock의 위치를 읽어서 가리지 않게 피해 다녀요. 창이 뜨면 '허용'을 눌러주세요.",
     "perm.allow": "허용",
     "perm.openSettings": "설정 열기",
   },
@@ -465,6 +469,9 @@ const I18N_STRINGS = {
     "settings.petPlacement": "Pet position",
     "settings.petSize": "Pet size",
     "settings.resetBtn": "↻ Start over from scratch",
+    "settings.automationPermission": "Automation permission",
+    "settings.automationPermissionDesc":
+      "Needed to stand on the Dock. Click to open settings.",
     "settings.screenPermission": "Screen Recording",
     "settings.screenPermissionDesc":
       "Needed to detect the active app (speech bubbles).",
@@ -503,8 +510,9 @@ const I18N_STRINGS = {
     "perm.screen": "Screen Recording",
     "perm.screenDesc":
       "Lets your pet notice the app you're using and say something.",
-    "perm.dock": "Accessibility",
-    "perm.dockDesc": "Reads the Dock's position so your pet doesn't cover it.",
+    "perm.automation": "Automation (optional)",
+    "perm.automationDesc":
+      "Reads the Dock's position so your pet doesn't cover it. Click Allow when the prompt appears.",
     "perm.allow": "Allow",
     "perm.openSettings": "Open Settings",
   },
@@ -518,6 +526,10 @@ const localeListeners = new Set();
 
 // key에 해당하는 문자열. 없으면 한국어로, 그것도 없으면 key 자체를 돌려준다
 // (번역 누락이 화면에서 바로 눈에 띄도록).
+// 첫 페인트 전에 현재 언어를 문서에 새겨 둔다(setLocale은 값이 "바뀔 때"만 도므로
+// 처음부터 영어인 경우를 여기서 처리한다).
+document.documentElement.lang = currentLocale;
+
 function t(key, vars) {
   let s = I18N_STRINGS[currentLocale]?.[key] ?? I18N_STRINGS.ko?.[key] ?? key;
   if (vars) {
@@ -549,6 +561,7 @@ function setLocale(locale) {
   const next = locale === "en" ? "en" : "ko";
   if (next === currentLocale) return;
   currentLocale = next;
+  document.documentElement.lang = next; // 언어별 CSS(글자 크기 등)의 기준
   applyStaticI18n();
   for (const cb of localeListeners) cb(next);
 }

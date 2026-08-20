@@ -9,9 +9,10 @@ contextBridge.exposeInMainWorld("trayAPI", {
     ipcRenderer.invoke("request-screen-permission"),
   openScreenPermissionSettings: () =>
     ipcRenderer.send("open-screen-permission-settings"),
-  checkDockPermission: () => ipcRenderer.invoke("check-dock-permission"),
-  openDockPermissionSettings: () =>
-    ipcRenderer.send("open-dock-permission-settings"),
+  getDockAutomation: () => ipcRenderer.invoke("get-dock-automation"),
+  requestDockAutomation: () => ipcRenderer.invoke("request-dock-automation"),
+  openDockAutomationSettings: () =>
+    ipcRenderer.send("open-dock-automation-settings"),
   relaunchApp: () => ipcRenderer.send("app:relaunch"),
   onWillShow: (callback) => {
     ipcRenderer.on("tray-popup-will-show", () => callback());

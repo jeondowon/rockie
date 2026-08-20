@@ -794,15 +794,6 @@
 
         <!-- ############ SETTINGS ############ -->
         <div id="settings-view" class="screen hidden">
-          <!-- 언어 -->
-          <section class="panel">
-            <div class="panel-label" data-i18n="settings.language">언어</div>
-            <div class="grid-2">
-              <button class="chip" data-language="ko">한국어</button>
-              <button class="chip" data-language="en">English</button>
-            </div>
-          </section>
-
           <!-- 일반 -->
           <section class="panel">
             <div class="panel-label" data-i18n="settings.general">일반</div>
@@ -858,17 +849,38 @@
           <!-- 권한 (실제 동작) -->
           <section class="panel">
             <div class="panel-label" data-i18n="settings.permissions">권한</div>
-            <button id="perm-row" class="set-row set-row-btn">
-              <span id="perm-box" class="set-box">[&nbsp;&nbsp;]</span>
-              <div class="set-text">
-                <div class="set-title" data-i18n="settings.screenPermission">
-                  화면 기록 권한
+            <div class="set-list">
+              <button id="perm-row" class="set-row">
+                <span id="perm-box" class="set-box">[&nbsp;&nbsp;]</span>
+                <div class="set-text">
+                  <div class="set-title" data-i18n="settings.screenPermission">
+                    화면 기록 권한
+                  </div>
+                  <div id="perm-hint" class="set-desc">
+                    활성 앱 감지(말풍선)에 필요합니다.
+                  </div>
                 </div>
-                <div id="perm-hint" class="set-desc">
-                  활성 앱 감지(말풍선)에 필요합니다.
+              </button>
+              <!-- 자동화 권한은 거부됐을 때만 보여준다. 허용돼 있으면 사용자가 할 일이
+                 없고, 첫 osascript 호출 전에는 상태를 알 수 없다. -->
+              <button id="auto-perm-row" class="set-row hidden">
+                <span id="auto-perm-box" class="set-box">[&nbsp;&nbsp;]</span>
+                <div class="set-text">
+                  <div
+                    class="set-title"
+                    data-i18n="settings.automationPermission"
+                  >
+                    자동화 권한
+                  </div>
+                  <div
+                    class="set-desc"
+                    data-i18n="settings.automationPermissionDesc"
+                  >
+                    Dock 위에 올라서려면 필요합니다.
+                  </div>
                 </div>
-              </div>
-            </button>
+              </button>
+            </div>
           </section>
 
           <!-- 애완돌 위치 -->
@@ -993,6 +1005,15 @@
                 value="20"
               />
               <span class="nap-slider-cap">120</span>
+            </div>
+          </section>
+
+          <!-- 언어 -->
+          <section class="panel">
+            <div class="panel-label" data-i18n="settings.language">언어</div>
+            <div class="grid-2">
+              <button class="chip" data-language="ko">한국어</button>
+              <button class="chip" data-language="en">English</button>
             </div>
           </section>
 

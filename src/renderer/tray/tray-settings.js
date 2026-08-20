@@ -20,11 +20,26 @@ async function refreshPermToggle() {
   setPermBox(status === "granted");
 }
 
+// 설정 · 자동화 권한 (Dock 좌표 읽기). 손쉬운 사용과 별개 권한이라 따로 안내한다.
+// 거부됐을 때만 보여준다 — 허용 상태면 사용자가 할 일이 없고, 앱이 아직 Dock을
+// 한 번도 안 읽었으면(unknown) 판단할 근거가 없다.
+const autoPermRow = document.getElementById("auto-perm-row");
+
+async function refreshAutomationPerm() {
+  const status = await window.trayAPI.getDockAutomation();
+  autoPermRow.classList.toggle("hidden", status !== "denied");
+}
+
+autoPermRow.addEventListener("click", () => {
+  window.trayAPI.openDockAutomationSettings();
+});
+
 async function showSettings() {
   showScreen("settings");
   permHint.textContent = t("settings.screenPermissionDesc");
   permRequested = false; // 화면을 새로 열면 다시 요청부터 시작한다
   refreshPermToggle();
+  refreshAutomationPerm();
   refreshSettings();
 }
 
