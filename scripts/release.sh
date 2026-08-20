@@ -47,8 +47,19 @@ if [ -n "$(git status --porcelain assets/licenses/)" ]; then
   exit 1
 fi
 
+# 릴리스 본문은 docs/release-notes.md에서 이번 버전 절만 잘라 쓴다.
+# 절이 없으면 본문이 빈 채로 공개되므로 여기서 막는다.
+NOTES=$(mktemp)
+trap 'rm -f "$NOTES"' EXIT
+awk -v v="## $VERSION" '$0 == v {found=1; next} found && /^## / {exit} found' \
+  docs/release-notes.md > "$NOTES"
+if [ ! -s "$NOTES" ]; then
+  echo "✗ docs/release-notes.md에 '## $VERSION' 절이 없습니다."
+  exit 1
+fi
+
 xcrun notarytool history --keychain-profile "$PROFILE" >/dev/null
-echo "✓ $TAG / 공증 프로파일 $PROFILE / 작업 트리 깨끗함 / 라이선스 고지 최신"
+echo "✓ $TAG / 공증 프로파일 $PROFILE / 작업 트리 깨끗함 / 라이선스 고지 최신 / 릴리스 노트 있음"
 
 # ---------- 1. 빌드 ----------
 # electron-builder가 .app을 서명·공증·스테이플하고 dmg와 zip을 만든다.
@@ -85,7 +96,7 @@ read -r -p "  진행할까요? [y/N] " reply
 gh release create "$TAG" \
   --title "Rockie $VERSION" \
   --target "$(git rev-parse HEAD)" \
-  --generate-notes \
+  --notes-file "$NOTES" \
   "$DMG" "$ZIP" "$YML"
 
 step "완료"

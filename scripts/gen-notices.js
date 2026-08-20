@@ -14,6 +14,10 @@
  * - 번들한 폰트
  *
  * 의존성을 추가·갱신하면 다시 돌려야 한다.
+ *
+ * 출력에 앱 버전은 넣지 않는다. release.sh의 사전 점검이 이 파일을 다시 만들어
+ * 달라지는지로 "의존성이 바뀌었는데 안 만들었다"를 잡는데, 버전을 적으면
+ * 릴리스마다 달라져 점검이 매번 걸린다.
  */
 
 const { execFileSync } = require("child_process");
@@ -102,7 +106,6 @@ Rockie는 아래 오픈소스 소프트웨어를 포함하고 있습니다. 각 
 
 이 문서는 \`scripts/gen-notices.js\`가 생성합니다. 직접 고치지 마세요.
 
-- 생성 기준 버전: Rockie ${JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8")).version}
 - 포함 대상: 앱 실행에 필요한 런타임 의존성 ${pkgs.length}개, Electron ${electron.version}, 번들 폰트
 
 ---

@@ -1,4 +1,6 @@
-// 자동 업데이트 (jeondowon.com/rockie/updates/의 latest-mac.yml을 읽는다).
+// 자동 업데이트 (GitHub Releases의 latest-mac.yml을 읽는다).
+// 배포처는 package.json의 build.publish에 있다. 산출물이 100MB를 넘어 정적
+// 호스팅에 못 올리기 때문에 GitHub이다(경위는 docs/release.md 6.4.1).
 //
 // 다운로드는 조용히 백그라운드로 하고, 설치 시점만 사용자가 트레이에서 고른다.
 // Rockie는 Dock 아이콘이 없어 "앱을 다시 켜세요" 같은 안내가 잘 닿지 않으므로,
