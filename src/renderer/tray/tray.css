@@ -2385,6 +2385,27 @@ html[lang="en"]
   color: #1b1b16;
 }
 
+/* 정책 링크 줄. 항목이 넷이라 좁은 팝업에서는 두 줄로 접힌다. */
+.policy-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 8px;
+  margin-bottom: 12px;
+}
+
+.policy-link {
+  all: unset;
+  cursor: pointer;
+  font-size: 9px;
+  color: #6a6452;
+  text-decoration: underline;
+}
+
+.policy-link:hover {
+  color: #1b1b16;
+}
+
 .app-info {
   font-size: 9px;
   color: #6a6452;

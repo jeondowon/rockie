@@ -192,7 +192,7 @@ const I18N_STRINGS = {
       "열린 설정 창에서 Rockie를 허용한 뒤 앱을 재시작해 주세요.",
     "settings.permRestartNote":
       "허용하셨다면 앱을 재시작해야 적용됩니다. 아직이라면 한 번 더 눌러 설정을 여세요.",
-    "settings.appInfoHtml": "Rockie v1 · 나의 애완돌<br />© 2026 · jeondowon",
+    "settings.appTagline": "나의 애완돌",
     "settings.autoLaunch": "로그인 시 자동 실행",
     "settings.autoLaunchDesc": "컴퓨터를 켜면 애완돌이 함께 깨어나요",
     "settings.bottomLeft": "좌하단",
@@ -206,6 +206,11 @@ const I18N_STRINGS = {
     "settings.hideFromCaptureDesc":
       "스크린샷·녹화·화면 공유 시 애완돌이 찍히지 않아요",
     "settings.homepage": "홈페이지 방문하기",
+    // 설정 하단 링크 줄. 한 줄에 네 개가 들어가야 하므로 짧게 유지한다.
+    "settings.privacy": "개인정보처리방침",
+    "settings.terms": "이용약관",
+    "settings.licenses": "오픈소스 라이선스",
+    "settings.contact": "문의",
     "settings.language": "언어",
     "settings.min15": "15분",
     "settings.min25": "25분",
@@ -444,7 +449,7 @@ const I18N_STRINGS = {
       "Allow Rockie in the Settings window that just opened, then restart the app.",
     "settings.permRestartNote":
       "If you allowed it, restart the app to apply. If not, tap again to open Settings.",
-    "settings.appInfoHtml": "Rockie v1 · My Pet Rock<br />© 2026 · jeondowon",
+    "settings.appTagline": "My Pet Rock",
     "settings.autoLaunch": "Launch at login",
     "settings.autoLaunchDesc": "Your pet wakes up when your computer does",
     "settings.bottomLeft": "Bottom left",
@@ -457,6 +462,10 @@ const I18N_STRINGS = {
     "settings.hideFromCaptureDesc":
       "Your pet won't appear in screenshots, recordings, or shared screens",
     "settings.homepage": "Visit the homepage",
+    "settings.privacy": "Privacy",
+    "settings.terms": "Terms",
+    "settings.licenses": "Licenses",
+    "settings.contact": "Contact",
     "settings.language": "Language",
     "settings.min15": "15 min",
     "settings.min25": "25 min",

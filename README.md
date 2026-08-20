@@ -96,3 +96,17 @@ test/                  진화 로직 테스트 (node --test)
 - 확정 이후 친밀도·추가 진화 단계
 - 클릭 시 캐릭터를 드래그해서 위치 이동
 - 앱별 메시지 규칙을 JSON 설정 파일로 분리해 코드 수정 없이 편집
+
+## 8. 라이선스
+
+이 저장소는 두 부분으로 나뉘어 라이선스됩니다. 자세한 범위는 [LICENSE](./LICENSE)를 참고해 주세요.
+
+- **소스 코드** — MIT License. 자유롭게 이용·수정·재배포하실 수 있습니다.
+- **캐릭터·이미지·GIF·아이콘과 "Rockie" 명칭** — 모든 권리를 유보합니다. 코드를 가져다 쓰시는 경우 자산은 직접 제작하신 것으로 교체해 주세요.
+
+앱에 포함된 오픈소스 소프트웨어의 저작권 고지는 [assets/licenses/THIRD-PARTY-NOTICES.md](./assets/licenses/THIRD-PARTY-NOTICES.md)에 있습니다. 이 파일은 `npm run notices`로 생성하며, 의존성을 추가·갱신하면 다시 돌려야 합니다.
+
+앱 이용에 관한 문서는 다음과 같습니다.
+
+- [개인정보처리방침](./docs/privacy-policy.md)
+- [이용약관](./docs/terms.md)

@@ -1,12 +1,20 @@
 {
   "name": "rockie-desktop-pet",
   "version": "1.0.1",
-  "description": "A desktop pet application built with Electron.",
+  "description": "화면 위에 사는 데스크톱 애완돌. 마우스를 따라다니고 활성 앱에 반응하며 성향 질문으로 진화합니다.",
   "main": "src/main/main.js",
+  "author": "jeondowon <dowon.9102@gmail.com>",
+  "homepage": "https://jeondowon.com/rockie",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jeondowon/rockie.git"
+  },
+  "license": "SEE LICENSE IN LICENSE",
   "scripts": {
     "start": "electron .",
     "dev": "DEV_RELOAD=1 electron .",
     "test": "node --test",
+    "notices": "node scripts/gen-notices.js",
     "dist": "electron-builder --mac",
     "build:helper": "mkdir -p assets/helper/KeyBlocker.app/Contents/MacOS && swiftc -swift-version 5 -O assets/helper/keyblocker.swift -o assets/helper/KeyBlocker.app/Contents/MacOS/keyblocker && codesign --force --deep --options runtime --sign \"${KEYBLOCKER_CODESIGN_IDENTITY:--}\" --identifier com.jeondowon.rockie.keyblocker assets/helper/KeyBlocker.app"
   },
@@ -28,7 +36,18 @@
     "files": [
       "!docs/**",
       "!test/**",
-      "!scripts/**"
+      "!scripts/**",
+      "!assets/licenses/**"
+    ],
+    "extraResources": [
+      {
+        "from": "assets/licenses/THIRD-PARTY-NOTICES.md",
+        "to": "THIRD-PARTY-NOTICES.md"
+      },
+      {
+        "from": "node_modules/electron/dist/LICENSES.chromium.html",
+        "to": "LICENSES.chromium.html"
+      }
     ],
     "asarUnpack": [
       "assets/helper/**",

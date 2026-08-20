@@ -51,6 +51,7 @@ const focusMinuteChips = document.querySelectorAll(".chip[data-focus-minutes]");
 const languageChips = document.querySelectorAll(".chip[data-language]");
 const napRange = document.getElementById("nap-minutes-range");
 const napValueEl = document.getElementById("nap-minutes-value");
+const appVersionEl = document.getElementById("app-version");
 const resetBtn = document.getElementById("reset-btn");
 const confirmOverlay = document.getElementById("confirm-overlay");
 const confirmCancel = document.getElementById("confirm-cancel");
@@ -88,6 +89,8 @@ async function refreshSettings() {
   );
   napRange.value = String(Number(s.napMinutes) || 20);
   napValueEl.textContent = napRange.value; // 슬라이더가 값을 범위 안으로 다듬은 뒤 읽는다
+  // 언어를 바꿔도 지워지지 않도록 data-i18n이 없는 자리에 따로 넣는다.
+  appVersionEl.textContent = s.appVersion || "?";
 }
 
 settingToggles.forEach((btn) => {
@@ -176,6 +179,12 @@ resetBtn.addEventListener("click", showResetConfirm);
 // 설정 하단 홈페이지 링크
 document.getElementById("homepage-btn").addEventListener("click", () => {
   window.trayAPI.sendAction("homepage");
+});
+
+// 설정 하단 정책 링크 줄. data-link 값이 그대로 메인의 action 이름이 된다.
+document.getElementById("policy-links").addEventListener("click", (e) => {
+  const link = e.target.closest("[data-link]");
+  if (link) window.trayAPI.sendAction(link.dataset.link);
 });
 confirmCancel.addEventListener("click", hideResetConfirm);
 confirmOk.addEventListener("click", async () => {

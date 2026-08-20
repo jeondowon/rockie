@@ -39,6 +39,16 @@ const {
 // 개발 모드 여부: `npm run dev`(DEV_RELOAD=1)로 실행하면 파일 저장 시 자동 새로고침
 const isDev = !app.isPackaged && process.env.DEV_RELOAD === "1";
 
+// 트레이 설정 하단의 링크. 키는 렌더러가 보내는 action 이름과 같아야 한다.
+// 주소를 바꾸면 배포된 앱은 그대로 예전 주소를 열므로, 웹사이트 쪽에서 리다이렉트를 걸어야 한다.
+const EXTERNAL_LINKS = {
+  homepage: "https://jeondowon.com/rockie/",
+  privacy: "https://jeondowon.com/rockie/privacy",
+  terms: "https://jeondowon.com/rockie/terms",
+  licenses: "https://jeondowon.com/rockie/licenses",
+  contact: "mailto:dowon.9102@gmail.com",
+};
+
 let mainWindow;
 let tray; // GC로 사라지지 않도록 전역 참조 유지
 let trayPopup; // 트레이 클릭 시 뜨는 커스텀 팝업 창
@@ -463,8 +473,12 @@ ipcMain.on("tray-menu-action", (_event, action) => {
       hideTrayPopup();
       break;
     case "homepage":
-      // 트레이 홈페이지 링크 → 기본 브라우저로 열고 팝업은 닫는다
-      shell.openExternal("https://jeondowon.com/rockie/");
+    case "privacy":
+    case "terms":
+    case "licenses":
+    case "contact":
+      // 트레이 설정 하단 링크 → 기본 브라우저(문의는 메일 앱)로 열고 팝업은 닫는다
+      shell.openExternal(EXTERNAL_LINKS[action]);
       hideTrayPopup();
       break;
     case "exit-mode":
@@ -725,6 +739,8 @@ ipcMain.handle("settings:get", () => {
     notifications: data.notifications.notificationsEnabled,
     // 펫 렌더러가 첫 클릭 때 모드 안내를 띄울지 판단하는 값
     modeHintSeen: !!data.user.modeHintSeenAt,
+    // 설정 화면 하단에 표시할 앱 버전. 저장값이 아니라 package.json에서 온다.
+    appVersion: app.getVersion(),
   };
 });
 

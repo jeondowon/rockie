@@ -1033,8 +1033,42 @@
             >
               홈페이지 방문하기
             </button>
-            <div class="app-info" data-i18n-html="settings.appInfoHtml">
-              Rockie v1 · 나의 애완돌<br />© 2026 · jeondowon
+            <!-- 클릭은 컨테이너에서 위임 처리한다(tray-settings.js). data-link 값이
+                 그대로 메인의 action 이름이 되므로 EXTERNAL_LINKS의 키와 같아야 한다. -->
+            <div id="policy-links" class="policy-links">
+              <button
+                class="policy-link"
+                data-link="privacy"
+                data-i18n="settings.privacy"
+              >
+                개인정보처리방침
+              </button>
+              <button
+                class="policy-link"
+                data-link="terms"
+                data-i18n="settings.terms"
+              >
+                이용약관
+              </button>
+              <button
+                class="policy-link"
+                data-link="licenses"
+                data-i18n="settings.licenses"
+              >
+                오픈소스 라이선스
+              </button>
+              <button
+                class="policy-link"
+                data-link="contact"
+                data-i18n="settings.contact"
+              >
+                문의
+              </button>
+            </div>
+            <div class="app-info">
+              Rockie v<span id="app-version">–</span> ·
+              <span data-i18n="settings.appTagline">나의 애완돌</span><br />©
+              2026 · jeondowon
             </div>
           </section>
         </div>

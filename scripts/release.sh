@@ -39,8 +39,16 @@ if ! git merge-base --is-ancestor HEAD "origin/$(git branch --show-current)" 2>/
   exit 1
 fi
 
+# 의존성을 바꾸고 npm run notices를 잊으면 실제 배포물과 라이선스 고지가 어긋난다.
+# 위에서 작업 트리가 깨끗한 것을 확인했으므로, 다시 만들어 달라지면 오래된 것이다.
+npm run --silent notices >/dev/null
+if [ -n "$(git status --porcelain assets/licenses/)" ]; then
+  echo "✗ 오픈소스 라이선스 고지가 의존성과 어긋납니다. 방금 갱신했으니 커밋 후 다시 실행하세요."
+  exit 1
+fi
+
 xcrun notarytool history --keychain-profile "$PROFILE" >/dev/null
-echo "✓ $TAG / 공증 프로파일 $PROFILE / 작업 트리 깨끗함"
+echo "✓ $TAG / 공증 프로파일 $PROFILE / 작업 트리 깨끗함 / 라이선스 고지 최신"
 
 # ---------- 1. 빌드 ----------
 # electron-builder가 .app을 서명·공증·스테이플하고 dmg와 zip을 만든다.
