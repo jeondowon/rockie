@@ -192,7 +192,7 @@ const I18N_STRINGS = {
       "열린 설정 창에서 Rockie를 허용한 뒤 앱을 재시작해 주세요.",
     "settings.permRestartNote":
       "허용하셨다면 앱을 재시작해야 적용됩니다. 아직이라면 한 번 더 눌러 설정을 여세요.",
-    "settings.appTagline": "나의 애완돌",
+    "settings.appTagline": "데스크톱 애완돌",
     "settings.autoLaunch": "로그인 시 자동 실행",
     "settings.autoLaunchDesc": "컴퓨터를 켜면 애완돌이 함께 깨어나요",
     "settings.bottomLeft": "좌하단",
@@ -449,7 +449,7 @@ const I18N_STRINGS = {
       "Allow Rockie in the Settings window that just opened, then restart the app.",
     "settings.permRestartNote":
       "If you allowed it, restart the app to apply. If not, tap again to open Settings.",
-    "settings.appTagline": "My Pet Rock",
+    "settings.appTagline": "Desktop Pet Rock",
     "settings.autoLaunch": "Launch at login",
     "settings.autoLaunchDesc": "Your pet wakes up when your computer does",
     "settings.bottomLeft": "Bottom left",
