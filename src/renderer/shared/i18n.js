@@ -20,6 +20,7 @@ const I18N_STRINGS = {
     "mode.focus": "집중 모드",
     "mode.pause": "일시정지",
     // ---- 메뉴 ----
+    "menu.installUpdate": "업데이트 설치 후 재시작",
     "menu.myPet": "나의 애완돌",
     "menu.settings": "설정",
     "menu.systemMonitor": "시스템 모니터",
@@ -264,6 +265,7 @@ const I18N_STRINGS = {
     "mode.focus": "Focus Mode",
     "mode.pause": "Pause",
     // ---- 메뉴 ----
+    "menu.installUpdate": "Install update and restart",
     "menu.myPet": "My Pet",
     "menu.settings": "Settings",
     "menu.systemMonitor": "System Monitor",

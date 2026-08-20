@@ -31,6 +31,14 @@ const modeBannerPause = document.getElementById("mode-banner-pause");
 // 메뉴 · "나의 애완돌" 항목 (배지 표시용)
 const statusItem = document.querySelector('.mrow[data-action="status"]');
 
+// 메뉴 · "업데이트 설치 후 재시작" 항목. 새 버전을 다 받았을 때만 보인다.
+const updateRow = document.getElementById("update-row");
+
+function renderUpdateRow(status) {
+  updateRow.classList.toggle("hidden", !status || !status.downloaded);
+  resizeMenuIfActive(); // 항목이 늘고 줄면 메뉴 창 높이도 달라진다
+}
+
 // 메뉴 화면에 딱 맞는 창 높이(px) 계산. 항목 수/높이가 바뀌어도 자동으로 맞춰진다.
 function menuWindowHeight() {
   return (
@@ -115,6 +123,11 @@ window.trayAPI.onModeStatus((status) => {
   if (popupVisible) renderModeBanner(status);
 });
 
+// 다운로드가 끝나면 메인이 push. 팝업이 닫혀 있으면 다음에 열 때 onWillShow가 읽는다.
+window.trayAPI.onUpdateStatus((status) => {
+  if (popupVisible) renderUpdateRow(status);
+});
+
 // ---------- 화면 전환 ----------
 function showScreen(name) {
   for (const [key, node] of Object.entries(screens)) {
@@ -152,6 +165,7 @@ document.querySelectorAll(".mrow").forEach((item) => {
         showSettings(); // 뷰만 전환 (메인에 보낼 동작 없음)
         break;
       case "toggle-pet":
+      case "install-update":
       case "quit":
         window.trayAPI.sendAction(action);
         break;
@@ -185,6 +199,7 @@ window.trayAPI.onWillShow(async () => {
   showScreen("menu");
   refreshPermToggle();
   refreshBadge();
+  renderUpdateRow(await window.trayAPI.getUpdateStatus()); // 받아둔 업데이트가 있으면 설치 항목
   renderModeBanner(await window.trayAPI.getModeStatus()); // 진행 중 모드 배너
 });
 

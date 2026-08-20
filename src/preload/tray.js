@@ -45,6 +45,11 @@ contextBridge.exposeInMainWorld("trayAPI", {
   getSettings: () => ipcRenderer.invoke("settings:get"),
   setSetting: (key, value) => ipcRenderer.send("settings:set", { key, value }),
   resetPet: () => ipcRenderer.invoke("settings:reset"),
+  // 자동 업데이트 상태(메뉴의 설치 항목 표시용)
+  getUpdateStatus: () => ipcRenderer.invoke("update:get-status"),
+  onUpdateStatus: (callback) => {
+    ipcRenderer.on("update:status", (_event, status) => callback(status));
+  },
   // 집중 모드 상태(트레이 배너 표시용)
   getModeStatus: () => ipcRenderer.invoke("mode:get-status"),
   onModeStatus: (callback) => {

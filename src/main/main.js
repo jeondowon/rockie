@@ -21,6 +21,12 @@ const { getSystemStats } = require("./system-stats");
 const { getAiUsage, startAiUsage } = require("./ai-usage");
 const { makeTrayIcon } = require("./tray-icon");
 const {
+  startUpdater,
+  stopUpdater,
+  installUpdate,
+  getUpdateStatus,
+} = require("./updater");
+const {
   startKeyBlocker,
   stopKeyBlocker,
   openPermissionSettings,
@@ -286,6 +292,9 @@ ipcMain.on("mode:set-status", (_event, status) => {
 });
 ipcMain.handle("mode:get-status", () => currentModeStatus);
 
+// 트레이가 열릴 때마다 물어본다. 받아둔 업데이트가 있으면 메뉴에 설치 항목이 뜬다.
+ipcMain.handle("update:get-status", () => getUpdateStatus());
+
 ipcMain.on("pet:display-sprite", (_event, sprite) => {
   if (!sprite || !sprite.level || !sprite.prefix || !sprite.pose) return;
   petDisplaySprite = {
@@ -454,6 +463,10 @@ ipcMain.on("tray-menu-action", (_event, action) => {
       // 트레이 배너의 "일시정지 / 계속하기" → 펫 렌더러가 집중 타이머를 멈추거나 재개한다.
       sendToPet("mode:pause-request");
       break;
+    case "install-update":
+      // 받아둔 새 버전으로 교체하고 다시 켠다. 여기서 앱이 종료되므로 뒤 코드는 없다.
+      installUpdate();
+      break;
     case "quit":
       app.quit();
       break;
@@ -498,6 +511,25 @@ function showQuestionBanner({ preview = false } = {}) {
     });
   }
   banner.show();
+}
+
+// 새 버전을 다 받았을 때 한 번. 놓쳐도 트레이 메뉴에 항목이 남으므로,
+// 질문 알림과 같은 규칙으로 집중 모드 중에는 띄우지 않는다.
+const UPDATE_BANNER = {
+  title: { ko: "새 버전이 준비됐어요", en: "A new version is ready" },
+  body: {
+    ko: "메뉴바에서 '업데이트 설치 후 재시작'을 눌러주세요!",
+    en: "Choose 'Install update and restart' from the menu bar!",
+  },
+};
+
+function showUpdateBanner() {
+  if (!Notification.isSupported()) return;
+  if (dndActive) return;
+  new Notification({
+    title: pick(UPDATE_BANNER.title),
+    body: pick(UPDATE_BANNER.body),
+  }).show();
 }
 
 function runDailyResetIfNeeded() {
@@ -883,6 +915,12 @@ app.whenReady().then(() => {
   createWindow();
   createTray();
   applyStartupSettings();
+  startUpdater({
+    onDownloaded: (status) => {
+      sendToTray("update:status", status); // 팝업이 열려 있으면 즉시 항목이 뜬다
+      showUpdateBanner();
+    },
+  });
 });
 
 app.on("window-all-closed", () => {
@@ -890,6 +928,7 @@ app.on("window-all-closed", () => {
   if (cursorInterval) clearInterval(cursorInterval);
   if (dockTracker) dockTracker.stop();
   if (dailyResetInterval) clearInterval(dailyResetInterval);
+  stopUpdater();
   if (process.platform !== "darwin") app.quit();
 });
 

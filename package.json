@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "active-win": "^8.2.1",
+    "electron-updater": "^6.8.9",
     "systeminformation": "^5.31.15"
   },
   "build": {
@@ -35,7 +36,10 @@
       "node_modules/active-win/lib/binding/**"
     ],
     "mac": {
-      "target": "dmg",
+      "target": [
+        "dmg",
+        "zip"
+      ],
       "icon": "build/icon.icns",
       "category": "public.app-category.entertainment",
       "extendInfo": {
@@ -47,6 +51,11 @@
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.inherit.plist",
       "notarize": true
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "jeondowon",
+      "repo": "rockie"
     }
   }
 }
