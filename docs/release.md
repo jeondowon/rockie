@@ -106,7 +106,9 @@ Rockie는 화면 위에서 사용자 상황에 반응하는 앱이라, 기능 �
 | 현재 시간대 | 시간대별 반응 | 저장 안 함 | 없음 |
 | idle time | 장시간 사용 반응 | 저장 안 함 | 없음 |
 | CPU/RAM/디스크/배터리/네트워크 상태 | SYSTEM 화면 표시 | 저장 안 함 | 없음 |
-| 화면 기록 권한 상태 | 활성 창 감지 가능 여부 안내 | 저장 안 함 | 없음 |
+| Dock의 위치와 크기 | 애완돌이 Dock을 피해 다니도록 계산 | 저장 안 함 | 없음 |
+| 화면 기록 · 자동화 권한 상태 | 기능 사용 가능 여부 안내 | 저장 안 함 | 없음 |
+| 앱 설정 (자동실행·효과음·위치·크기·집중/쪽잠 시간·표시 언어) | 설정 유지 | 로컬 저장 | 없음 |
 | 앱 버전 · IP 주소 | 자동 업데이트 확인 | 저장 안 함 | **GitHub에 전달됨** |
 
 **2026-08-21 정정**: 위 표는 자동 업데이트 도입 전에 작성돼 "서버 전송 없음"이 전부였다. 지금은 `electron-updater`가 6시간마다 GitHub Releases에 요청을 보내므로, **GitHub 서버에 IP 주소·접속 시각·요청 파일 기록이 남는다.** 개발자가 접근할 수 있는 기록은 아니지만 개인정보처리방침에는 반드시 적어야 한다(작성 완료: `docs/privacy-policy.md` 5항).
@@ -183,9 +185,10 @@ Rockie는 화면 위에서 사용자 상황에 반응하는 앱이라, 기능 �
 
 현재 주요 의존성:
 
-- Electron
-- active-win
-- systeminformation
+- Electron (devDependency지만 앱에 통째로 들어간다)
+- `active-win` — 활성 창 조회
+- `systeminformation` — 시스템 모니터 수치
+- `electron-updater` — 자동 업데이트
 
 **(2026-08-21 완료)** `scripts/gen-notices.js`가 고지 문서를 생성한다.
 
@@ -222,22 +225,24 @@ Chromium 고지는 electron-builder가 macOS 타깃에서 자동으로 넣어주
 
 ### 6.1 패키징
 
-현재 `package.json`에는 실행 스크립트만 있고 배포 빌드 스크립트는 없다.
+**(2026-08-21 완료) `electron-builder`로 확정했고 설정은 `package.json`의 `build` 블록에 있다.**
 
-필요 작업:
+| 항목 | 값 |
+| --- | --- |
+| 도구 | `electron-builder` (devDependency) |
+| appId / productName | `com.jeondowon.rockie` / `Rockie` |
+| mac.target | `dmg`, `zip` (zip은 자동 업데이트 전용 — 6.4.2) |
+| icon | `build/icon.icns` |
+| 산출물 | `dist/` (`.gitignore` 처리) |
+| 스크립트 | `npm run dist` = `electron-builder --mac` |
 
-- Electron 패키징 도구 선택
-- 앱 이름, 아이콘, 번들 ID 설정
-- macOS 배포 파일 생성
-- 빌드 산출물을 Git에 커밋하지 않도록 정리
-- (보류) Windows 배포 파일 생성
+번들에서 빼는 것(`files`의 `!` 규칙): `docs/`, `test/`, `scripts/`, `assets/licenses/`.
+반대로 asar 밖으로 빼는 것(`asarUnpack`): `assets/helper/**`, `node_modules/active-win/main`,
+`node_modules/active-win/lib/binding/**` — 이유는 6.1.3.
 
-후보:
+실제 릴리스는 `npm run dist`가 아니라 `./scripts/release.sh`로 한다(6.4.4). 서명·공증·검증·업로드까지 한 번에 처리하기 때문이다.
 
-- electron-builder
-- electron-forge
-
-서명 여부와 무관하게 패키징 도구 도입은 선행되어야 한다. 서명은 여기에 설정을 얹는 작업이므로 나중에 붙여도 코드 변경은 생기지 않는다.
+(보류) Windows 배포 파일 생성 — 6.3
 
 #### 6.1.1 Rockie는 메뉴바 상주 앱이다 (2026-08-06 확정)
 
@@ -351,17 +356,17 @@ macOS의 권한 저장소(TCC)는 앱의 코드 서명으로 앱을 식별한다
 
 **절충안**: 미서명으로 먼저 공개해 반응을 보고, 실사용자가 생기면 그때 결제해도 된다. 전환 시 코드 변경은 없고 빌드 설정만 바뀌지만, 기존 사용자는 권한을 한 번 다시 허용해야 한다.
 
-#### 6.2.2 준비 항목
+#### 6.2.2 준비 항목 (2026-08-21 전부 완료)
 
-- Apple Developer 계정 ($99/년)
-- Developer ID Application 인증서
-- electron-builder 설정: `mac.hardenedRuntime: true`, `mac.notarize: true`, `target: dmg`
-- entitlements 파일
+- [x] Apple Developer 계정 ($99/년)
+- [x] Developer ID Application 인증서
+- [x] electron-builder 설정: `mac.hardenedRuntime: true`, `mac.notarize: true`, `gatekeeperAssess: false`, `target: ["dmg", "zip"]`
+- [x] entitlements 파일 — `build/entitlements.mac.plist`, `build/entitlements.mac.inherit.plist`
   - `com.apple.security.automation.apple-events` — dock-tracker의 `osascript` 호출용
-  - Info.plist에 `NSAppleEventsUsageDescription` — 없으면 System Events 호출이 조용히 실패한다
+  - Info.plist에 `NSAppleEventsUsageDescription` — 없으면 System Events 호출이 조용히 실패한다 (`mac.extendInfo`에 있다)
   - Electron 표준 entitlement 세트
-- notarization
-- stapling (`xcrun stapler staple`) — 오프라인 사용자도 경고 없이 열 수 있다
+- [x] notarization — `scripts/release.sh`가 `.app`(electron-builder)과 dmg(수동)를 각각 처리
+- [x] stapling (`xcrun stapler staple`) — 오프라인 사용자도 경고 없이 열 수 있다
 
 #### 6.2.3 이 프로젝트 고유의 서명 함정
 
@@ -385,15 +390,20 @@ Internal requirements=none     ← 대조 기준 없음
 
 `codesign --verify`도 실패한다. 이 상태로 실행하면 **권한 승인이 저장되지 않아 손쉬운 사용 권한 요청 창이 무한 반복된다**(`dock-tracker.js`가 `osascript`를 주기적으로 부르므로 그 주기마다 뜬다).
 
-**`npm run dist`가 빌드 직후 ad-hoc 서명까지 자동으로 한다.**
+**미서명으로 로컬 QA를 할 때는 빌드 직후 ad-hoc 서명을 직접 붙여야 한다.**
 
-```
-"dist": "electron-builder --mac --dir && codesign --force --deep --sign - dist/mac-arm64/Rockie.app"
+```bash
+npx electron-builder --mac --dir
+codesign --force --deep --sign - dist/mac-arm64/Rockie.app
 ```
 
-`--dir`은 dmg를 만들지 않고 `.app`만 빌드해 QA 반복을 빠르게 한다. dmg는 Developer ID 서명을 붙이는 시점에 만든다(그때는 electron-builder가 서명→dmg 순서를 알아서 처리하므로 위 `&& codesign`을 걷어낸다).
+`--dir`은 dmg를 만들지 않고 `.app`만 빌드해 QA 반복을 빠르게 한다.
 
 이 서명으로 식별자가 Info.plist의 `com.jeondowon.rockie`로 잡히고 Info.plist·리소스가 서명에 묶이면서 권한이 유지된다.
+
+> **Developer ID 서명을 붙인 지금은 이 절이 필요 없다.** `npm run dist`는 `electron-builder --mac`
+> 하나이고, electron-builder가 서명 → 공증 → dmg·zip 순서를 알아서 처리한다. 위 두 줄은 인증서
+> 없는 환경에서 빌드해볼 때만 쓴다.
 
 **ad-hoc의 한계**: 코드 해시가 빌드마다 바뀌므로 **재빌드할 때마다 권한을 다시 잡아야 하고, 로그인 항목에 중복 항목이 생긴다.** 실제로 재서명 한 번에 "Rockie" 로그인 항목이 2개가 됐다. 6.2.1에 적은 문제가 그대로 재현된 것이며, Developer ID 서명으로만 해결된다.
 
@@ -544,10 +554,13 @@ macOS 자동 업데이트는 Squirrel.Mac이 담당하는데 **zip만 받는다.
 `scripts/release.sh`가 하는 일:
 
 1. **사전 점검** — 태그 중복, 커밋 안 된 변경, 푸시 안 된 커밋, 공증 프로파일을 먼저 막는다
-2. **빌드** — `electron-builder --mac --publish never` (.app 서명·공증·스테이플 + dmg·zip 생성)
-3. **dmg 서명·공증·스테이플** — 6.2.4의 3줄. zip은 건드리지 않는다
-4. **검증** — `spctl`로 앱과 dmg 둘 다 `Notarized Developer ID` 확인
-5. **업로드** — 확인 프롬프트 후 `gh release create`로 3개 파일 공개
+2. **릴리스 본문 추출** — `docs/release-notes.md`에서 `## <version>` 절만 잘라낸다. **해당 절이 없으면 여기서 멈춘다**
+3. **빌드** — `electron-builder --mac --publish never` (.app 서명·공증·스테이플 + dmg·zip 생성)
+4. **dmg 서명·공증·스테이플** — zip은 건드리지 않는다
+5. **검증** — `spctl`로 앱과 dmg 둘 다 `Notarized Developer ID` 확인
+6. **업로드** — 확인 프롬프트 후 `gh release create`로 3개 파일 공개
+
+그래서 **버전을 올릴 때 `docs/release-notes.md`에 그 버전 절을 먼저 써야 한다.** 제목 형식(`## 1.0.2`)을 바꾸면 릴리스 본문이 비어버린다.
 
 빌드 중 업로드하지 않는 이유: `--publish always`는 빌드 직후 올려버려서 **공증 전 dmg가 올라간다.**
 
@@ -555,13 +568,12 @@ macOS 자동 업데이트는 Squirrel.Mac이 담당하는데 **zip만 받는다.
 
 #### 6.4.5 검증
 
-자동 업데이트는 **릴리스 두 번을 거쳐야 검증된다.** 설치된 1.0.0이 새로 올린 1.0.1을 집어오는지 보는 것 외에 방법이 없다.
+자동 업데이트는 **릴리스 두 번을 거쳐야 검증된다.** 설치된 이전 버전이 새로 올린 버전을 집어오는지 보는 것 외에 방법이 없다.
 
-- [ ] 1.0.0을 `/Applications`에 설치한 상태에서 1.0.1 릴리스
-- [ ] 1분 뒤 배너 알림이 뜨는지
-- [ ] 트레이 메뉴에 설치 항목이 뜨고 메뉴 창 높이가 맞는지
-- [ ] 눌렀을 때 재시작되고 버전이 올라가는지
-- [ ] 항목을 누르지 않고 앱을 껐다 켰을 때도 적용되는지
+**2026-08-21 1.0.0 → 1.0.1로 검증 완료.** 실제로 갱신되는 것을 확인했으므로 이 절은 더 검증할 것이 없다.
+
+- [x] 이전 버전이 설치된 상태에서 새 버전 릴리스
+- [x] 배너 알림 · 트레이 설치 항목 · 재시작 후 버전 상승
 
 ---
 
@@ -606,32 +618,62 @@ macOS 자동 업데이트는 Squirrel.Mac이 담당하는데 **zip만 받는다.
 
 ### 8.1 기능 확인
 
-- 첫 실행 온보딩 완료
-- 질문 답변/진화 흐름
-- 트레이 메뉴 열기/닫기
-- 펫 보이기/숨기기
-- 커서 따라오기
-- 좌하단/우하단 고정
+펫:
+
+- 커서 따라오기 / 좌하단·우하단 고정
 - 롱프레스 드래그
-- Dock 회피
-- 시간대별 반응
-- 장시간 사용 반응
+- Dock 회피 (Dock 자동 숨김 켠 상태 포함)
+- 클릭 말풍선, 시간대별 반응, 장시간 사용 반응
 - 활성 앱별 말풍선
 - 민감 앱 silent 처리
-- 화면 기록 권한 없음 상태 안내
-- 화면 기록 권한 허용 후 앱별 말풍선 동작
+- 화면 캡처에서 숨기기 토글 — 켠 채로 스크린샷·화면 녹화를 찍어 애완돌이 안 나오는지
+
+온보딩·질문:
+
+- 첫 실행 온보딩 완료
+- 온보딩 권한 화면: 화면 기록 허용 전에는 시작이 막히는지, 자동화를 거부해도 끝낼 수 있는지
+- 온보딩 도중 언어 전환 (운석 낙하 후에도 장면이 멈추지 않는지)
+- 질문 답변/진화 흐름, 진화 카드 연출
+- 스킨 착용/해제
+
+모드:
+
+- 더블클릭 옵션창, 첫 클릭 안내 말풍선 1회
+- 청소 모드 — 키보드 차단, 마우스 클릭으로 해제, 비상 해제 연타
+- 집중 모드 — 카운트다운, 일시정지/재개, 방해금지(말풍선·배너 알림 억제)
+- 쪽잠 모드 — 타이머, 알람, "5분 후 다시"
+- **손쉬운 사용 권한이 없는 상태**에서 청소·쪽잠에 들어갔을 때 안내 카드와 설정 열기 버튼
+- 효과음을 꺼도 쪽잠 알람은 울리는지
+- 모드 중 트레이 배너의 종료·일시정지 버튼
+
+트레이·설정:
+
+- 트레이 메뉴 열기/닫기, 펫 보이기/숨기기
+- 시스템 모니터 수치·게이지·상세 드롭다운
+- 설정 전 항목: 자동실행, 질문 알림, 효과음, 위치, 크기, 집중 시간, 쪽잠 시간
+- 언어 전환 후 모든 화면의 문구 (특히 앱 버전 표시가 지워지지 않는지)
+- 정책 링크 4종이 브라우저·메일 앱으로 열리는지
 - 데이터 초기화
+
+알림·업데이트:
+
+- 오전 8시 질문 배너 알림 (**서명된 빌드에서만 동작한다** — 개발 실행에서는 전부 실패)
+- 자동 업데이트: 배너 알림 → 트레이 설치 항목 → 재시작 후 버전 상승 (6.4.5)
 
 ### 8.2 환경 확인
 
 - macOS 최신 버전
 - 화면 기록 권한 미허용 상태
 - 화면 기록 권한 허용 상태
-- 버전 업데이트 후 화면 기록 권한 유지 여부
+- 자동화 권한 거부 상태 (설정에 안내 행이 뜨는지)
+- 손쉬운 사용 권한 미허용 상태
+- 버전 업데이트 후 권한 유지 여부
 - 배터리 있는 MacBook
 - 배터리 없는 데스크톱 환경
 - 다크/라이트 메뉴바 아이콘
 - 앱 재시작 후 저장 상태 복원
+- 한국어 / 영어 각각
+- 확장 디스플레이 연결 상태 (주 모니터에만 잔류하는 것이 의도된 동작)
 
 Windows (보류, 착수 시 확인):
 
@@ -660,37 +702,30 @@ Windows (보류, 착수 시 확인):
 
 ## 9. 출시 전 최소 완료 기준
 
-포트폴리오 웹사이트에 공개하기 전 최소 기준 (2026-08-21 기준 상태):
+**2026-08-21 v1.0.2로 최소 기준을 모두 채웠다.** 아래는 확정된 상태 기록이다.
 
 | 항목 | 상태 |
 | --- | --- |
-| 개인정보처리방침 작성 | 완료 (`docs/privacy-policy.md`) |
-| 개인정보처리방침 공개 URL | **미완** — `jeondowon.com/rockie/privacy`에 게시 필요 |
-| 이용약관 작성 | 완료 (`docs/terms.md`) |
-| 이용약관 공개 URL | **미완** — `jeondowon.com/rockie/terms`에 게시 필요 |
-| 오픈소스 라이선스 고지 | 완료 (앱에 동봉). 웹 페이지 `…/rockie/licenses`는 미완 |
-| 설치/권한 안내 | 부분 — 사이트에 기본 정보만 |
+| 개인정보처리방침 | 작성(`docs/privacy-policy.md`) + 게시(`…/rockie/privacy`) |
+| 이용약관 | 작성(`docs/terms.md`) + 게시(`…/rockie/terms`) |
+| 오픈소스 라이선스 고지 | 앱 동봉 + 게시(`…/rockie/licenses`) |
 | 앱 패키징 · macOS 실행 파일 | 완료 |
+| Developer ID 서명 · notarization | 완료 |
+| 앱 내부 정책/문의 링크 · 버전 표시 | 완료 (v1.0.2) |
+| 릴리스 노트 | 완료 (`docs/release-notes.md`) |
 | 화면 기록 권한 없이 기본 기능 동작 | 완료 |
 | 민감 화면 말풍선 차단 | 완료 |
 | `npm test` 통과 | 완료 |
 | 빌드 파일 실행 테스트 | 완료 |
+| 설치/권한 안내 | **부분** — 사이트에 기본 정보만. `docs/install.md` 미작성 |
+| 정책 문서 영문판 | **없음** — 앱은 영어를 지원하는데 링크는 한국어 페이지로 간다 |
 
-**1.0.1을 이미 배포한 뒤에 문서를 채우는 중이므로, 위 "미완" 세 줄이 실질적인 잔여 작업이다.** 앱 안의 링크는 이 세 주소를 가리키도록 이미 배선돼 있어, 페이지가 없으면 404가 뜬다.
+미서명 배포를 전제한 예전 항목(Gatekeeper 4단계 안내, 업데이트마다 화면 기록 권한 재허용 안내)은 서명·공증을 붙이면서 사라졌다.
 
-미서명으로 공개할 경우 추가 필수:
+남은 권장 항목:
 
-- 설치 안내 페이지에 "시스템 설정 → 개인정보 보호 및 보안 → 그래도 열기" 4단계를 스크린샷과 함께 명시
-- 업데이트 시 화면 기록 권한을 다시 허용해야 한다는 점을 안내
-
-권장 완료 기준:
-
-- macOS Developer ID 서명
-- macOS notarization
-- 앱 내부에 정책/문의 링크 추가
-- 앱별 말풍선 토글 추가
-- 릴리즈 노트 작성
-- (보류) Windows 실행 파일 생성 및 코드 서명
+- 앱별 말풍선 토글 추가 (7절)
+- (보류) Windows 실행 파일 생성 및 코드 서명 (6.3)
 
 ---
 
@@ -701,5 +736,5 @@ Windows (보류, 착수 시 확인):
 - ~~`privacy-policy.md`: 개인정보처리방침 초안~~ → `docs/privacy-policy.md` (2026-08-21 작성)
 - ~~`terms.md`: 이용약관 초안~~ → `docs/terms.md` (2026-08-21 작성)
 - ~~`third-party-notices.md`: 오픈소스 라이선스 고지~~ → `assets/licenses/THIRD-PARTY-NOTICES.md` (2026-08-21, `npm run notices`로 생성). `docs/`가 아닌 `assets/`에 두는 이유는 배포물에 실려 나가야 하기 때문이다.
-- `install.md`: 사용자용 설치/권한 안내 — 미작성
-- `release-notes.md`: 버전별 변경사항 — 미작성. 현재 GitHub 릴리스 본문이 `Full Changelog` 한 줄뿐이다.
+- ~~`release-notes.md`: 버전별 변경사항~~ → `docs/release-notes.md` (2026-08-21 작성). `scripts/release.sh`가 여기서 해당 버전 절을 잘라 GitHub 릴리스 본문으로 올린다.
+- `install.md`: 사용자용 설치/권한 안내 — **미작성**. 현재 남은 유일한 항목이다.
