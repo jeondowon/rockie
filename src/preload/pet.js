@@ -39,6 +39,10 @@ contextBridge.exposeInMainWorld("petAPI", {
   onDockState: (callback) => {
     ipcRenderer.on("dock-state", (_event, data) => callback(data));
   },
+  // 창 기준 좌표로 환산한 화면 바닥선 (창이 화면과 어긋난 환경 보정용)
+  onScreenGeometry: (callback) => {
+    ipcRenderer.on("screen-geometry", (_event, data) => callback(data));
+  },
   onScreenPermissionMissing: (callback) => {
     ipcRenderer.on("screen-permission-missing", () => callback());
   },

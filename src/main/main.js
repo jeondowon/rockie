@@ -90,6 +90,21 @@ function hideTrayPopup() {
   if (trayPopup && !trayPopup.isDestroyed()) trayPopup.hide();
 }
 
+// 창을 주 디스플레이 전체에 맞추고, '화면 바닥'을 창 기준 좌표로 렌더러에 알린다.
+// macOS는 창이 메뉴바(노치 포함) 영역을 침범하면 아래로 밀어내는 경우가 있어,
+// 요청한 위치와 실제 위치가 다를 수 있다. 그러면 창 바닥이 화면 밖으로 나가서
+// window.innerHeight를 바닥으로 믿는 렌더러는 펫을 화면 아래로 내려 잘리게 만든다.
+// 커서 좌표(startCursorTracker)와 똑같이, 세로도 실제 창 좌표로 보정해서 넘긴다.
+function syncWindowToDisplay() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  const { bounds } = screen.getPrimaryDisplay();
+  mainWindow.setBounds(bounds);
+  const win = mainWindow.getBounds();
+  mainWindow.webContents.send("screen-geometry", {
+    bottomY: bounds.y + bounds.height - win.y,
+  });
+}
+
 function createWindow() {
   const primaryDisplay = screen.getPrimaryDisplay();
   // 작업 영역(workArea)이 아닌 화면 전체를 덮는다.
@@ -127,6 +142,9 @@ function createWindow() {
   mainWindow.setIgnoreMouseEvents(true, { forward: true });
   mainWindow.setAlwaysOnTop(true, "screen-saver");
   mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  // 창 레벨이 메뉴바보다 높아진 뒤에 다시 맞춘다 — 생성 시점에는 macOS가 메뉴바를
+  // 침범하는 창을 아래로 밀어낼 수 있다. (밀려도 아래 screen-geometry로 보정된다)
+  syncWindowToDisplay();
   // 창을 새로 만드는 경로(activate)에서도 캡처 제외 설정이 유지되도록 여기서 적용한다.
   applyCaptureProtection(!!store.get().settings.hideFromCapture);
 
@@ -140,6 +158,9 @@ function createWindow() {
     lastCursorX = null;
     lastCursorY = null;
   });
+
+  // 렌더러는 로드될 때마다 바닥선을 잊는다(설정 초기화·dev 자동 새로고침·크래시 복구).
+  mainWindow.webContents.on("did-finish-load", syncWindowToDisplay);
 
   mainWindow.loadFile(path.join(__dirname, "../renderer/pet/index.html"));
 
@@ -948,6 +969,11 @@ app.whenReady().then(() => {
   createWindow();
   createTray();
   applyStartupSettings();
+  // 해상도 변경·모니터 연결/해제로 화면 크기가 달라져도 창이 따라가게 한다.
+  // 로그인 항목으로 자동 실행될 때 모니터 인식이 늦어 창이 잘못 잡히는 경우도 여기서 복구된다.
+  screen.on("display-metrics-changed", syncWindowToDisplay);
+  screen.on("display-added", syncWindowToDisplay);
+  screen.on("display-removed", syncWindowToDisplay);
   startUpdater({
     onDownloaded: (status) => {
       sendToTray("update:status", status); // 팝업이 열려 있으면 즉시 항목이 뜬다

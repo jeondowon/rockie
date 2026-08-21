@@ -2,6 +2,10 @@
 // Dock이 화면에 보이는지(자동 숨김 Dock이 올라왔는지 포함)와 위치/크기를 주기적으로
 // 읽어 렌더러에 전달한다. 렌더러는 이 정보로 캐릭터를 Dock 위로 올리거나 내린다.
 //
+// 렌더러에 보내는 값은 Dock의 '높이'가 아니라 lift(= 화면 바닥 − Dock 상단)다.
+// AX가 주는 높이는 아이콘 리스트만의 높이라서 Dock 배경이 리스트 아래로 더 내려간 만큼
+// (아이콘 크기에 비례해 커진다) 모자란다. 실측: 리스트 62px / 실제 스트립 69px.
+//
 // 1순위: AppleScript(System Events)로 Dock의 실제 좌표를 읽는다.
 //   - 자동 숨김 Dock이 지금 올라와 있는지까지 정확히 알 수 있다.
 //   - 단, 자동화(Automation) 권한이 필요하다. 손쉬운 사용은 필요 없다
@@ -93,7 +97,7 @@ function startDockTracker(getWindow) {
     win.webContents.send("dock-state", state);
   };
 
-  const HIDDEN = { visible: false, x: 0, width: 0, height: 0 };
+  const HIDDEN = { visible: false, x: 0, width: 0, lift: 0 };
 
   // 자동 숨김 Dock이 지금 올라와 있는지 커서 위치로 추정한다.
   // 화면 맨 아래에 닿으면 "올라옴", Dock 높이 위로 벗어나면 "내려감".
@@ -113,18 +117,16 @@ function startDockTracker(getWindow) {
   // 잃은 경우), 없으면 상한을 씌워 크게 빗나가지 않게 한다.
   const MAX_ESTIMATED_TILE = 64;
   const estimateDockHeight = () =>
-    lastRect
-      ? lastRect.height
-      : Math.round(Math.min(tileSize, MAX_ESTIMATED_TILE) * 1.25);
+    lastLift || Math.round(Math.min(tileSize, MAX_ESTIMATED_TILE) * 1.25);
 
   const heuristicTick = () => {
-    const { bounds, workArea } = screen.getPrimaryDisplay();
+    const { bounds } = screen.getPrimaryDisplay();
     if (orientation !== "bottom") return sendDockState(HIDDEN);
 
     if (!autohide) {
-      // 상시 표시 Dock: 작업 영역이 Dock만큼 줄어 있으므로 그 차이가 Dock 높이
-      const height = bounds.y + bounds.height - (workArea.y + workArea.height);
-      sendDockState({ visible: height > 0, x: 0, width: bounds.width, height });
+      // 상시 표시 Dock: 작업 영역이 Dock만큼 줄어 있으므로 그 차이가 곧 lift
+      const lift = workAreaDockHeight();
+      sendDockState({ visible: lift > 0, x: 0, width: bounds.width, lift });
       return;
     }
 
@@ -134,33 +136,37 @@ function startDockTracker(getWindow) {
       visible: updateHeuristicVisible(estHeight),
       x: 0,
       width: bounds.width,
-      height: estHeight,
+      lift: estHeight,
     });
   };
 
-  // 마지막으로 osascript가 읽어낸 Dock 사각형(화면 절대 좌표). 스크립트를 건너뛰는
+  // 마지막으로 osascript가 읽어낸 Dock의 가로 범위(화면 절대 좌표). 스크립트를 건너뛰는
   // 틱에서는 이 값을 재사용해, 호출을 줄이면서도 가로 범위는 정확히 유지한다.
-  let lastRect = null;
+  let lastRect = null; // { x, width } — Dock이 숨어 있어도 유효하다
+  // 마지막으로 '올라와 있는' Dock에서 관측한 lift. 숨은 관측(lift 0)으로는 덮어쓰지 않는다.
+  let lastLift = 0;
 
-  // 상시 표시 Dock이 지금 화면을 차지하고 있는지 (전체화면 앱이 뜨면 작업 영역이 넓어진다)
-  const dockOccupiesWorkArea = () => {
+  // 상시 표시 Dock이 지금 차지하고 있는 화면 하단 높이 (전체화면 앱이 뜨면 0이 된다).
+  // macOS가 Dock을 위해 예약한 영역 그 자체라 AX보다 정확하다.
+  const workAreaDockHeight = () => {
     const { bounds, workArea } = screen.getPrimaryDisplay();
-    return bounds.y + bounds.height - (workArea.y + workArea.height) > 0;
+    return bounds.y + bounds.height - (workArea.y + workArea.height);
   };
 
   const sendCachedDockState = () => {
     const win = getWindow();
     const winBounds =
       win && !win.isDestroyed() ? win.getBounds() : { x: 0, y: 0 };
+    const staticLift = autohide ? 0 : workAreaDockHeight();
     sendDockState({
       // 자동 숨김 Dock의 표시 여부는 스크립트만이 안다. 커서로 추측하면
       // Dock이 커서와 무관하게 떠 있는 상황(Launchpad·미션 컨트롤)에서 틱마다
       // 스크립트와 반대 답을 내놔 캐릭터가 위아래로 진동한다.
       // 상시 표시 Dock은 작업 영역만 보면 매 틱 공짜로 알 수 있다.
-      visible: autohide ? lastVisible : dockOccupiesWorkArea(),
+      visible: autohide ? lastVisible : staticLift > 0,
       x: lastRect.x - winBounds.x, // 창(=렌더러) 기준 좌표로 변환
       width: lastRect.width,
-      height: lastRect.height,
+      lift: autohide ? lastLift : Math.max(lastLift, staticLift),
     });
   };
 
@@ -214,11 +220,17 @@ function startDockTracker(getWindow) {
       if (orientation !== "bottom") return sendDockState(HIDDEN);
 
       const { bounds } = screen.getPrimaryDisplay();
+      const screenBottom = bounds.y + bounds.height;
       // 숨어 있으면 Dock이 화면 밖(y ≈ 화면 높이)에 위치한다.
       // 아래쪽 끝이 화면 안에 들어와 있어야 "보이는 상태"
-      const visible = dockY + dockH <= bounds.y + bounds.height + 2;
-      // 숨은 상태의 y는 화면 밖이라 쓸모없지만 x·너비·높이는 그대로 유효하다
-      lastRect = { x: dockX, width: dockW, height: dockH };
+      const visible = dockY + dockH <= screenBottom + 2;
+      // 펫이 피해야 하는 건 아이콘 리스트가 아니라 화면 바닥까지의 Dock 스트립 전체다.
+      // 상시 표시 Dock은 작업 영역이 정확히 그만큼 줄어 있으므로 교차 검증한다.
+      let lift = Math.max(0, screenBottom - dockY);
+      if (!autohide) lift = Math.max(lift, workAreaDockHeight());
+      // 숨은 상태의 y는 화면 밖이라 쓸모없지만 x·너비는 그대로 유효하다
+      lastRect = { x: dockX, width: dockW };
+      if (visible) lastLift = lift;
       lastVisible = visible;
       heuristicVisible = visible;
 
@@ -229,7 +241,7 @@ function startDockTracker(getWindow) {
         visible,
         x: dockX - winBounds.x, // 창(=렌더러) 기준 좌표로 변환
         width: dockW,
-        height: dockH,
+        lift,
       });
     });
     // 틱이 짧을수록 커서가 하단에 닿은 걸 빨리 알아채 Dock을 따라 올라가는 게 빨라진다.

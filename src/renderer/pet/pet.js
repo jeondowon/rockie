@@ -77,7 +77,19 @@ const DROP_FREEZE_MS = 3000; // 놓은 뒤 제자리에 머무는 시간
 // 메인 프로세스가 알려주는 Dock 상태. Dock이 보이고 캐릭터(보이는 그림 기준)가
 // Dock의 가로 범위와 겹치면 Dock 바로 위를, 아니면 화면 맨 아래를 목표로 잡고
 // 매 프레임 부드럽게 슬라이드한다. (순간이동 없음)
-let dockState = { visible: false, x: 0, width: 0, height: 0 };
+let dockState = { visible: false, x: 0, width: 0, lift: 0 };
+
+// 창 기준 좌표로 본 화면 바닥. 창이 화면과 어긋나는 환경(노치 맥에서 macOS가 창을
+// 메뉴바 아래로 밀어내는 경우 등)이 있어 window.innerHeight를 바닥으로 믿을 수 없다.
+// 메인이 실제 창 좌표로 계산해 보내준다. 아직 못 받았으면 창 바닥으로 본다.
+let screenBottomY = null;
+
+// 펫이 딛고 서는 바닥선. 창이 화면 아래로 삐져나가 있으면 화면 바닥을 쓰고,
+// 반대로 창이 화면 바닥에 못 미치면 창 바닥을 쓴다(어느 쪽이든 펫이 잘리지 않는다).
+function bottomLine() {
+  if (screenBottomY === null) return window.innerHeight;
+  return Math.min(screenBottomY, window.innerHeight);
+}
 
 const EASE_Y = 0.15; // 세로 이동 감속 비율 (목표에 가까울수록 느려짐)
 const MAX_SPEED_Y = 5; // 프레임당 세로 최대 이동 픽셀
@@ -87,16 +99,16 @@ function groundY() {
   // FOOT_LINE_GAP만큼 위에 오도록 top 기준선을 잡는다. 하단 여백 비율은 레벨/캐릭터별
   // (2·3단계는 그림이 320 캔버스 아래쪽까지 차서 여백이 작다).
   const bottomPad = CHAR_SIZE * spriteGeom().bottomRatio;
-  return window.innerHeight - FOOT_LINE_GAP - CHAR_SIZE + bottomPad;
+  return bottomLine() - FOOT_LINE_GAP - CHAR_SIZE + bottomPad;
 }
 
 // 현재 위치에서 Dock 위로 올라가야 하는 높이 (안 올라가도 되면 0)
 function dockLift() {
-  if (!dockState.visible || dockState.height <= 0) return 0;
+  if (!dockState.visible || dockState.lift <= 0) return 0;
   const left = posX + SPRITE_MARGIN; // 투명 여백을 뺀 실제 그림의 좌우 경계
   const right = posX + CHAR_SIZE - SPRITE_MARGIN;
   const overlaps = right > dockState.x && left < dockState.x + dockState.width;
-  return overlaps ? dockState.height : 0;
+  return overlaps ? dockState.lift : 0;
 }
 
 function verticalStep() {
@@ -116,12 +128,16 @@ window.petAPI.onDockState((state) => {
   dockState = state;
 });
 
+window.petAPI.onScreenGeometry((geometry) => {
+  screenBottomY = geometry.bottomY;
+});
+
 function clampX(x) {
   return Math.max(0, Math.min(window.innerWidth - CHAR_SIZE, x));
 }
 
 function clampY(y) {
-  return Math.max(0, Math.min(window.innerHeight - CHAR_SIZE, y));
+  return Math.max(0, Math.min(bottomLine() - CHAR_SIZE, y));
 }
 
 function placeCharacter() {
