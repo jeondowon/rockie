@@ -41,13 +41,23 @@ const isDev = !app.isPackaged && process.env.DEV_RELOAD === "1";
 
 // 트레이 설정 하단의 링크. 키는 렌더러가 보내는 action 이름과 같아야 한다.
 // 주소를 바꾸면 배포된 앱은 그대로 예전 주소를 열므로, 웹사이트 쪽에서 리다이렉트를 걸어야 한다.
+// 영문 페이지는 /rockie/en/ 아래에 따로 있다. 라이선스 고지는 본문이 영문
+// 라이선스 전문이고 머리말만 이중 언어라 한 페이지를 양쪽이 함께 쓴다.
 const EXTERNAL_LINKS = {
   homepage: "https://jeondowon.com/rockie/",
-  privacy: "https://jeondowon.com/rockie/privacy",
-  terms: "https://jeondowon.com/rockie/terms",
+  privacy: { ko: "/rockie/privacy", en: "/rockie/en/privacy" },
+  terms: { ko: "/rockie/terms", en: "/rockie/en/terms" },
   licenses: "https://jeondowon.com/rockie/licenses",
   contact: "mailto:dowon.9102@gmail.com",
 };
+
+// { ko, en } 형태면 현재 표시 언어에 맞는 주소를 고른다.
+function externalLink(action) {
+  const target = EXTERNAL_LINKS[action];
+  return typeof target === "string"
+    ? target
+    : `https://jeondowon.com${pick(target)}`;
+}
 
 let mainWindow;
 let tray; // GC로 사라지지 않도록 전역 참조 유지
@@ -499,7 +509,7 @@ ipcMain.on("tray-menu-action", (_event, action) => {
     case "licenses":
     case "contact":
       // 트레이 설정 하단 링크 → 기본 브라우저(문의는 메일 앱)로 열고 팝업은 닫는다
-      shell.openExternal(EXTERNAL_LINKS[action]);
+      shell.openExternal(externalLink(action));
       hideTrayPopup();
       break;
     case "exit-mode":
