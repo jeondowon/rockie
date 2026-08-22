@@ -1,6 +1,6 @@
 {
   "name": "rockie-desktop-pet",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "화면 위에 사는 데스크톱 애완돌. 마우스를 따라다니고 활성 앱에 반응하며 성향 질문으로 진화합니다.",
   "main": "src/main/main.js",
   "author": "jeondowon <dowon.9102@gmail.com>",
