@@ -7,7 +7,6 @@ const {
   systemPreferences,
   desktopCapturer,
   Notification,
-  nativeTheme,
   powerMonitor,
   shell,
 } = require("electron");
@@ -381,30 +380,22 @@ function togglePet() {
 
 // 맥 메뉴바 / 윈도우 시스템 트레이에 아이콘을 띄운다 (Tray API는 양쪽 공용).
 // 아이콘 이미지 생성·캐시는 tray-icon.js가 맡는다.
-// 오늘 답할 질문이 남아 있으면(hasBadge) 빨간 N 배지 아이콘, 없으면 기본 템플릿 아이콘.
-// 배지는 비-템플릿이라 자동 반전이 안 되므로 메뉴바 테마에 맞춰 밝은/어두운 글리프를 고른다.
+// 오늘 답할 질문이 남아 있으면(hasBadge) 배지 붙은 아이콘, 없으면 기본 아이콘.
+// 둘 다 템플릿이라 macOS가 실제 메뉴바 밝기에 맞춰 알아서 반전시킨다.
 function refreshTrayIcon() {
   if (!tray || tray.isDestroyed()) return;
   const awaiting = evolution.getState(store.get()).hasBadge;
-  if (!awaiting) {
-    tray.setImage(makeTrayIcon("template.png", true));
-    return;
-  }
-  const badge = nativeTheme.shouldUseDarkColors
-    ? "new_dark.png"
-    : "new_light.png";
-  tray.setImage(makeTrayIcon(badge, false));
+  tray.setImage(makeTrayIcon(awaiting ? "new.png" : "template.png", true));
 }
 
 function createTray() {
   tray = new Tray(makeTrayIcon("template.png", true));
-  tray.setToolTip("Desktop Pet");
+  tray.setToolTip(`Rockie ${app.getVersion()}`);
 
   createTrayPopup();
   tray.on("click", toggleTrayPopup);
 
   refreshTrayIcon(); // 저장된 상태에 맞춰 초기 배지 반영
-  nativeTheme.on("updated", refreshTrayIcon); // 메뉴바 다크/라이트 전환 시 글리프 색 재선택
 }
 
 // ---------- 트레이 팝업 (커스텀 픽셀아트 메뉴) ----------
@@ -727,6 +718,7 @@ ipcMain.handle("evolution:set-name", (_event, { target, value }) => {
   store.save();
   // 이름 변경을 먼저 알려야, 이어지는 진화 축하 문구가 새 이름으로 나온다.
   if (target === "user") sendToPet("pet:user-name-change", result.userName);
+  if (target === "pet") sendToPet("pet:pet-name-change", result.petName);
   if (result.evolved) notifyEvolved(data);
   return result;
 });
@@ -994,7 +986,11 @@ async function startActiveWindowWatcher() {
   watcherInterval = setInterval(async () => {
     try {
       const activeWin = await loadActiveWin();
-      const result = await activeWin();
+      // accessibilityPermission의 기본값이 true라 호출할 때마다 손쉬운 사용 권한 창을
+      // 띄운다(호출마다 새 프로세스를 띄우는 구조라 3초마다 다시 뜬다). 그 권한은
+      // 브라우저 주소창을 읽는 url 속성에만 쓰이는데 우리는 appName과 title만 쓴다.
+      // screenRecordingPermission은 title에 필요하므로 켠 채로 둔다.
+      const result = await activeWin({ accessibilityPermission: false });
       loggedError = false; // 성공하면(권한 허용 후) 다음 실패를 다시 로그할 수 있게 초기화
       if (result) {
         sendToPet("active-window-info", {

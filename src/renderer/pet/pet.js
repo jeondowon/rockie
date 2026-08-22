@@ -28,6 +28,7 @@ let spritePrefix = "rockie"; // 표시할 GIF 접두어 (단계·돌·변형에 
 let spriteLevel = "level0"; // GIF가 담긴 레벨 폴더
 let activeTimePeriod = getTimePeriod(); // 로컬 시각 기준 현재 시간대(아침/낮/저녁/밤)
 let userName = null;
+let petName = null;
 
 const EASE = 0.06; // 목표를 향해 이동하는 비율이 작을수록 천천히 따라감
 const MAX_SPEED = 1; // 프레임당 최대 이동 픽셀 (너무 빠르지 않게 제한)
@@ -256,8 +257,9 @@ function setOnboardingLocked(locked) {
   }
 }
 
-// 애정 표현용 하트 오버레이. level2/3은 love gif가 없어 smile + 하트로 애정을 표현한다.
-// 트레이 "돌보기"(닦기/밥) 직후 main이 보내는 pet:show-heart 신호로 발동된다.
+// 애정 표현용 하트 오버레이. 트레이 "돌보기"의 쓰다듬기 직후 main이 보내는
+// pet:show-heart 신호로 발동된다(닦아주기는 아래 smile 쪽이다).
+// 스프라이트는 그대로 두고 하트만 겹치므로 단계와 무관하게 똑같이 동작한다.
 function showHeart() {
   heart.classList.remove("hidden");
 }
@@ -288,7 +290,9 @@ function triggerHeart() {
 window.petAPI.onShowHeart(triggerHeart);
 
 // 닦아주기 직후 웃는 얼굴(smile gif)을 잠깐 보여줬다가 평소 스프라이트로 되돌린다.
-const SMILE_DURATION = 3000;
+// gif 한 바퀴가 4초(기본 1초 + 웃음 2초 + 기본 1초)라 두 바퀴를 돌려
+// 기본 → 웃음 → 기본 → 웃음 → 기본 흐름을 보여준다.
+const SMILE_DURATION = 8000;
 let smileTimer = null;
 function triggerSmile() {
   playSound("care");
@@ -629,7 +633,8 @@ function currentLongUseReactions() {
 function currentClickReactions() {
   return clickReactions
     .concat(TIME_CLICK_REACTIONS[activeTimePeriod] || [])
-    .concat(currentLongUseReactions());
+    .concat(currentLongUseReactions())
+    .concat(petName ? PET_NAME_CLICK_REACTIONS : []); // 이름을 지어준 뒤에만
 }
 
 function ownerDisplayName() {
@@ -638,10 +643,17 @@ function ownerDisplayName() {
     : t("pet.ownerDefault");
 }
 
+// 애완돌 이름은 아직 안 지었으면 트레이와 같은 기본 표기("애완돌"/"Rockie")를 쓴다.
+function petDisplayName() {
+  return petName || t("pet.defaultName");
+}
+
 function formatMessage(message) {
   // 말풍선 문구는 pet-data.js에 { ko, en }으로 들어 있다. 여기서 언어를 고르고
-  // {owner} 치환까지 끝낸다 — 말풍선으로 나가는 모든 문구가 이 함수를 지난다.
-  return pickText(message).replaceAll("{owner}", ownerDisplayName());
+  // {owner}·{pet} 치환까지 끝낸다 — 말풍선으로 나가는 모든 문구가 이 함수를 지난다.
+  return pickText(message)
+    .replaceAll("{owner}", ownerDisplayName())
+    .replaceAll("{pet}", petDisplayName());
 }
 
 // 더블클릭이 옵션창을 여는 동안 말풍선이 같이 뜨지 않도록, 클릭 반응은
@@ -944,6 +956,10 @@ function setUserName(name) {
   userName = name || null;
 }
 
+function setPetName(name) {
+  petName = name || null;
+}
+
 function evolveMessage({ stage, stoneType }) {
   if (stage === 1)
     return t("pet.evolvedStone", { stone: pickText(STONE_NAMES[stoneType]) });
@@ -1031,6 +1047,7 @@ async function initEvolution() {
   try {
     const state = await window.petAPI.getEvolutionState();
     setUserName(state.userName);
+    setPetName(state.petName);
     if (!state.onboarding?.completed) {
       setOnboardingLocked(true);
       return;
@@ -1061,6 +1078,7 @@ window.petAPI.onOnboardingCompleted(async () => {
 window.petAPI.onSkinChange((info) => applyEvolution(info));
 
 window.petAPI.onUserNameChange(setUserName);
+window.petAPI.onPetNameChange(setPetName);
 
 // ---------- 8. 성향 질문 카드 (트레이 "새로운 질문에 답하기"로만 열림) ----------
 

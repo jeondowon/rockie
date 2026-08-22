@@ -370,7 +370,8 @@ const ONBOARDING_FLOW = [
 ];
 
 // 온보딩 마지막 권한 화면에 표시할 항목.
-// screen = 화면 기록, dock = 손쉬운 사용 + 자동화(둘 다 Dock 좌표 읽기에만 쓰인다).
+// screen = 화면 기록, automation = 자동화(Dock 좌표 읽기에만 쓰인다).
+// 손쉬운 사용은 여기 없다 — 키보드를 잠그는 KeyBlocker만 쓰고, 그건 모드를 켤 때 따로 안내한다.
 const ONBOARDING_PERMISSIONS = [
   {
     key: "screen",

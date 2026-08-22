@@ -126,7 +126,9 @@ function startDockTracker(getWindow, getDisplay) {
     if (orientation !== "bottom") return sendDockState(HIDDEN);
 
     if (!autohide) {
-      // 상시 표시 Dock: 작업 영역이 Dock만큼 줄어 있으므로 그 차이가 곧 lift
+      // 상시 표시 Dock: 작업 영역이 Dock만큼 줄어 있으므로 그 차이가 곧 lift.
+      // 여기서는 표시 여부도 workArea로 볼 수밖에 없다(전체화면을 못 가려낸다).
+      // AX가 되는 경우엔 캐시 경로가 lastVisible을 쓰므로 이 한계는 권한 없을 때만 남는다.
       const lift = workAreaDockHeight();
       sendDockState({ visible: lift > 0, x: 0, width: bounds.width, lift });
       return;
@@ -148,8 +150,10 @@ function startDockTracker(getWindow, getDisplay) {
   // 마지막으로 '올라와 있는' Dock에서 관측한 lift. 숨은 관측(lift 0)으로는 덮어쓰지 않는다.
   let lastLift = 0;
 
-  // 상시 표시 Dock이 지금 차지하고 있는 화면 하단 높이 (전체화면 앱이 뜨면 0이 된다).
-  // macOS가 Dock을 위해 예약한 영역 그 자체라 AX보다 정확하다.
+  // 상시 표시 Dock이 화면 하단에 예약해 둔 높이. macOS가 Dock을 위해 비워 둔 영역
+  // 그 자체라 '높이'로는 AX보다 정확하다. 단 **표시 여부를 판단하는 데는 쓸 수 없다** —
+  // 전체화면 앱이 떠서 Dock이 화면에서 사라져도 이 값은 그대로다(2026-08-22 실측:
+  // 1440×900에서 전체화면 내내 67 유지). 표시 여부는 AX 판정(lastVisible)만이 안다.
   const workAreaDockHeight = () => {
     const { bounds, workArea } = getDisplay();
     return bounds.y + bounds.height - (workArea.y + workArea.height);
@@ -161,11 +165,13 @@ function startDockTracker(getWindow, getDisplay) {
       win && !win.isDestroyed() ? win.getBounds() : { x: 0, y: 0 };
     const staticLift = autohide ? 0 : workAreaDockHeight();
     sendDockState({
-      // 자동 숨김 Dock의 표시 여부는 스크립트만이 안다. 커서로 추측하면
+      // 표시 여부는 자동 숨김이든 상시 표시든 스크립트만이 안다. 커서로 추측하면
       // Dock이 커서와 무관하게 떠 있는 상황(Launchpad·미션 컨트롤)에서 틱마다
       // 스크립트와 반대 답을 내놔 캐릭터가 위아래로 진동한다.
-      // 상시 표시 Dock은 작업 영역만 보면 매 틱 공짜로 알 수 있다.
-      visible: autohide ? lastVisible : staticLift > 0,
+      // 상시 표시 Dock을 workArea로 판단하던 때도 같은 진동이 났다 — 전체화면에서
+      // AX는 숨김(y=화면바닥)을 제대로 보고하는데 workArea는 계속 Dock이 있다고 해서,
+      // 스크립트 틱마다 펫이 잠깐 내려갔다 캐시 틱에 곧바로 되올라갔다.
+      visible: lastVisible,
       x: lastRect.x - winBounds.x, // 창(=렌더러) 기준 좌표로 변환
       width: lastRect.width,
       lift: autohide ? lastLift : Math.max(lastLift, staticLift),
@@ -186,11 +192,15 @@ function startDockTracker(getWindow, getDisplay) {
     // 커서만으로 표시 여부를 단정하진 않되(위 sendCachedDockState 주석 참고), 커서가
     // Dock을 올리거나 내릴 만한 자리로 막 옮겨간 순간에는 간격을 기다리지 않고 바로
     // 확인한다. 덕분에 평소 Dock 반응 속도는 그대로 유지된다.
-    const hint = updateHeuristicVisible(estimateDockHeight());
-    const hintChanged = hint !== lastHint;
-    lastHint = hint;
-    const due =
-      (autohide && hintChanged) || Date.now() - lastScriptAt >= scriptInterval;
+    // 상시 표시 Dock은 올라오고 내려갈 일이 없어 이 힌트를 쓰지 않으므로, 매 틱
+    // 커서와 디스플레이를 읽지 않는다(초당 10회).
+    let hintChanged = false;
+    if (autohide) {
+      const hint = updateHeuristicVisible(estimateDockHeight());
+      hintChanged = hint !== lastHint;
+      lastHint = hint;
+    }
+    const due = hintChanged || Date.now() - lastScriptAt >= scriptInterval;
 
     // 최근에 osascript가 실패했으면 10초간 휴리스틱으로 동작 후 재시도
     // (앱 실행 중에 권한을 허용해주면 자동으로 정확한 방식으로 복귀)

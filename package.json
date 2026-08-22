@@ -37,7 +37,8 @@
       "!docs/**",
       "!test/**",
       "!scripts/**",
-      "!assets/licenses/**"
+      "!assets/licenses/**",
+      "!assets/img/rockie_banner.png"
     ],
     "extraResources": [
       {

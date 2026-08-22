@@ -63,6 +63,11 @@ contextBridge.exposeInMainWorld("petAPI", {
       callback(userName),
     );
   },
+  onPetNameChange: (callback) => {
+    ipcRenderer.on("pet:pet-name-change", (_event, petName) =>
+      callback(petName),
+    );
+  },
   setDisplaySprite: (sprite) => ipcRenderer.send("pet:display-sprite", sprite),
   getEvolutionState: () => ipcRenderer.invoke("evolution:get-state"),
   getIdleTime: () => ipcRenderer.invoke("app:get-idle-time"),
