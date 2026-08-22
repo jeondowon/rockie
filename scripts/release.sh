@@ -103,5 +103,6 @@ step "완료"
 echo "기존 사용자는 앱 시작 1분 뒤 또는 6시간 주기 확인 때 $VERSION 을 받는다."
 echo
 echo "새로 받는 사람을 위해 PortFolioWeb의 다운로드 버튼 URL도 바꿔야 한다."
-echo "  파일: public/rockie/index.html (DOWNLOAD 섹션의 macOS 버튼)"
+echo "  한국어: public/rockie/index.html    (DOWNLOAD 섹션의 macOS 버튼)"
+echo "  영문:   public/rockie/en/index.html (같은 자리에 같은 링크가 하나 더 있다)"
 echo "  새 URL: https://github.com/jeondowon/rockie/releases/download/$TAG/Rockie-$VERSION-arm64.dmg"
