@@ -20,9 +20,9 @@ Rockie is signed and notarized with a registered Apple Developer ID, so macOS wi
 
 ## 2. There is no Dock icon
 
-Rockie **lives in the menu bar only.** No icon appears in the Dock, and it does not show up in `Cmd+Tab`. This is intentional, not a bug.
+Rockie **lives only in the menu bar at the top of your screen.** No icon appears in the Dock, and it does not show up in `Cmd+Tab`. This is intentional, not a bug.
 
-- Everything is reached through the **stone icon in the menu bar** (top right of your screen).
+- Everything is reached through the **Rockie icon in the menu bar** at the top of your screen. If your menu bar is crowded, the icon may be pushed left or hidden.
 - The pet itself floats on your screen; double-click it to open the mode picker.
 - Rockie does appear in Launchpad, so you can launch it from there.
 
@@ -97,6 +97,6 @@ For a clean removal, also delete the `Rockie` and `KeyBlocker` entries in System
 | App-aware bubbles never appear | Confirm you granted Screen Recording **and restarted the app** |
 | The pet overlaps the Dock | Grant Automation permission (Settings → Permissions) |
 | The keyboard is not locked in nap mode | Enable **`KeyBlocker`** under Accessibility, then restart the app |
-| There is no menu bar icon | Your menu bar may be full — try clearing out other icons |
+| You cannot find the icon in the menu bar | With many items it can be pushed off screen — clear out other icons, or check with a tool like Bartender |
 
 If none of this helps, reach out at [dowon.9102@gmail.com](mailto:dowon.9102@gmail.com) or on [GitHub Issues](https://github.com/jeondowon/rockie/issues).
