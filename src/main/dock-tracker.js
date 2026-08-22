@@ -53,8 +53,10 @@ function probeAutomationPermission() {
 }
 
 // getWindow: 상태를 보낼 BrowserWindow를 돌려주는 함수 (없거나 파괴됐으면 전송 생략).
+// getDisplay: 애완돌이 올라가 있는 Display를 돌려주는 함수. Dock은 화면마다 다른
+//   자리에 있으므로 펫이 있는 화면을 기준으로 봐야 한다(설정에서 모니터를 고를 수 있다).
 // 반환: { stop } — 내부 인터벌을 모두 정리한다.
-function startDockTracker(getWindow) {
+function startDockTracker(getWindow, getDisplay) {
   if (process.platform !== "darwin") return { stop() {} };
 
   let orientation = "bottom"; // Dock 위치 (bottom이 아니면 캐릭터 동선과 안 겹치므로 무시)
@@ -102,7 +104,7 @@ function startDockTracker(getWindow) {
   // 자동 숨김 Dock이 지금 올라와 있는지 커서 위치로 추정한다.
   // 화면 맨 아래에 닿으면 "올라옴", Dock 높이 위로 벗어나면 "내려감".
   const updateHeuristicVisible = (dockHeight) => {
-    const { bounds } = screen.getPrimaryDisplay();
+    const { bounds } = getDisplay();
     const cursor = screen.getCursorScreenPoint();
     const screenBottom = bounds.y + bounds.height;
     if (cursor.y >= screenBottom - 2) heuristicVisible = true;
@@ -120,7 +122,7 @@ function startDockTracker(getWindow) {
     lastLift || Math.round(Math.min(tileSize, MAX_ESTIMATED_TILE) * 1.25);
 
   const heuristicTick = () => {
-    const { bounds } = screen.getPrimaryDisplay();
+    const { bounds } = getDisplay();
     if (orientation !== "bottom") return sendDockState(HIDDEN);
 
     if (!autohide) {
@@ -149,7 +151,7 @@ function startDockTracker(getWindow) {
   // 상시 표시 Dock이 지금 차지하고 있는 화면 하단 높이 (전체화면 앱이 뜨면 0이 된다).
   // macOS가 Dock을 위해 예약한 영역 그 자체라 AX보다 정확하다.
   const workAreaDockHeight = () => {
-    const { bounds, workArea } = screen.getPrimaryDisplay();
+    const { bounds, workArea } = getDisplay();
     return bounds.y + bounds.height - (workArea.y + workArea.height);
   };
 
@@ -219,11 +221,14 @@ function startDockTracker(getWindow) {
 
       if (orientation !== "bottom") return sendDockState(HIDDEN);
 
-      const { bounds } = screen.getPrimaryDisplay();
+      const { bounds } = getDisplay();
       const screenBottom = bounds.y + bounds.height;
       // 숨어 있으면 Dock이 화면 밖(y ≈ 화면 높이)에 위치한다.
-      // 아래쪽 끝이 화면 안에 들어와 있어야 "보이는 상태"
-      const visible = dockY + dockH <= screenBottom + 2;
+      // 아래쪽 끝이 화면 안에 들어와 있어야 "보이는 상태".
+      // 위쪽 경계도 함께 본다 — 모니터를 위아래로 배치했을 때 위 화면의 Dock이
+      // 아래 화면의 y 범위에 걸쳐 "보인다"고 잘못 읽히기 때문이다.
+      // (좌우 배치는 렌더러의 가로 겹침 판정이 이미 걸러낸다)
+      const visible = dockY >= bounds.y && dockY + dockH <= screenBottom + 2;
       // 펫이 피해야 하는 건 아이콘 리스트가 아니라 화면 바닥까지의 Dock 스트립 전체다.
       // 상시 표시 Dock은 작업 영역이 정확히 그만큼 줄어 있으므로 교차 검증한다.
       let lift = Math.max(0, screenBottom - dockY);

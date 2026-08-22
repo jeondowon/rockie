@@ -59,6 +59,9 @@ function defaultData() {
       soundEnabled: true,
       hideFromCapture: false, // 스크린샷·화면 녹화·화면 공유에서 애완돌 제외
       petPlacement: "follow", // "follow" | "bottom-left" | "bottom-right"
+      // 애완돌을 띄울 모니터의 Display id. null이면 주 모니터를 따라간다.
+      // 모니터를 뽑으면 id를 못 찾게 되는데, 그때도 주 모니터로 되돌아간다.
+      petDisplayId: null,
       petSize: "medium", // "small" | "medium" | "large"
       focusMinutes: 25,
       napMinutes: 20,
@@ -68,8 +71,12 @@ function defaultData() {
 }
 
 let data = null;
+// 이번 실행에서 저장값을 기본값으로 새로 만들었는지(첫 실행·손상 복구·초기화).
+// "저장값이 곧 기본값"이라는 뜻이라, OS 상태보다 저장값을 우선해야 할 때 쓴다.
+let dataIsFresh = false;
 
 function load() {
+  dataIsFresh = false;
   try {
     data = JSON.parse(fs.readFileSync(FILE, "utf-8"));
     // 예전 파일 보강: 없던 최상위 섹션(예: settings)과 섹션 내 신규 필드를
@@ -115,6 +122,7 @@ function load() {
     // 나중에 손으로라도 복구할 수 있게 한다(그동안 키운 상태가 통째로 사라지므로).
     if (err.code !== "ENOENT") preserveCorruptFile(err);
     data = defaultData();
+    dataIsFresh = true;
     save();
   }
   return data;
@@ -144,6 +152,10 @@ function get() {
   return data;
 }
 
+function isFreshData() {
+  return dataIsFresh;
+}
+
 // 임시 파일에 먼저 쓰고 rename으로 바꿔치기한다(rename은 원자적).
 // 원본을 직접 덮어쓰면 쓰는 도중 크래시·전원 차단 시 파일이 깨진 채 남는다.
 function save() {
@@ -154,8 +166,9 @@ function save() {
 // "처음부터 다시 키우기" — 전체 상태를 기본값으로 되돌리고 저장한다.
 function reset() {
   data = defaultData();
+  dataIsFresh = true;
   save();
   return data;
 }
 
-module.exports = { load, get, save, reset };
+module.exports = { load, get, save, reset, isFreshData };

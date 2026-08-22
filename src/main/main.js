@@ -69,7 +69,7 @@ let dockTracker;
 // 온보딩 완료 시점과 앱 시작 시점 양쪽에서 부르므로 중복 시작을 막는다.
 function startDockTracker0() {
   if (dockTracker) return;
-  dockTracker = startDockTracker(() => mainWindow);
+  dockTracker = startDockTracker(() => mainWindow, getPetDisplay);
 }
 let dailyResetInterval;
 let petDisplaySprite = {
@@ -105,9 +105,19 @@ function hideTrayPopup() {
 // 요청한 위치와 실제 위치가 다를 수 있다. 그러면 창 바닥이 화면 밖으로 나가서
 // window.innerHeight를 바닥으로 믿는 렌더러는 펫을 화면 아래로 내려 잘리게 만든다.
 // 커서 좌표(startCursorTracker)와 똑같이, 세로도 실제 창 좌표로 보정해서 넘긴다.
+// 애완돌을 띄울 디스플레이. 설정에서 고른 모니터가 사라졌으면(뽑힘) 주 모니터로 돌아간다.
+function getPetDisplay() {
+  const id = store.get().settings.petDisplayId;
+  if (id === null || id === undefined) return screen.getPrimaryDisplay();
+  return (
+    screen.getAllDisplays().find((d) => d.id === id) ||
+    screen.getPrimaryDisplay()
+  );
+}
+
 function syncWindowToDisplay() {
   if (!mainWindow || mainWindow.isDestroyed()) return;
-  const { bounds } = screen.getPrimaryDisplay();
+  const { bounds } = getPetDisplay();
   mainWindow.setBounds(bounds);
   const win = mainWindow.getBounds();
   mainWindow.webContents.send("screen-geometry", {
@@ -116,17 +126,17 @@ function syncWindowToDisplay() {
 }
 
 function createWindow() {
-  const primaryDisplay = screen.getPrimaryDisplay();
   // 작업 영역(workArea)이 아닌 화면 전체를 덮는다.
   // Dock이 상시 표시일 때도 캐릭터가 Dock 옆 빈 공간에서는 화면 맨 아래까지
   // 내려가야 하므로, 창이 Dock 영역까지 포함해야 한다.
-  const { width, height } = primaryDisplay.bounds;
+  // 보조 모니터는 x·y가 0이 아니므로 좌표도 함께 가져와야 한다.
+  const { x, y, width, height } = getPetDisplay().bounds;
 
   mainWindow = new BrowserWindow({
     width,
     height,
-    x: 0,
-    y: 0,
+    x,
+    y,
     transparent: true,
     frame: false,
     alwaysOnTop: true,
@@ -751,7 +761,20 @@ function broadcastLanguage(locale) {
 function applyStartupSettings() {
   const s = store.get().settings;
   setLocale(s.language); // 알림·질문 문구를 저장된 언어로 낸다
-  app.setLoginItemSettings({ openAtLogin: !!s.autoLaunch });
+  // 자동 실행만은 OS 쪽이 정답이다 — 사용자가 시스템 설정이나 Dock 우클릭의
+  // "로그인 시 열기"로 직접 끌 수 있는데, 시작할 때마다 저장값을 OS에 덮어쓰면
+  // 그 조작이 다음 실행 때 조용히 되돌아간다(기본값이 켬이라 더 그렇다).
+  // 저장값이 방금 만들어진 기본값일 때(첫 실행·초기화)만 OS에 쓰고,
+  // 그 밖에는 OS를 읽어 저장값(=트레이 토글 표시)을 맞춘다.
+  if (store.isFreshData()) {
+    app.setLoginItemSettings({ openAtLogin: !!s.autoLaunch });
+  } else {
+    const openAtLogin = !!app.getLoginItemSettings().openAtLogin;
+    if (openAtLogin !== s.autoLaunch) {
+      s.autoLaunch = openAtLogin;
+      store.save();
+    }
+  }
   applyCaptureProtection(!!s.hideFromCapture);
 }
 
@@ -775,6 +798,17 @@ ipcMain.handle("settings:get", () => {
   };
 });
 
+// 설정의 "표시할 모니터" 목록. 개수·이름이 실행 중에만 정해지므로 렌더러가 물어본다.
+ipcMain.handle("settings:get-displays", () => ({
+  selected: store.get().settings.petDisplayId,
+  displays: screen.getAllDisplays().map((d) => ({
+    id: d.id,
+    label: d.label, // macOS는 "Built-in Retina Display" 같은 이름을 준다(빈 값일 수도 있다)
+    width: d.bounds.width,
+    height: d.bounds.height,
+  })),
+}));
+
 // 모드 안내를 실제로 띄웠을 때 기록한다(다시 띄우지 않도록).
 ipcMain.on("pet:mode-hint-shown", () => {
   const data = store.get();
@@ -794,6 +828,11 @@ ipcMain.on("settings:set", (_event, { key, value }) => {
     case "notifications":
       data.notifications.notificationsEnabled = value; // 새 질문 배너 알림 on/off
       if (value) showQuestionBanner({ preview: true }); // 켠 순간 실제 배너 모습을 표시
+      break;
+    case "petDisplayId":
+      // null = 주 모니터 자동 추종. 그 외에는 Display id(숫자).
+      data.settings.petDisplayId = value === null ? null : Number(value);
+      syncWindowToDisplay(); // 창을 그 모니터로 옮기고 바닥선을 다시 알린다
       break;
     case "hideFromCapture":
       data.settings.hideFromCapture = value;
@@ -896,6 +935,8 @@ ipcMain.on("open-dock-automation-settings", () => {
 // 화면 기록 권한은 허용해도 앱을 재시작해야 반영된다. 온보딩에서 사용자를 가두지
 // 않으려면 앱이 스스로 재시작해야 한다. 온보딩 진행 상태는 저장돼 있어 그대로 이어진다.
 ipcMain.on("app:relaunch", () => {
+  // 잠금을 쥔 채로 나가면 뒤이어 뜨는 새 인스턴스가 스스로 물러나 앱이 그냥 죽는다.
+  app.releaseSingleInstanceLock();
   app.relaunch();
   app.exit(0);
 });
@@ -970,6 +1011,19 @@ async function startActiveWindowWatcher() {
     }
   }, 3000);
 }
+
+// 같은 번들을 두 번 실행하는 건 macOS가 막아주지만, 개발 실행(npm start)과 설치본은
+// 서로 다른 번들이라 동시에 뜬다. 그러면 펫이 두 마리 뜨고 같은 petdata.json을 번갈아
+// 덮어써서 호감도·진화 상태가 꼬인다. 나중에 실행된 쪽이 조용히 물러난다.
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+}
+
+app.on("second-instance", () => {
+  // 다시 실행하려 했다는 건 펫을 보고 싶다는 뜻이다(숨겨둔 상태일 수 있다).
+  if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible())
+    mainWindow.showInactive();
+});
 
 app.whenReady().then(() => {
   store.load();

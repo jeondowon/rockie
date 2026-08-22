@@ -946,6 +946,15 @@
             </div>
           </section>
 
+          <!-- 표시할 모니터 — 목록이 실행 중에 정해지므로 tray-settings.js가 그린다.
+               모니터가 하나뿐이면 고를 게 없으므로 패널째 숨긴다. -->
+          <section id="display-panel" class="panel hidden">
+            <div class="panel-label" data-i18n="settings.petDisplay">
+              표시할 모니터
+            </div>
+            <div id="display-list" class="set-list"></div>
+          </section>
+
           <!-- 집중 모드 -->
           <section class="panel">
             <div class="panel-label" data-i18n="settings.focusDuration">

@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld("trayAPI", {
   openDockAutomationSettings: () =>
     ipcRenderer.send("open-dock-automation-settings"),
   relaunchApp: () => ipcRenderer.send("app:relaunch"),
+  getDisplays: () => ipcRenderer.invoke("settings:get-displays"),
   onWillShow: (callback) => {
     ipcRenderer.on("tray-popup-will-show", () => callback());
   },

@@ -41,6 +41,7 @@ async function showSettings() {
   refreshPermToggle();
   refreshAutomationPerm();
   refreshSettings();
+  refreshDisplays();
 }
 
 // ---------- 설정 · 일반 토글 / 위치 / 크기 ----------
@@ -91,6 +92,61 @@ async function refreshSettings() {
   napValueEl.textContent = napRange.value; // 슬라이더가 값을 범위 안으로 다듬은 뒤 읽는다
   // 언어를 바꿔도 지워지지 않도록 data-i18n이 없는 자리에 따로 넣는다.
   appVersionEl.textContent = s.appVersion || "?";
+}
+
+// ---------- 설정 · 표시할 모니터 ----------
+// 칩과 달리 HTML에 못 박을 수 없다(모니터 개수·이름은 실행 중에만 알 수 있다).
+const displayPanel = document.getElementById("display-panel");
+const displayList = document.getElementById("display-list");
+
+function makeDisplayRow(id, title, desc, selected) {
+  const btn = document.createElement("button");
+  btn.className = "set-row";
+  const box = document.createElement("span");
+  box.className = "set-box";
+  const text = document.createElement("div");
+  text.className = "set-text";
+  const titleEl = document.createElement("div");
+  titleEl.className = "set-title";
+  titleEl.textContent = title; // 모니터 이름은 OS가 준 값이라 그대로 넣지 않는다
+  const descEl = document.createElement("div");
+  descEl.className = "set-desc";
+  descEl.textContent = desc;
+  text.append(titleEl, descEl);
+  btn.append(box, text);
+  setToggleBox(btn, id === selected);
+  btn.addEventListener("click", () => {
+    window.trayAPI.setSetting("petDisplayId", id);
+    refreshDisplays(); // 선택 표시를 즉시 갱신
+  });
+  return btn;
+}
+
+async function refreshDisplays() {
+  let info;
+  try {
+    info = await window.trayAPI.getDisplays();
+  } catch (_err) {
+    return;
+  }
+  displayPanel.classList.toggle("hidden", info.displays.length < 2);
+  if (info.displays.length < 2) return;
+  displayList.replaceChildren(
+    makeDisplayRow(
+      null,
+      t("settings.displayAuto"),
+      t("settings.displayAutoDesc"),
+      info.selected,
+    ),
+    ...info.displays.map((d, i) =>
+      makeDisplayRow(
+        d.id,
+        d.label || t("settings.displayFallback", { n: i + 1 }),
+        `${d.width} × ${d.height}`,
+        info.selected,
+      ),
+    ),
+  );
 }
 
 settingToggles.forEach((btn) => {

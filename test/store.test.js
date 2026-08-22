@@ -60,3 +60,25 @@ test("온보딩을 시작한 적 없는 기존 사용자는 완료 처리된다"
   store.load();
   assert.equal(store.get().onboarding.completed, true);
 });
+
+// 자동 실행 설정은 시작할 때 OS 상태를 읽어 저장값을 맞춘다(사용자가 시스템 설정이나
+// Dock 우클릭에서 끈 걸 되돌리지 않도록). 단 저장값이 방금 만들어진 기본값이면
+// 그때는 저장값을 OS에 써야 하므로, 그 구분이 isFreshData()로 드러나야 한다.
+test("저장 파일이 없으면 isFreshData가 참이다", () => {
+  fs.rmSync(FILE, { force: true });
+  store.load();
+  assert.equal(store.isFreshData(), true);
+});
+
+test("기존 저장 파일을 읽으면 isFreshData가 거짓이다", () => {
+  writeSaved({ completed: true, step: 999, completedAt: null });
+  store.load();
+  assert.equal(store.isFreshData(), false);
+});
+
+test("초기화하면 isFreshData가 다시 참이 된다", () => {
+  writeSaved({ completed: true, step: 999, completedAt: null });
+  store.load();
+  store.reset();
+  assert.equal(store.isFreshData(), true);
+});
