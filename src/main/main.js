@@ -341,6 +341,10 @@ function releaseModeLocks() {
 // 옵션창의 "애완돌 숨기기/보이기" (트레이 메뉴와 동일 동작)
 ipcMain.on("pet:toggle-visibility", () => togglePet());
 
+// 옵션창의 "앱 종료". 트레이 팝업이 안 열리면 트레이 메뉴의 종료도 못 쓰므로,
+// 펫 창에서 직접 끌 수 있는 경로를 따로 둔다. 확인창은 렌더러가 이미 거쳤다.
+ipcMain.on("pet:quit", () => app.quit());
+
 // 집중 모드가 끝나면 숨겨둔 펫을 되돌린다 (이미 보이면 그대로 둔다)
 ipcMain.on("pet:show", () => {
   if (!mainWindow || mainWindow.isDestroyed()) return;

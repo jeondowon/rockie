@@ -166,8 +166,17 @@ document.querySelectorAll(".mrow").forEach((item) => {
         break;
       case "toggle-pet":
       case "install-update":
-      case "quit":
         window.trayAPI.sendAction(action);
+        break;
+      // 종료는 되돌릴 수 없고 여기가 유일한 경로도 아니다(펫 옵션창에도 있다).
+      // 초기화와 같은 인앱 확인창을 한 번 거친다. showConfirm은 tray-settings.js에 있다.
+      case "quit":
+        showConfirm({
+          title: t("confirm.quitTitle"),
+          desc: t("confirm.quitDesc", { owner: ownerLabel() }),
+          okLabel: t("common.quit"),
+          onOk: () => window.trayAPI.sendAction("quit"),
+        });
         break;
     }
   });
@@ -175,10 +184,21 @@ document.querySelectorAll(".mrow").forEach((item) => {
 
 backBar.addEventListener("click", () => showScreen("menu"));
 
+// 종료 확인창의 {owner} 자리에 쓴다. 이름을 안 지었으면 "주인님"으로 부른다.
+// 펫 렌더러의 ownerDisplayName()과 같은 규칙이다(창이 달라 함수를 공유하지 못한다).
+let ownerNameRaw = "";
+
+function ownerLabel() {
+  return ownerNameRaw
+    ? t("pet.ownerSuffix", { name: ownerNameRaw })
+    : t("pet.ownerDefault");
+}
+
 // 오늘 답할 질문이 남아 있으면 "나의 애완돌" 항목에 배지를 표시
 async function refreshBadge() {
   try {
     const state = await window.trayAPI.getEvolutionState();
+    ownerNameRaw = state.userName || "";
     statusItem.classList.toggle("has-badge", !!state.hasBadge);
     petNameTitle.textContent = state.petName || t("pet.defaultName"); // 메뉴 화면 타이틀바에도 반영
     renderAffinity(state.affinityPoints); // 타이틀바 호감도 pip(레벨)은 항상 보이므로 여기서도 갱신
@@ -190,7 +210,7 @@ async function refreshBadge() {
 // 팝업이 열릴 때마다 메뉴로 초기화하고 권한 상태·배지를 갱신
 window.trayAPI.onWillShow(async () => {
   popupVisible = true;
-  hideResetConfirm(); // 이전에 열려 있던 확인창이 남지 않도록
+  hideConfirm(); // 이전에 열려 있던 확인창이 남지 않도록
   const onboarding = await window.trayAPI.getOnboardingState();
   if (!onboarding.completed) {
     showOnboarding();

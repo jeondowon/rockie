@@ -1501,6 +1501,14 @@ captureOnHover(bubble); // 집중 모드 컨트롤이 떠 있을 때만 hover가
 function openModePanel() {
   if (activeMode || modePanelOpen) return;
   modePanelOpen = true;
+  renderModeOptions();
+  modePanel.classList.remove("hidden");
+  positionModePanel();
+  playSound("click");
+}
+
+// 패널 안을 옵션 목록으로 채운다. 종료 확인에서 취소했을 때도 이걸로 되돌린다.
+function renderModeOptions() {
   modePanel.innerHTML = "";
   modePanel.appendChild(cardEl("div", "mode-title", t("pet.modeSelect")));
 
@@ -1532,13 +1540,58 @@ function openModePanel() {
   });
   modePanel.appendChild(toggle);
 
-  const close = cardEl("button", "mode-close-row", t("common.close"));
-  close.addEventListener("click", closeModePanel);
-  modePanel.appendChild(close);
+  // 맨 아래는 [앱 종료] [창 닫기] 두 칸이다. 앱 종료를 여기 두는 이유는, 트레이
+  // 아이콘을 눌러도 팝업이 안 열리는 상황에서 앱을 끌 방법이 하나도 없기 때문이다.
+  // 모드가 도는 중에는 이 패널 자체가 안 열리므로(위 activeMode 가드) 모드 선택
+  // 전에만 보인다.
+  modePanel.appendChild(
+    footEl(
+      { label: t("pet.quitApp"), danger: true, onClick: renderQuitConfirm },
+      { label: t("pet.closePanel"), onClick: closeModePanel },
+    ),
+  );
+}
 
-  modePanel.classList.remove("hidden");
+// 앱 종료 확인. 별도 오버레이를 만들지 않고 패널 안을 갈아끼운다 — 펫 옆에 붙는
+// 위치와 클릭 캡처(captureOnHover)가 그대로 유지된다.
+function renderQuitConfirm() {
+  modePanel.innerHTML = "";
+  modePanel.appendChild(cardEl("div", "mode-title", t("confirm.quitTitle")));
+  modePanel.appendChild(
+    cardEl(
+      "div",
+      "mode-confirm-desc",
+      t("confirm.quitDesc", { owner: ownerDisplayName() }),
+    ),
+  );
+  modePanel.appendChild(
+    footEl(
+      {
+        label: t("common.cancel"),
+        onClick: () => {
+          renderModeOptions();
+          positionModePanel(); // 높이가 달라졌으니 다시 붙인다
+        },
+      },
+      { label: t("common.quit"), danger: true, onClick: window.petAPI.quitApp },
+    ),
+  );
   positionModePanel();
-  playSound("click");
+}
+
+// 패널 맨 아래 두 칸짜리 버튼 줄. 왼쪽·오른쪽 순서로 받는다.
+function footEl(...buttons) {
+  const foot = cardEl("div", "mode-foot", null);
+  for (const b of buttons) {
+    const btn = cardEl(
+      "button",
+      b.danger ? "mode-foot-btn danger" : "mode-foot-btn",
+      b.label,
+    );
+    btn.addEventListener("click", b.onClick);
+    foot.appendChild(btn);
+  }
+  return foot;
 }
 
 function closeModePanel() {

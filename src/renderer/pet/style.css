@@ -409,20 +409,48 @@ body.dragging .character {
   color: #6a6452;
 }
 
-.mode-close-row {
-  width: 100%;
+/* 옵션창 맨 아래 [앱 종료] [창 닫기]. 모드 줄과 붙어 보이지 않도록 배경을 한 톤
+   눌러 두고, 두 칸 사이도 점선으로 끊어 실수로 옆 칸을 누르지 않게 한다. */
+.mode-foot {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-top: 2px dashed #cbc4b1;
+}
+
+.mode-foot-btn {
   padding: 8px 12px;
   font-family: inherit;
   font-size: 10px;
   color: #6a6452;
   background: #e7e1d2;
   border: none;
-  border-top: 2px dashed #cbc4b1;
   cursor: pointer;
 }
 
-.mode-close-row:hover {
+.mode-foot-btn + .mode-foot-btn {
+  border-left: 2px dashed #cbc4b1;
+}
+
+.mode-foot-btn:hover {
   color: #1b1b16;
+}
+
+.mode-foot-btn.danger {
+  color: #a8432b;
+}
+
+.mode-foot-btn.danger:hover {
+  background: #a8432b;
+  color: #f2ede1;
+}
+
+/* 종료 확인 화면의 설명 줄 */
+.mode-confirm-desc {
+  padding: 10px 12px;
+  font-size: 10px;
+  line-height: 1.7;
+  color: #514c3e;
+  white-space: pre-line; /* 문구의 \n을 줄바꿈으로 살린다 */
 }
 
 /* 청소 모드: 화면 전체를 덮어 모든 클릭을 가로채는 불투명 오버레이 */

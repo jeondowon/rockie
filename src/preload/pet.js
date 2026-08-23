@@ -23,6 +23,8 @@ contextBridge.exposeInMainWorld("petAPI", {
   // 집중 모드 상태를 트레이에 미러링 + 트레이 "종료" 신호 수신 + 펫 표시 토글
   setModeStatus: (status) => ipcRenderer.send("mode:set-status", status),
   togglePet: () => ipcRenderer.send("pet:toggle-visibility"),
+  // 옵션창의 "앱 종료". 트레이가 안 열리는 상황에서도 앱을 끌 수 있는 경로다.
+  quitApp: () => ipcRenderer.send("pet:quit"),
   showPet: () => ipcRenderer.send("pet:show"),
   onModeExitRequest: (callback) => {
     ipcRenderer.on("mode:exit-request", () => callback());

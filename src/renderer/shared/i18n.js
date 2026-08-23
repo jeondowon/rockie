@@ -53,6 +53,8 @@ const I18N_STRINGS = {
     "pet.modeSelect": "모드 선택",
     "pet.hideToggle": "애완돌 숨기기 / 보이기",
     "pet.hideToggleDesc": "잠깐 안 보이게 · 트레이에서 다시 켜기",
+    "pet.quitApp": "앱 종료",
+    "pet.closePanel": "창 닫기",
     "common.close": "닫기",
     "mode.napNote":
       "\n\n키보드를 잠그지 않아도 알람은 그대로 울려요.\n잠금은 권한 부여 후 앱을 재시작하면 적용됩니다.",
@@ -248,11 +250,14 @@ const I18N_STRINGS = {
     "settings.sizeSmall": "작게",
     "settings.sound": "효과음",
     "settings.soundDesc": "상호작용 시 작은 소리 재생",
-    // ---- 초기화 확인창 ----
+    // ---- 확인창 (처음부터 다시 키우기 · 앱 종료) ----
     "confirm.reset": "초기화",
     "confirm.resetDesc":
       "모든 진행도·성향·호감도·설정이 지워지고 조약돌로 돌아갑니다. 되돌릴 수 없어요.",
     "confirm.resetTitle": "처음부터 다시 키우기",
+    "confirm.quitTitle": "앱 종료",
+    "confirm.quitDesc":
+      "애완돌은 {owner}과 함께 있고 싶어요.\n정말로 앱을 종료하시겠어요?",
     // ---- 온보딩 ----
     "onboarding.tagline": "화면 위에 사는 나만의 작은 애완돌",
     "onboarding.step1": "어느 날, 하늘에서 작은 별똥별이 떨어졌습니다.",
@@ -326,6 +331,8 @@ const I18N_STRINGS = {
     "pet.modeSelect": "Choose a mode",
     "pet.hideToggle": "Show / Hide pet",
     "pet.hideToggleDesc": "Hide for now · turn back on from the tray",
+    "pet.quitApp": "Quit app",
+    "pet.closePanel": "Close",
     "common.close": "Close",
     "mode.napNote":
       "\n\nThe alarm still rings even without locking the keyboard.\nLocking applies after you grant permission and restart the app.",
@@ -521,11 +528,14 @@ const I18N_STRINGS = {
     "settings.sizeSmall": "Small",
     "settings.sound": "Sound effects",
     "settings.soundDesc": "Small sound on interaction",
-    // ---- 초기화 확인창 ----
+    // ---- 확인창 (처음부터 다시 키우기 · 앱 종료) ----
     "confirm.reset": "Reset",
     "confirm.resetDesc":
       "All progress, personality, affinity, and settings will be erased and your pet returns to a pebble. This can't be undone.",
     "confirm.resetTitle": "Start over from scratch",
+    "confirm.quitTitle": "Quit app",
+    "confirm.quitDesc":
+      "Your pet wants to stay with {owner}.\nAre you sure you want to quit?",
     // ---- 온보딩 ----
     "onboarding.tagline": "Your own little pet rock, living on your screen",
     "onboarding.step1": "One day, a small shooting star fell from the sky.",

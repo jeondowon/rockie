@@ -1141,16 +1141,14 @@
         </div>
       </div>
 
-      <!-- 인앱 확인창 (처음부터 다시 키우기) -->
+      <!-- 인앱 확인창. 되돌릴 수 없는 동작(처음부터 다시 키우기 · 앱 종료)이 함께 쓴다.
+           제목·설명·확인 버튼에는 data-i18n을 두지 않는다 — 쓰는 곳마다 문구가 다른데
+           applyStaticI18n이 언어를 바꿀 때 한 벌로 덮어써 버리기 때문이다.
+           세 자리는 tray-settings.js의 showConfirm()이 띄울 때마다 채운다. -->
       <div id="confirm-overlay" class="confirm-overlay hidden">
         <div class="confirm-box">
-          <div class="confirm-title" data-i18n="confirm.resetTitle">
-            처음부터 다시 키우기
-          </div>
-          <div class="confirm-desc" data-i18n="confirm.resetDesc">
-            모든 진행도·성향·호감도·설정이 지워지고 조약돌로 돌아갑니다. 되돌릴
-            수 없어요.
-          </div>
+          <div id="confirm-title" class="confirm-title"></div>
+          <div id="confirm-desc" class="confirm-desc"></div>
           <div class="confirm-actions">
             <button
               id="confirm-cancel"
@@ -1159,13 +1157,7 @@
             >
               취소
             </button>
-            <button
-              id="confirm-ok"
-              class="confirm-btn danger"
-              data-i18n="confirm.reset"
-            >
-              초기화
-            </button>
+            <button id="confirm-ok" class="confirm-btn danger"></button>
           </div>
         </div>
       </div>

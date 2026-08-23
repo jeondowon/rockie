@@ -121,6 +121,8 @@ const napValueEl = document.getElementById("nap-minutes-value");
 const appVersionEl = document.getElementById("app-version");
 const resetBtn = document.getElementById("reset-btn");
 const confirmOverlay = document.getElementById("confirm-overlay");
+const confirmTitle = document.getElementById("confirm-title");
+const confirmDesc = document.getElementById("confirm-desc");
 const confirmCancel = document.getElementById("confirm-cancel");
 const confirmOk = document.getElementById("confirm-ok");
 
@@ -288,15 +290,36 @@ napRange.addEventListener("change", () => {
   window.trayAPI.setSetting("napMinutes", Number(napRange.value));
 });
 
-// 초기화는 되돌릴 수 없으므로 인앱 확인창을 먼저 띄운다 (기본 macOS 알림창 대신)
-function showResetConfirm() {
+// 되돌릴 수 없는 동작은 기본 macOS 알림창 대신 이 인앱 확인창을 거친다.
+// 초기화와 앱 종료가 함께 쓰므로 문구와 확인 후 동작을 띄울 때 받는다.
+// tray.js보다 먼저 로드되므로 그쪽 종료 버튼도 이 함수를 그대로 부른다.
+let confirmAction = null;
+
+function showConfirm({ title, desc, okLabel, onOk }) {
+  confirmTitle.textContent = title;
+  confirmDesc.textContent = desc;
+  confirmOk.textContent = okLabel;
+  confirmAction = onOk;
   confirmOverlay.classList.remove("hidden");
 }
-function hideResetConfirm() {
+
+function hideConfirm() {
   confirmOverlay.classList.add("hidden");
+  confirmAction = null;
 }
 
-resetBtn.addEventListener("click", showResetConfirm);
+resetBtn.addEventListener("click", () => {
+  showConfirm({
+    title: t("confirm.resetTitle"),
+    desc: t("confirm.resetDesc"),
+    okLabel: t("confirm.reset"),
+    onOk: async () => {
+      const done = await window.trayAPI.resetPet();
+      if (done) refreshSettings(); // 기본값으로 되돌아간 상태를 다시 반영
+      window.trayAPI.sendAction("close-popup"); // 초기화 확정 후 트레이 창을 닫는다
+    },
+  });
+});
 
 // 설정 하단 홈페이지 링크
 document.getElementById("homepage-btn").addEventListener("click", () => {
@@ -308,12 +331,12 @@ document.getElementById("policy-links").addEventListener("click", (e) => {
   const link = e.target.closest("[data-link]");
   if (link) window.trayAPI.sendAction(link.dataset.link);
 });
-confirmCancel.addEventListener("click", hideResetConfirm);
-confirmOk.addEventListener("click", async () => {
-  hideResetConfirm();
-  const done = await window.trayAPI.resetPet();
-  if (done) refreshSettings(); // 기본값으로 되돌아간 상태를 다시 반영
-  window.trayAPI.sendAction("close-popup"); // 초기화 확정 후 트레이 창을 닫는다
+confirmCancel.addEventListener("click", hideConfirm);
+confirmOk.addEventListener("click", () => {
+  // 확인창을 먼저 닫는다 — onOk가 앱을 끄거나 팝업을 닫으므로 뒤에 두면 안 돌 수 있다.
+  const run = confirmAction;
+  hideConfirm();
+  if (run) run();
 });
 
 permRow.addEventListener("click", async () => {
