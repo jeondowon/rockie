@@ -1273,7 +1273,7 @@ function renderCard(state) {
 
   if (q.situation) {
     if (q.kind === "tiebreaker") {
-      qcard.appendChild(cardEl("p", "q-hint", t("pet.finalCheck")));
+      qcard.appendChild(cardEl("p", "q-hint", t("pet.plusQuestion")));
     } else {
       qcard.appendChild(
         cardEl(
@@ -1308,11 +1308,24 @@ function renderQuestionContent(state, q) {
   close.addEventListener("click", () => hideQuestionCard());
   qcard.appendChild(close);
 
+  // 상단 줄: 뒤로가기(좌) · 진행 안내(중앙) · ✕(우, 카드에 절대배치)
+  const head = cardEl("div", "q-head");
+
+  // 상황 설명을 거쳐 온 질문만 그 화면으로 되돌아갈 수 있다
+  if (q.situation) {
+    const back = cardEl("button", "q-back", t("pet.backToSituation"));
+    back.addEventListener("click", () => {
+      renderCard(state);
+      positionCard();
+    });
+    head.appendChild(back);
+  }
+
   if (q.kind === "tiebreaker") {
-    qcard.appendChild(cardEl("p", "q-hint", t("pet.lastOneMore")));
+    head.appendChild(cardEl("p", "q-hint", t("pet.plusQuestionShort")));
   } else {
     // progress는 "답 완료 개수"라, 지금 답하는 질문은 그 다음 순번(+1)
-    qcard.appendChild(
+    head.appendChild(
       cardEl(
         "p",
         "q-hint",
@@ -1320,6 +1333,7 @@ function renderQuestionContent(state, q) {
       ),
     );
   }
+  qcard.appendChild(head);
   qcard.appendChild(cardEl("p", "q-text", q.text));
 
   const options = cardEl("div", "q-options");

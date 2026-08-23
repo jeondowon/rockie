@@ -192,6 +192,51 @@ body.dragging .character {
   color: #6a6452;
 }
 
+/* 상단 줄: 뒤로가기(좌) · 진행 안내(중앙) · ✕(우)의 높이를 맞춘다 */
+.qcard .q-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* border-box라 패딩 6px + ✕ 높이 20px = 26px 이어야 세로 중심이 ✕와 같아진다 */
+  min-height: 26px;
+  padding: 6px 54px 0;
+}
+
+.qcard .q-head .q-hint {
+  padding: 0;
+  text-align: center;
+}
+
+.qcard .q-back {
+  position: absolute;
+  left: 8px;
+  top: 6px;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  /* flex 안에서는 content의 끝 공백이 접혀 사라져, 공백 한 칸(6px)을 gap으로 준다 */
+  gap: 6px;
+  padding: 0;
+  font-family: inherit;
+  font-size: 10px;
+  line-height: 1.4;
+  text-align: left;
+  color: #6a6452;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.qcard .q-back::before {
+  content: "◀";
+  font-size: 9px;
+}
+
+.qcard .q-back:hover {
+  color: #1b1b16;
+}
+
 .qcard .q-hint {
   padding: 8px 12px 0;
   font-size: 10px;
