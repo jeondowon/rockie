@@ -135,7 +135,7 @@ const clickReactions = [
   { ko: "오늘 할 일은 다 하셨어요?", en: "Have you finished today's list?" },
   {
     ko: "잠깐 딴짓하셔도 저는 {owner} 편이에요.",
-    en: "Take a detour — I'm still at your side.",
+    en: "Take a detour — I'm still on your side, {owner}.",
   },
   {
     ko: "저 이래 봬도 꽤 오래 살았어요.",
@@ -484,7 +484,7 @@ const LONG_USE_CLICK_REACTIONS = [
       { ko: "손목 한 번 풀어주세요.", en: "Give your wrists a shake." },
       {
         ko: "허리 펴세요, 저보다 굽었어요.",
-        en: "Straighten up — you're curvier than me now.",
+        en: "Straighten up — you're more bent than I am.",
       },
       {
         ko: "창밖 한 번 보고 오시는 건 어때요?",

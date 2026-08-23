@@ -140,29 +140,21 @@ function renderOnboardingStep() {
 }
 
 // ---------- 마지막 단계: 권한 ----------
-let permGranted = { screen: false, automation: false };
+let permGranted = { screen: false, automation: false, accessibility: false };
 // 항목별로 "허용" 요청을 이미 한 번 보냈는지. 두 번째 클릭은 시스템 설정 열기로 바뀐다.
-let permTried = { screen: false, automation: false };
-// 화면 기록은 요청 팝업이 뜨지 않는 상태(이미 거부됨)면 설정에서 켜야 하는데,
-// 그 변경은 앱을 재시작해야 읽힌다. 그때는 시작하기 대신 재시작 버튼을 준다.
+let permTried = { screen: false, automation: false, accessibility: false };
+// 화면 기록·손쉬운 사용은 설정에서 켜야 하는 경우가 있는데, 그 변경은 앱을
+// 재시작해야 읽힌다. 그때는 시작하기 대신 재시작 버튼을 준다.
 let permRelaunchMode = false;
 
 function syncStartButton() {
-  // 선택 권한(자동화)은 시작을 막지 않는다.
-  const allGranted = ONBOARDING_PERMISSIONS.filter((p) => !p.optional).every(
-    (p) => permGranted[p.key],
-  );
-  permRelaunchMode = !allGranted && permRelaunchMode;
-  if (allGranted) {
-    onboardingNext.textContent = t("onboarding.start");
-    onboardingNext.disabled = false;
-  } else if (permRelaunchMode) {
-    onboardingNext.textContent = t("onboarding.relaunchStart");
-    onboardingNext.disabled = false;
-  } else {
-    onboardingNext.textContent = t("onboarding.start");
-    onboardingNext.disabled = true;
-  }
+  // 세 권한 모두 선택이라 시작을 막지 않는다. 재시작이 필요한지만 문구로 알린다.
+  // 예전엔 "필수 권한이 다 있나"로 버튼을 잠갔는데, 셋 다 선택이 되면서 그 판정이
+  // 늘 참이 되어(빈 배열의 every는 참) 재시작 문구까지 같이 지워 버렸다.
+  onboardingNext.textContent = permRelaunchMode
+    ? t("onboarding.relaunchStart")
+    : t("onboarding.start");
+  onboardingNext.disabled = false;
 }
 
 function renderPermissionRows() {
@@ -182,6 +174,13 @@ function renderPermissionRows() {
       const label = document.createElement("div");
       label.className = "onboarding-perm-label";
       label.textContent = t(perm.labelKey);
+      // 허용한 뒤에는 권장 표시가 의미 없다(이미 켰으니). 미허용일 때만 붙인다.
+      if (perm.recommended && !granted) {
+        const tag = document.createElement("span");
+        tag.className = "onboarding-perm-tag";
+        tag.textContent = t("perm.recommended");
+        label.append(tag);
+      }
       const desc = document.createElement("div");
       desc.className = "onboarding-perm-desc";
       desc.textContent = t(perm.descKey);
@@ -191,9 +190,7 @@ function renderPermissionRows() {
       if (!granted) {
         const hint = document.createElement("span");
         hint.className = "onboarding-perm-hint";
-        hint.textContent = permTried[perm.key]
-          ? t("perm.openSettings")
-          : t("perm.allow");
+        hint.textContent = t("perm.openSettings");
         row.append(hint);
         row.addEventListener("click", () => requestPermission(perm.key));
       }
@@ -230,28 +227,38 @@ function resizeOnboarding() {
 // dock 조회는 실제로 스크립트를 돌리는 것이라, 아직 허용 전이면 이 호출이
 // 시스템 권한 창을 띄우는 역할까지 한다(권한 화면을 보고 있는 중이라 맥락이 맞다).
 async function loadPermissionState() {
-  // 자동화는 여기서 조회만 한다(requestDockAutomation이 아님). 조회는 권한 창을
-  // 띄우지 않으므로, 화면을 여는 것만으로 창이 뜨는 일이 없다.
-  const [screenStatus, automation] = await Promise.all([
+  // 셋 다 조회만 한다. 자동화는 getDockAutomation(requestDockAutomation이 아님),
+  // 손쉬운 사용은 getDockPermission이 prompt:false로 물어보므로 둘 다 권한 창을
+  // 띄우지 않는다. 화면을 여는 것만으로 창이 뜨는 일이 없다.
+  const [screenStatus, automation, dockPerm] = await Promise.all([
     window.trayAPI.getScreenPermission(),
     window.trayAPI.getDockAutomation(),
+    window.trayAPI.getDockPermission(),
   ]);
   permGranted = {
     screen: screenStatus === "granted",
     automation: automation === "granted",
+    accessibility: dockPerm.accessibility,
   };
   renderPermissionRows();
   syncStartButton();
 }
 
+function openPermissionSettings(key) {
+  if (key === "automation") window.trayAPI.openDockAutomationSettings();
+  else if (key === "accessibility") window.trayAPI.openAccessibilitySettings();
+  else window.trayAPI.openScreenPermissionSettings();
+}
+
+// 행을 누르면 언제나 시스템 설정을 연다(문구도 늘 "설정 열기"다).
+// 다만 처음 한 번은 설정을 열기 전에 권한 요청을 먼저 보낸다. macOS는 앱이 그 권한을
+// 실제로 요청한 적이 있어야 목록에 올려주기 때문이다 — 요청 없이 설정만 열면 자동화·
+// 화면 기록 목록에 Rockie가 없어서 켤 항목을 못 찾는다.
+// 요청 과정에서 macOS가 자체 권한 창을 띄울 수 있고(자동화·손쉬운 사용), 거기서 바로
+// 허용하면 설정 창까지 갈 필요가 없다. 그래서 허용된 경우엔 설정을 열지 않는다.
 async function requestPermission(key) {
-  // 한 번 요청했는데도 허용으로 안 읽히면 두 경우가 섞여 있고 앱은 구분할 수 없다.
-  //  (1) 허용했지만 macOS가 재시작을 요구해 아직 반영이 안 됨 → 아래 재시작 버튼
-  //  (2) 실제로 거부함 → 시스템 설정에서 직접 켜야 함
-  // 그래서 추측해서 설정을 열지 않고, 두 번째 클릭에서만 설정을 연다.
   if (permTried[key]) {
-    if (key === "automation") window.trayAPI.openDockAutomationSettings();
-    else window.trayAPI.openScreenPermissionSettings();
+    openPermissionSettings(key);
     return;
   }
   permTried[key] = true;
@@ -260,11 +267,17 @@ async function requestPermission(key) {
     // 이 호출이 곧 요청이다 — 첫 Apple Event에서 macOS가 권한 창을 띄운다.
     permGranted.automation =
       (await window.trayAPI.requestDockAutomation()) === "granted";
+  } else if (key === "accessibility") {
+    // prompt: true로 물어 권한 창을 띄운다. 허용해도 macOS가 실행 중인 프로세스에는
+    // 바로 반영하지 않으므로, 여기서 참으로 바뀌는 일은 드물다. 재시작 안내로 넘긴다.
+    permGranted.accessibility = await window.trayAPI.requestAccessibility();
+    if (!permGranted.accessibility) permRelaunchMode = true;
   } else {
     const after = await window.trayAPI.requestScreenPermission();
     permGranted.screen = after === "granted";
     if (!permGranted.screen) permRelaunchMode = true;
   }
+  if (!permGranted[key]) openPermissionSettings(key);
   renderPermissionRows();
   syncStartButton();
 }

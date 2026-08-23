@@ -10,36 +10,102 @@ const permHint = document.getElementById("perm-hint");
 // 이 설정 화면에서 권한 요청을 이미 한 번 보냈는지. 두 번째 클릭은 시스템 설정을 연다.
 let permRequested = false;
 
-function setPermBox(granted) {
-  permBox.classList.toggle("on", granted);
-  permBox.textContent = granted ? "[✓]" : "[  ]";
+// 권한 행 세 개(화면 기록·자동화·손쉬운 사용)가 함께 쓴다.
+function setPermBox(box, granted) {
+  box.classList.toggle("on", granted);
+  box.textContent = granted ? "[✓]" : "[  ]";
 }
 
 async function refreshPermToggle() {
   const status = await window.trayAPI.getScreenPermission();
-  setPermBox(status === "granted");
+  setPermBox(permBox, status === "granted");
 }
 
-// 설정 · 자동화 권한 (Dock 좌표 읽기). 손쉬운 사용과 별개 권한이라 따로 안내한다.
-// 거부됐을 때만 보여준다 — 허용 상태면 사용자가 할 일이 없고, 앱이 아직 Dock을
-// 한 번도 안 읽었으면(unknown) 판단할 근거가 없다.
+// 설정 · Dock 회피 권한(자동화 + 손쉬운 사용). 둘 다 있어야 Dock을 정확히 피하고
+// 하나만 켜면 효과가 없어서(dock-tracker.js 머리말) 늘 둘 다 보여준다.
+//
+// 자동화는 상태를 조회하는 API가 없어 첫 Apple Event 전에는 "unknown"이다. 게다가
+// 손쉬운 사용이 꺼져 있으면 Dock 스크립트도 안 돌아 영영 unknown으로 남는다.
+// 그때는 미허용과 같은 빈 칸으로 둔다 — 눌러 보면 그 자리에서 판정된다.
 const autoPermRow = document.getElementById("auto-perm-row");
+const autoPermBox = document.getElementById("auto-perm-box");
+const autoPermHint = document.getElementById("auto-perm-hint");
+const axPermRow = document.getElementById("ax-perm-row");
+const axPermBox = document.getElementById("ax-perm-box");
+const axPermHint = document.getElementById("ax-perm-hint");
+// 이 설정 화면에서 각각 요청을 이미 한 번 보냈는지(permRequested와 같은 역할).
+let autoPermRequested = false;
+let axPermRequested = false;
 
-async function refreshAutomationPerm() {
-  const status = await window.trayAPI.getDockAutomation();
-  autoPermRow.classList.toggle("hidden", status !== "denied");
+async function refreshDockPerm() {
+  const { automation, accessibility } =
+    await window.trayAPI.getDockPermission();
+  setPermBox(autoPermBox, automation === "granted");
+  setPermBox(axPermBox, accessibility);
 }
 
-autoPermRow.addEventListener("click", () => {
-  window.trayAPI.openDockAutomationSettings();
+// 두 행 모두 화면 기록 행과 같은 3단계다: 허용됨이면 해제 경로를 안내하고,
+// 아니면 첫 클릭에 요청을 보내고, 그래도 안 켜졌으면 두 번째 클릭에서 설정을 연다.
+//
+// 첫 클릭이 "요청"인 것이 중요하다. macOS는 앱이 그 권한을 실제로 요청한 적이
+// 있어야 목록에 올려주므로, 요청 없이 설정만 열면 목록에 Rockie가 없어 켤 항목을
+// 못 찾는다. 손쉬운 사용은 조회(prompt:false)로는 등록되지 않고 Dock 스크립트도
+// 권한이 없으면 아예 안 돌아서(dock-tracker.js), 저절로 올라갈 길이 없다.
+autoPermRow.addEventListener("click", async () => {
+  // macOS는 권한을 코드로 해제할 수 없다. 경로를 안내하는 대신 그 화면을 바로 연다.
+  if (autoPermBox.classList.contains("on")) {
+    window.trayAPI.openDockAutomationSettings();
+    autoPermHint.textContent = t("settings.permRevokeHint");
+    return;
+  }
+  // 첫 클릭에서 띄운 안내가 그대로 유효하니 문구는 두지 않고 설정 창만 연다.
+  if (autoPermRequested) {
+    window.trayAPI.openDockAutomationSettings();
+    return;
+  }
+  autoPermRequested = true;
+
+  // 이 호출이 곧 요청이다 — 첫 Apple Event에서 macOS가 권한 창을 띄운다.
+  // (이미 거부된 상태면 macOS가 다시 띄우지 않는다)
+  const status = await window.trayAPI.requestDockAutomation();
+  setPermBox(autoPermBox, status === "granted");
+  if (status === "granted") return;
+  // 자동화는 손쉬운 사용과 달리 켜는 즉시 반영된다. 재시작을 안내하지 않는다.
+  autoPermHint.textContent = t("settings.permAutoRetry");
+});
+
+axPermRow.addEventListener("click", async () => {
+  if (axPermBox.classList.contains("on")) {
+    window.trayAPI.openAccessibilitySettings();
+    axPermHint.textContent = t("settings.permRevokeHint");
+    return;
+  }
+  // 첫 클릭에서 띄운 안내가 그대로 유효하니 문구는 두지 않고 설정 창만 연다.
+  if (axPermRequested) {
+    window.trayAPI.openAccessibilitySettings();
+    return;
+  }
+  axPermRequested = true;
+
+  // prompt: true로 물어 권한 창을 띄운다. 허용해도 macOS가 실행 중인 프로세스에는
+  // 바로 반영하지 않으므로, 여기서 참으로 바뀌는 일은 드물다.
+  const granted = await window.trayAPI.requestAccessibility();
+  setPermBox(axPermBox, granted);
+  if (granted) return;
+  axPermHint.textContent = t("settings.permRestartNote");
 });
 
 async function showSettings() {
   showScreen("settings");
   permHint.textContent = t("settings.screenPermissionDesc");
-  permRequested = false; // 화면을 새로 열면 다시 요청부터 시작한다
+  autoPermHint.textContent = t("settings.automationPermissionDesc");
+  axPermHint.textContent = t("settings.accessibilityPermissionDesc");
+  // 화면을 새로 열면 세 행 모두 다시 요청부터 시작한다
+  permRequested = false;
+  autoPermRequested = false;
+  axPermRequested = false;
   refreshPermToggle();
-  refreshAutomationPerm();
+  refreshDockPerm();
   refreshSettings();
   refreshDisplays();
 }
@@ -264,14 +330,13 @@ permRow.addEventListener("click", async () => {
   // 추측해서 설정을 열지 않고, 한 번 더 눌렀을 때만 연다.
   if (permRequested) {
     window.trayAPI.openScreenPermissionSettings();
-    permHint.textContent = t("settings.permAllowThenRestart");
     return;
   }
   permRequested = true;
 
   // 시스템 권한 팝업 유도 (이미 거부된 상태면 macOS가 다시 띄우지 않음)
   const after = await window.trayAPI.requestScreenPermission();
-  setPermBox(after === "granted");
+  setPermBox(permBox, after === "granted");
   if (after === "granted") return;
   permHint.textContent = t("settings.permRestartNote");
 });

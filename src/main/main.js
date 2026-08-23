@@ -18,6 +18,8 @@ const {
   startDockTracker,
   probeAutomationPermission,
   getAutomationStatus,
+  getDockPermission,
+  requestAccessibility,
 } = require("./dock-tracker");
 const { pick, setLocale } = require("./i18n");
 const { getSystemStats } = require("./system-stats");
@@ -733,6 +735,9 @@ function sendPetSettings() {
     sound: s.soundEnabled,
     focusMinutes: s.focusMinutes,
     napMinutes: s.napMinutes,
+    bubbleApp: s.bubbleApp,
+    bubbleAuto: s.bubbleAuto,
+    bubbleClick: s.bubbleClick,
   });
 }
 
@@ -842,6 +847,13 @@ ipcMain.on("settings:set", (_event, { key, value }) => {
       data.settings.petSize = value;
       sendPetSettings();
       break;
+    // 말풍선 갈래 세 가지. 서로 독립이라 한 줄씩 켜고 끈다.
+    case "bubbleApp":
+    case "bubbleAuto":
+    case "bubbleClick":
+      data.settings[key] = !!value;
+      sendPetSettings();
+      break;
     case "focusMinutes":
       data.settings.focusMinutes = Math.max(1, Number(value) || 25);
       sendPetSettings();
@@ -924,6 +936,19 @@ ipcMain.on("open-dock-automation-settings", () => {
   );
 });
 
+// Dock 회피에 필요한 두 권한의 현재 상태. 설정 화면이 무엇을 안내할지 고르는 데 쓴다.
+ipcMain.handle("get-dock-permission", () => getDockPermission());
+
+// 손쉬운 사용 요청. 조회(hasAccessibility)와 달리 이건 권한 창을 띄우므로,
+// 사용자가 설정에서 직접 눌렀을 때만 부른다.
+ipcMain.handle("request-accessibility", () => requestAccessibility());
+
+ipcMain.on("open-accessibility-settings", () => {
+  shell.openExternal(
+    "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
+  );
+});
+
 // 화면 기록 권한은 허용해도 앱을 재시작해야 반영된다. 온보딩에서 사용자를 가두지
 // 않으려면 앱이 스스로 재시작해야 한다. 온보딩 진행 상태는 저장돼 있어 그대로 이어진다.
 ipcMain.on("app:relaunch", () => {
@@ -953,8 +978,8 @@ async function ensureScreenRecordingPermission() {
   if (status === "granted") return true;
 
   console.warn(
-    `[active-window] 화면 기록 권한 없음(상태: ${status}). 활성 앱 감지를 시작하지 않습니다. ` +
-      "메뉴바 > 설정 > 화면 기록 권한에서 허용한 뒤 앱을 재시작하면 동작합니다.",
+    `[active-window] 화면 기록 권한 없음(상태: ${status}). 앱 이름만으로 동작합니다. ` +
+      "메뉴바 > 설정 > 화면 기록 권한에서 허용한 뒤 앱을 재시작하면 창 제목도 읽습니다.",
   );
   mainWindow.webContents.once("did-finish-load", () => {
     sendToPet("screen-permission-missing");
@@ -962,13 +987,20 @@ async function ensureScreenRecordingPermission() {
   return false;
 }
 
-// active-win은 ESM이라 동적 import로만 불러올 수 있다. 3초마다 부르므로 한 번만 로드한다.
+// get-windows는 ESM이라 동적 import로만 불러올 수 있다. 3초마다 부르므로 한 번만 로드한다.
 // 실패한 프라미스를 그대로 들고 있으면 영영 재시도하지 않으므로, 실패 시엔 비워 둔다.
+//
+// 예전엔 active-win을 썼는데 8.2.1의 accessibilityPermission 옵션이 동작하지 않았다.
+// JS 래퍼는 --no-accessibility-permission을 만들어 넘기고 .d.ts에도 적혀 있었지만
+// 정작 컴파일된 바이너리에 그 플래그가 없어 조용히 무시됐고, 손쉬운 사용 검사가
+// 무조건 돌아 3초마다 권한 창이 떴다(2026-08-23 실측). get-windows는 active-win의
+// 후속 패키지이고 플래그가 실제로 구현돼 있다 — 두 권한을 모두 끈 채로도 exit 0으로
+// 앱 이름을 돌려주는 것을 확인했다(title만 빈 문자열).
 let activeWinPromise = null;
 function loadActiveWin() {
   if (!activeWinPromise) {
-    activeWinPromise = import("active-win").then(
-      (m) => m.default,
+    activeWinPromise = import("get-windows").then(
+      (m) => m.activeWindow, // v9는 default export가 없다
       (err) => {
         activeWinPromise = null;
         throw err;
@@ -979,18 +1011,25 @@ function loadActiveWin() {
 }
 
 async function startActiveWindowWatcher() {
-  if (!(await ensureScreenRecordingPermission())) return;
+  // 화면 기록이 없어도 감시를 시작한다. 창 제목만 못 읽을 뿐 앱 이름은 그대로 나오고,
+  // 앱 이름만으로 맞는 말풍선이 대부분이다. 예전엔 여기서 그냥 돌아가 버려서
+  // 화면 기록을 거부하면 앱별 말풍선이 통째로 죽었다.
+  const canReadTitle = await ensureScreenRecordingPermission();
 
   let loggedError = false; // 같은 에러를 3초마다 반복 출력하지 않도록 1회만 로그
 
   watcherInterval = setInterval(async () => {
     try {
       const activeWin = await loadActiveWin();
-      // accessibilityPermission의 기본값이 true라 호출할 때마다 손쉬운 사용 권한 창을
-      // 띄운다(호출마다 새 프로세스를 띄우는 구조라 3초마다 다시 뜬다). 그 권한은
-      // 브라우저 주소창을 읽는 url 속성에만 쓰이는데 우리는 appName과 title만 쓴다.
-      // screenRecordingPermission은 title에 필요하므로 켠 채로 둔다.
-      const result = await activeWin({ accessibilityPermission: false });
+      // 두 권한 모두 없으면 없는 대로 돌린다. 켜 달라고 조르지 않는다 —
+      // 기본값(true)으로 부르면 호출마다 권한 창이 뜨는데, 호출마다 새 프로세스를
+      // 띄우는 구조라 3초마다 다시 뜬다.
+      //   accessibility  : 브라우저 주소창을 읽는 url 속성에만 쓰인다. 우리는 안 쓴다.
+      //   screenRecording: title에 필요하다. 없으면 title이 빈 문자열로 온다.
+      const result = await activeWin({
+        accessibilityPermission: false,
+        screenRecordingPermission: canReadTitle,
+      });
       loggedError = false; // 성공하면(권한 허용 후) 다음 실패를 다시 로그할 수 있게 초기화
       if (result) {
         sendToPet("active-window-info", {

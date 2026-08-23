@@ -15,24 +15,51 @@
 //     공용 도구를 방패 삼은 우회를 막으려는 설계다.
 //     2026-08-21에 "손쉬운 사용은 필요 없다"고 적어 두었으나 틀렸다. 실행 중인
 //     프로세스는 TCC 승인을 캐시하므로, 앱을 켜 둔 채 체크박스만 꺼서는 드러나지
-//     않는다(재시작해야 실패한다). 2026-08-23에 1.0.4에서 확인 — active-win이
-//     띄우던 권한 창을 없앴더니 가려져 있던 이쪽 요청이 그대로 드러났다.
+//     않는다(재시작해야 실패한다). 2026-08-23에 손쉬운 사용이 없는 프로세스로
+//     직접 돌려 확인했다 — 이 스크립트는 -1719(보조 접근 불허)로 실패하고,
+//     UI를 안 건드리는 System Events 호출은 같은 조건에서 성공했다.
 // 2순위(권한 없을 때): Electron API + 커서 위치 휴리스틱으로 근사한다.
 //   - 상시 표시 Dock: 화면 크기 - 작업 영역 차이로 높이 계산 (가로 범위는 전체로 간주)
 //   - 자동 숨김 Dock: 커서가 화면 맨 아래에 닿으면 "올라옴", Dock 높이 위로 벗어나면 "내려감"
-const { screen } = require("electron");
+const { screen, systemPreferences } = require("electron");
 const { execFile } = require("child_process");
 
-// Dock의 실제 사각형을 읽는 스크립트. 손쉬운 사용/자동화 권한이 여기에만 쓰인다.
+// Dock의 실제 사각형을 읽는 스크립트. 자동화와 손쉬운 사용이 둘 다 필요하다.
 const DOCK_SCRIPT =
   'tell application "System Events" to tell process "Dock" to get {position, size} of list 1';
 
+// 자동화만 확인하는 스크립트. UI 요소를 건드리지 않아 손쉬운 사용이 없어도 성공한다
+// (2026-08-23 실측: 손쉬운 사용 없는 프로세스에서 DOCK_SCRIPT는 -1719로 실패하고
+// 이것은 성공했다). 예전엔 자동화 확인에도 DOCK_SCRIPT를 써서, 자동화만 물어보려던
+// 자리에서 손쉬운 사용 창까지 같이 떴다.
+const AUTOMATION_PROBE_SCRIPT =
+  'tell application "System Events" to get name of current user';
+
 // 자동화(Apple Events) 권한 상태. 손쉬운 사용과 별개의 권한이라 따로 봐야 한다.
-// 손쉬운 사용만 허용하고 자동화를 거부하면 osascript가 계속 실패해 휴리스틱으로
-// 조용히 강등되는데, 사용자 눈에는 "Dock 위에 안 올라간다"로만 보인다.
-// 요청하는 API는 없다(첫 osascript 호출 때 macOS가 알아서 창을 띄운다). 그래서
+// 요청하는 API는 없다(첫 Apple Event를 보낼 때 macOS가 알아서 창을 띄운다). 그래서
 // 호출 결과로만 알 수 있고, 첫 호출 전에는 "unknown"이다.
 let automationStatus = "unknown"; // "granted" | "denied" | "unknown"
+
+// 손쉬운 사용은 자동화와 달리 창을 안 띄우고 상태만 물어볼 수 있다.
+// 이걸 먼저 보고 없으면 osascript를 아예 안 돌린다 — 권한 창이 한 번도 안 뜬다.
+// (오류를 보고 뒤늦게 멈추는 방식이었다면 매 실행마다 한 번씩은 떴다. 게다가
+//  macOS는 손쉬운 사용 '거부'를 기록하지 않아서, 물어볼 때마다 계속 다시 뜬다.)
+function hasAccessibility() {
+  if (process.platform !== "darwin") return true;
+  return systemPreferences.isTrustedAccessibilityClient(false);
+}
+
+// 사용자가 설정에서 직접 누를 때만 쓴다. prompt: true라 권한 창을 띄운다.
+// 허용해도 macOS가 실행 중인 프로세스에는 바로 반영하지 않으므로 재시작이 필요하다.
+function requestAccessibility() {
+  if (process.platform !== "darwin") return true;
+  return systemPreferences.isTrustedAccessibilityClient(true);
+}
+
+// Dock 회피가 지금 어느 단계로 동작하는지. 설정 화면이 안내를 고르는 데 쓴다.
+function getDockPermission() {
+  return { automation: automationStatus, accessibility: hasAccessibility() };
+}
 
 function getAutomationStatus() {
   return automationStatus;
@@ -44,18 +71,21 @@ function isPermissionError(stderr) {
   return /-1743|Not authorized to send Apple events/.test(stderr || "");
 }
 
-// 온보딩 권한 화면용. 자동화 권한은 요청 API가 없고 첫 Apple Event를 보낼 때
-// macOS가 창을 띄우므로, 스크립트를 한 번 돌리는 것이 곧 요청이다.
-// 그래서 권한 화면을 보여주기 전에는 dock 추적을 시작하지 않는다(main.js) —
-// 안 그러면 프롤로그 도중에 맥락 없는 권한 창이 끼어든다.
+// 온보딩·설정의 자동화 권한 요청. 요청 API가 없고 첫 Apple Event를 보낼 때 macOS가
+// 창을 띄우므로, 스크립트를 한 번 돌리는 것이 곧 요청이다. UI를 안 건드리는
+// 스크립트를 쓰므로 손쉬운 사용 창은 뜨지 않는다.
 function probeAutomationPermission() {
   if (process.platform !== "darwin") return Promise.resolve("granted");
   return new Promise((resolve) => {
-    execFile("osascript", ["-e", DOCK_SCRIPT], (err, _out, stderr) => {
-      if (!err) automationStatus = "granted";
-      else if (isPermissionError(stderr)) automationStatus = "denied";
-      resolve(automationStatus);
-    });
+    execFile(
+      "osascript",
+      ["-e", AUTOMATION_PROBE_SCRIPT],
+      (err, _o, stderr) => {
+        if (!err) automationStatus = "granted";
+        else if (isPermissionError(stderr)) automationStatus = "denied";
+        resolve(automationStatus);
+      },
+    );
   });
 }
 
@@ -97,8 +127,15 @@ function startDockTracker(getWindow, getDisplay) {
       if (!err && !Number.isNaN(n)) tileSize = n;
     });
   };
+  // 손쉬운 사용 여부. 창을 안 띄우는 조회라 주기적으로 다시 봐도 안전하다.
+  // 실행 중에 켜 주면(재시작 없이 반영되는 경우가 있다) 스스로 정확한 경로로 돌아온다.
+  let accessible = hasAccessibility();
+
   readDockPrefs();
-  const prefsInterval = setInterval(readDockPrefs, 10000);
+  const prefsInterval = setInterval(() => {
+    readDockPrefs();
+    accessible = hasAccessibility();
+  }, 10000);
 
   const sendDockState = (state) => {
     const win = getWindow();
@@ -188,6 +225,12 @@ function startDockTracker(getWindow, getDisplay) {
   const tickInterval = setInterval(() => {
     // 좌·우 Dock은 캐릭터 동선과 겹치지 않는다. 스크립트를 돌릴 이유가 없다.
     if (orientation !== "bottom") return sendDockState(HIDDEN);
+
+    // 손쉬운 사용이 없으면 스크립트는 -1719로 실패할 뿐 아니라 그때마다 권한 창을
+    // 띄운다. macOS가 손쉬운 사용 '거부'를 기록하지 않기 때문이다(자동화와 다르다).
+    // 그러니 시도조차 하지 않는다 — 사용자가 설정에서 직접 켜기 전까지는 휴리스틱만
+    // 쓴다. 켜 주면 아래 accessible 값이 참으로 바뀌어 저절로 정확한 경로로 돌아온다.
+    if (!accessible) return heuristicTick();
 
     // osascript 왕복은 한 번에 150ms쯤 걸린다(대부분이 프로세스 기동 비용). 매 틱마다
     // 부르면 거의 상시 떠 있는 셈이라 호출 간격을 벌리고, 그 사이는 마지막으로 읽은
@@ -282,4 +325,6 @@ module.exports = {
   startDockTracker,
   probeAutomationPermission,
   getAutomationStatus,
+  getDockPermission,
+  requestAccessibility,
 };

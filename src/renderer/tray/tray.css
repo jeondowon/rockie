@@ -1365,6 +1365,31 @@ html[lang="en"]
   font-size: 11px;
   line-height: 1.5;
   color: #1b1b16;
+  /* 라벨과 "권장" 배지를 한 줄에 세로 중앙으로 맞춘다. 인라인으로 두면 배지 상자
+     아래쪽이 글자 기준선에 붙어 아래로 처진다. 좁으면 배지가 다음 줄로 내려간다. */
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+/* "권장" 표시. 없어도 앱은 돌지만 없으면 눈에 띄게 어색해지는 권한·설정에만 붙인다. */
+.onboarding-perm-tag,
+.set-tag {
+  /* 글자를 상자 정중앙에 놓는다. line-height로 맞추면 픽셀 글꼴의 위아래 여백이
+     글꼴마다 달라 한쪽으로 쏠린다. 높이를 고정하고 flex로 가운데 정렬한다.
+     (box-sizing: border-box가 전역이라 height에 테두리가 포함된다) */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 15px;
+  padding: 0 5px;
+  font-size: 9px;
+  line-height: 1;
+  color: #4f7a3f;
+  background: #e6eee1;
+  border: 1px solid #a9c39c;
+  white-space: nowrap;
 }
 
 .onboarding-perm-desc {
@@ -1372,6 +1397,8 @@ html[lang="en"]
   line-height: 1.5;
   color: #6b6557;
   word-break: keep-all;
+  /* 설명은 "무엇을 하나 / 안 주면 어떻게 되나" 두 줄로 쓴다. 그 줄바꿈(\n)을 살린다 */
+  white-space: pre-line;
 }
 
 .onboarding-perm-hint {
@@ -1397,6 +1424,12 @@ html[lang="en"]
   letter-spacing: 2px;
   color: #4f7a3f;
   margin-bottom: 10px;
+}
+
+/* 토글 행 목록이 뒤따를 때는 첫 행의 위쪽 padding(10px)이 이미 간격 노릇을 한다.
+   제목 margin까지 더하면 20px이 되어 칩 패널(제목→칩 10px)보다 훨씬 벌어진다. */
+.panel-label:has(+ .set-list) {
+  margin-bottom: 0;
 }
 
 .panel-label-sub {
@@ -2253,6 +2286,15 @@ html[lang="en"]
 .set-title {
   font-size: 12px;
   color: #1b1b16;
+}
+
+/* 제목과 "권장" 배지를 한 줄에 세로 중앙으로 맞춘다(온보딩 권한 라벨과 같은 이유).
+   배지가 없는 행은 원래대로 블록으로 둔다. */
+.set-title:has(.set-tag) {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
 }
 
 .set-desc {

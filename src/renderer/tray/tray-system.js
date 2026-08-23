@@ -192,7 +192,8 @@ function relativeTime(ms) {
   if (minutes < 60) return t("system.minutesAgo", { n: minutes });
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return t("system.hoursAgo", { n: hours });
-  return t("system.daysAgo", { n: Math.floor(hours / 24) });
+  const days = Math.floor(hours / 24);
+  return t(days === 1 ? "system.dayAgo" : "system.daysAgo", { n: days });
 }
 
 // 못 읽었으면 null — 부르는 쪽이 그 줄을 숨긴다

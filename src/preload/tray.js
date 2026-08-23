@@ -13,6 +13,10 @@ contextBridge.exposeInMainWorld("trayAPI", {
   requestDockAutomation: () => ipcRenderer.invoke("request-dock-automation"),
   openDockAutomationSettings: () =>
     ipcRenderer.send("open-dock-automation-settings"),
+  getDockPermission: () => ipcRenderer.invoke("get-dock-permission"),
+  requestAccessibility: () => ipcRenderer.invoke("request-accessibility"),
+  openAccessibilitySettings: () =>
+    ipcRenderer.send("open-accessibility-settings"),
   relaunchApp: () => ipcRenderer.send("app:relaunch"),
   getDisplays: () => ipcRenderer.invoke("settings:get-displays"),
   onWillShow: (callback) => {

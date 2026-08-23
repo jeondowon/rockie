@@ -85,7 +85,7 @@ test/                  진화 로직 테스트 (node --test)
 
 ## 6. 참고 및 주의사항
 
-- macOS에서 활성 창의 **제목**을 읽으려면 `active-win`이 **화면 기록(Screen Recording) 권한**을 요구합니다. 시스템 설정 > 개인정보 보호 및 보안 > 화면 기록에서 이 앱을 허용해야 활성 앱 감지(말풍선)가 동작합니다.
+- macOS에서 활성 창의 **제목**을 읽으려면 `get-windows`가 **화면 기록(Screen Recording) 권한**을 요구합니다. 허용하지 않아도 앱 이름은 읽히므로 앱별 말풍선은 대부분 그대로 나오고, 창 제목까지 봐야 하는 규칙만 동작하지 않습니다.
 - macOS Dock의 정확한 위치·표시 여부는 AppleScript(System Events)로 읽으며, 자동화/손쉬운 사용 권한이 없으면 커서 위치 휴리스틱으로 근사합니다.
 - Windows에서는 별도 권한 없이 바로 동작합니다.
 - 캐릭터를 교체하려면 `assets/gif/` 안의 스프라이트를 바꾸고, 필요 시 `pet.js`의 `SIZE_PX`·`SPRITE_GEOM` 값을 함께 맞춰주면 됩니다. 진화 상태 ↔ GIF 접두어 매핑은 `src/renderer/shared/sprites.js`가 단일 정의처입니다.

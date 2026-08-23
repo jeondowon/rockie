@@ -369,22 +369,35 @@ const ONBOARDING_FLOW = [
   },
 ];
 
-// 온보딩 마지막 권한 화면에 표시할 항목.
-// screen = 화면 기록, automation = 자동화(Dock 좌표 읽기에만 쓰인다).
-// 손쉬운 사용은 여기 없다 — 키보드를 잠그는 KeyBlocker만 쓰고, 그건 모드를 켤 때 따로 안내한다.
+// 온보딩 마지막 권한 화면에 표시할 항목. 셋 다 선택이다 — 하나도 허용하지 않아도
+// 애완돌은 정상 동작하고, 각 권한은 기능 하나씩만 켠다.
+// 필수로 둘 수 없는 이유도 있다. macOS는 자동화를 한 번 거부하면 다시 묻지 않으므로,
+// 시작 버튼을 막아두면 실수로 거부한 사용자가 앱을 영영 못 켠다.
+//   screen        = 화면 기록. 활성 앱 이름과 창 제목 읽기
+//   automation    = 자동화. System Events에게 Dock 좌표를 물어보기
+//   accessibility = 손쉬운 사용. System Events가 Dock의 UI 요소를 실제로 읽기
+// Dock 회피 하나에 자동화와 손쉬운 사용이 둘 다 필요하다(dock-tracker.js 머리말).
+// 키보드 잠금용 손쉬운 사용은 별개다 — 그건 KeyBlocker가 따로 받고 모드를 켤 때 안내한다.
+// 권장 두 개를 위에, 그냥 선택인 화면 기록을 아래에 둔다.
+// 자동화와 손쉬운 사용은 서로를 "함께 허용해주세요"라고 가리키는 한 쌍이라 붙여 놓는다.
+// 하나만 켜면 Dock 회피가 동작하지 않는다(dock-tracker.js 머리말).
 const ONBOARDING_PERMISSIONS = [
-  {
-    key: "screen",
-    labelKey: "perm.screen",
-    descKey: "perm.screenDesc",
-  },
   {
     key: "automation",
     labelKey: "perm.automation",
     descKey: "perm.automationDesc",
-    // 없어도 Dock 회피가 근사치로 동작한다. 거부해도 온보딩을 끝낼 수 있어야 한다 —
-    // macOS는 자동화를 한 번 거부하면 다시 묻지 않으므로 필수로 두면 갇힌다.
-    optional: true,
+    recommended: true,
+  },
+  {
+    key: "accessibility",
+    labelKey: "perm.accessibility",
+    descKey: "perm.accessibilityDesc",
+    recommended: true,
+  },
+  {
+    key: "screen",
+    labelKey: "perm.screen",
+    descKey: "perm.screenDesc",
   },
 ];
 

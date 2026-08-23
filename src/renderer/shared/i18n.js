@@ -30,7 +30,7 @@ const I18N_STRINGS = {
     "pet.ownerDefault": "주인님",
     "pet.modeHint": " 저를 더블클릭하면 여러 모드를 사용할 수 있어요!",
     "pet.noScreenPerm":
-      "어떤 앱을 보고 계신지 알 수 없어요. 메뉴바 펫 아이콘 → '화면 기록 권한 설정 열기'에서 허용해주세요!",
+      "창 제목을 못 읽어서 몇몇 말풍선이 빠져요. 메뉴바 펫 아이콘 → '화면 기록 권한 설정 열기'에서 허용해주세요!",
     "pet.evolvedStone": "저, {stone}이 됐어요!",
     "pet.evolvedVariant": "저, 변성체가 됐어요!",
     "pet.evolvedGem": "반짝… 드디어 보석이 됐어요! ✨",
@@ -146,6 +146,7 @@ const I18N_STRINGS = {
     "system.justNow": "방금 전",
     "system.minutesAgo": "{n}분 전",
     "system.hoursAgo": "{n}시간 전",
+    "system.dayAgo": "{n}일 전",
     "system.daysAgo": "{n}일 전",
     "system.needsRefresh": "갱신 필요",
     "system.inHoursMinutes": "{h}시간 {m}분 후",
@@ -188,17 +189,16 @@ const I18N_STRINGS = {
     // ---- 설정 ----
     "settings.permRevokeHint":
       "해제하려면 열린 설정 창에서 체크를 해제해 주세요.",
-    "settings.permAllowThenRestart":
-      "열린 설정 창에서 Rockie를 허용한 뒤 앱을 재시작해 주세요.",
-    "settings.permRestartNote":
-      "허용하셨다면 앱을 재시작해야 적용됩니다. 아직이라면 한 번 더 눌러 설정을 여세요.",
+    "settings.permRestartNote": "허용하신 후 앱을 재시작해야 적용돼요.",
+    // 자동화만 문구가 따로다 — 켜는 즉시 반영돼 재시작을 안내하면 안 된다.
+    "settings.permAutoRetry": "허용하셨다면 바로 적용돼요.",
     "settings.appTagline": "데스크톱 애완돌",
     "settings.autoLaunch": "로그인 시 자동 실행",
     "settings.autoLaunchDesc": "컴퓨터를 켜면 애완돌이 함께 깨어나요",
     "settings.bottomLeft": "좌하단",
     "settings.bottomRight": "우하단",
     "settings.dragNote":
-      "드래그로 애완돌을 잠시동안 원하는 위치에 둘 수 있어요.",
+      "드래그로 애완돌을 잠시 동안 원하는 위치에 둘 수 있어요.",
     "settings.focusDuration": "집중 모드 시간",
     "settings.follow": "따라오기",
     "settings.general": "일반",
@@ -226,12 +226,23 @@ const I18N_STRINGS = {
     "settings.displayFallback": "모니터 {n}",
     "settings.petPlacement": "애완돌 위치",
     "settings.petSize": "애완돌 크기",
+    "settings.bubbles": "말풍선",
+    "settings.bubbleApp": "앱 반응",
+    "settings.bubbleAppDesc": "지금 보고 있는 앱과 창 제목에 맞춰 말을 걸어요.",
+    "settings.bubbleAuto": "자동 반응",
+    "settings.bubbleAutoDesc":
+      "배터리 부족 · 진화 예고 등 상태를 확인하고 먼저 말을 건네요.",
+    "settings.bubbleClick": "클릭 반응",
+    "settings.bubbleClickDesc": "애완돌을 클릭하면 그때그때 다른 말을 해요.",
     "settings.resetBtn": "↻ 처음부터 다시 키우기",
     "settings.automationPermission": "자동화 권한",
     "settings.automationPermissionDesc":
-      "Dock 위에 올라서려면 필요합니다. 눌러서 설정을 여세요.",
+      "애완돌이 Dock 위치를 정확히 읽고 회피하는 데 필요해요.",
+    "settings.accessibilityPermission": "손쉬운 사용 권한",
+    "settings.accessibilityPermissionDesc":
+      "Dock 회피를 위해 자동화와 함께 필요해요.",
     "settings.screenPermission": "화면 기록 권한",
-    "settings.screenPermissionDesc": "활성 앱 감지(말풍선)에 필요합니다.",
+    "settings.screenPermissionDesc": "창 제목을 읽는 데 필요해요.",
     "settings.sizeLarge": "크게",
     "settings.sizeMedium": "보통",
     "settings.sizeSmall": "작게",
@@ -255,16 +266,20 @@ const I18N_STRINGS = {
     "onboarding.step9": "왠지 이 돌을 그냥 두고 갈 수는 없을 것 같아요.",
     "onboarding.step10":
       "작은 조약돌이 당신의 곁에 자리를 잡았습니다.\n이제부터 ROCKIE와 함께 지내보세요.",
-    "onboarding.step11": "함께 지내려면 두 가지 허락이 필요해요.",
+    "onboarding.step11": "함께 지내려면 세 가지 허락이 필요해요.",
     "onboarding.start": "시작하기",
     "onboarding.next": "클릭하여 진행",
     "onboarding.relaunchStart": "재시작하고 시작하기",
     "perm.screen": "화면 기록",
-    "perm.screenDesc": "지금 보고 있는 앱을 알아채고 말을 걸어요.",
-    "perm.automation": "자동화 권한 (선택)",
+    "perm.screenDesc":
+      "창 제목을 읽고 상황에 맞게 말을 걸어요.\n화면을 촬영하거나 정보를 저장하지 않아요.",
+    "perm.automation": "자동화",
     "perm.automationDesc":
-      "Dock의 위치를 읽어서 가리지 않게 피해 다녀요. 창이 뜨면 '허용'을 눌러주세요.",
-    "perm.allow": "허용",
+      "애완돌이 Dock을 가리지 않도록 피해다녀요.\n손쉬운 사용과 함께 허용해주세요.",
+    "perm.accessibility": "손쉬운 사용",
+    "perm.accessibilityDesc":
+      "Dock의 위치를 읽기 위해 필요해요.\n자동화와 함께 허용해주세요.",
+    "perm.recommended": "권장",
     "perm.openSettings": "설정 열기",
   },
   en: {
@@ -288,7 +303,7 @@ const I18N_STRINGS = {
     "pet.ownerDefault": "master",
     "pet.modeHint": " Double-click me to open the modes!",
     "pet.noScreenPerm":
-      "I can't tell which app you're using. Allow it from the menu bar pet icon → 'Open Screen Recording settings'!",
+      "I can't read window titles, so some of my lines are missing. Allow it from the menu bar pet icon → 'Open Screen Recording settings'!",
     "pet.evolvedStone": "I became {stone}!",
     "pet.evolvedVariant": "I turned into a metamorphic form!",
     "pet.evolvedGem": "Sparkle… I'm finally a gem! ✨",
@@ -384,7 +399,7 @@ const I18N_STRINGS = {
     "pet.stage2": "Stage 2",
     "pet.stage3": "Stage 3",
     "pet.stageBase": "Base",
-    "pet.supportDev": "Visit the site and support the developer ▶",
+    "pet.supportDev": "Visit the homepage and support the developer ▶",
     "pet.userName": "Your name",
     "pet.worn": "Worn",
     // ---- 아이템 ----
@@ -407,7 +422,8 @@ const I18N_STRINGS = {
     "system.justNow": "Just now",
     "system.minutesAgo": "{n} min ago",
     "system.hoursAgo": "{n} hr ago",
-    "system.daysAgo": "{n} d ago",
+    "system.dayAgo": "{n} day ago",
+    "system.daysAgo": "{n} days ago",
     "system.needsRefresh": "Needs refresh",
     "system.inHoursMinutes": "in {h} hr {m} min",
     "system.inHours": "in {h} hr",
@@ -449,10 +465,8 @@ const I18N_STRINGS = {
     // ---- 설정 ----
     "settings.permRevokeHint":
       "To revoke it, uncheck Rockie in the Settings window that just opened.",
-    "settings.permAllowThenRestart":
-      "Allow Rockie in the Settings window that just opened, then restart the app.",
-    "settings.permRestartNote":
-      "If you allowed it, restart the app to apply. If not, tap again to open Settings.",
+    "settings.permRestartNote": "If you allowed it, restart the app to apply.",
+    "settings.permAutoRetry": "If you allowed it, it applies right away.",
     "settings.appTagline": "Desktop Pet Rock",
     "settings.autoLaunch": "Launch at login",
     "settings.autoLaunchDesc": "Your pet wakes up when your computer does",
@@ -485,13 +499,25 @@ const I18N_STRINGS = {
     "settings.displayFallback": "Display {n}",
     "settings.petPlacement": "Pet position",
     "settings.petSize": "Pet size",
+    "settings.bubbles": "Speech bubbles",
+    "settings.bubbleApp": "App reactions",
+    "settings.bubbleAppDesc":
+      "Talks to you about the app and window title you're looking at.",
+    "settings.bubbleAuto": "Automatic reactions",
+    "settings.bubbleAutoDesc":
+      "Watches for things like low battery or an upcoming evolution and speaks up first.",
+    "settings.bubbleClick": "Click reactions",
+    "settings.bubbleClickDesc":
+      "Says something different each time you click your pet.",
     "settings.resetBtn": "↻ Start over from scratch",
     "settings.automationPermission": "Automation permission",
     "settings.automationPermissionDesc":
-      "Needed to stand on the Dock. Click to open settings.",
-    "settings.screenPermission": "Screen Recording",
-    "settings.screenPermissionDesc":
-      "Needed to detect the active app (speech bubbles).",
+      "Needed so your pet can read the Dock's position and avoid it.",
+    "settings.accessibilityPermission": "Accessibility permission",
+    "settings.accessibilityPermissionDesc":
+      "Needed together with Automation to avoid the Dock.",
+    "settings.screenPermission": "Screen Recording permission",
+    "settings.screenPermissionDesc": "Needed to read window titles.",
     "settings.sizeLarge": "Large",
     "settings.sizeMedium": "Medium",
     "settings.sizeSmall": "Small",
@@ -520,17 +546,20 @@ const I18N_STRINGS = {
       "Somehow, it doesn't feel right to just walk away and leave it here.",
     "onboarding.step10":
       "The little pebble has settled in by your side.\nFrom now on, live alongside ROCKIE.",
-    "onboarding.step11": "To live together, it needs two permissions.",
+    "onboarding.step11": "Living together takes three permissions.",
     "onboarding.start": "Start",
     "onboarding.next": "Click to continue",
-    "onboarding.relaunchStart": "Restart and start",
+    "onboarding.relaunchStart": "Restart and begin",
     "perm.screen": "Screen Recording",
     "perm.screenDesc":
-      "Lets your pet notice the app you're using and say something.",
-    "perm.automation": "Automation (optional)",
+      "Reads window titles and says something that fits.\nNothing is captured, and no information is saved.",
+    "perm.automation": "Automation",
     "perm.automationDesc":
-      "Reads the Dock's position so your pet doesn't cover it. Click Allow when the prompt appears.",
-    "perm.allow": "Allow",
+      "Keeps your pet from covering the Dock. Please allow this with Accessibility.",
+    "perm.accessibility": "Accessibility",
+    "perm.accessibilityDesc":
+      "Needed to read where the Dock is. Please allow this with Automation.",
+    "perm.recommended": "Recommended",
     "perm.openSettings": "Open Settings",
   },
 };

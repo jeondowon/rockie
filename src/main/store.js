@@ -63,6 +63,10 @@ function defaultData() {
       // 모니터를 뽑으면 id를 못 찾게 되는데, 그때도 주 모니터로 되돌아간다.
       petDisplayId: null,
       petSize: "medium", // "small" | "medium" | "large"
+      // 말풍선을 갈래별로 켜고 끈다. 서로 독립이라 셋 다 꺼도 되고 셋 다 켜도 된다.
+      bubbleApp: true, // 앱 이름·창(탭) 제목에 반응하는 말
+      bubbleAuto: true, // 배터리·진화 예고·권한 안내처럼 저절로 뜨는 말
+      bubbleClick: true, // 눌렀을 때 하는 말
       focusMinutes: 25,
       napMinutes: 20,
       language: "ko", // "ko" | "en" (표시 언어. 저장 데이터의 키는 언어와 무관하게 유지된다)

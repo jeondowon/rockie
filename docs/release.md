@@ -41,7 +41,7 @@ Mac App Store는 **App Sandbox가 필수**인데, Rockie의 핵심 기능 대부
 
 | 기능 | 코드 | 샌드박스에서 막히는 이유 |
 | --- | --- | --- |
-| 활성 창 제목 읽기 | `src/main/main.js` (`active-win`) | 다른 앱의 창 정보 조회. 샌드박스 앱에 부여할 entitlement가 없다 |
+| 활성 창 제목 읽기 | `src/main/main.js` (`get-windows`) | 다른 앱의 창 정보 조회. 샌드박스 앱에 부여할 entitlement가 없다 |
 | Dock 위치/크기 감지 | `src/main/dock-tracker.js` (`osascript` → `System Events`) | Apple Events + 접근성 권한. 샌드박스는 접근성 권한 자체를 금지한다 |
 | Dock 설정 읽기 | `src/main/dock-tracker.js` (`defaults read com.apple.dock`) | 컨테이너 밖 preference 읽기 + 시스템 바이너리 실행 |
 | 쪽잠 모드 키보드 차단 | `src/main/keyblocker.js` (`KeyBlocker.app` spawn) | 접근성 기반 별도 실행파일 spawn |
@@ -186,7 +186,7 @@ Rockie는 화면 위에서 사용자 상황에 반응하는 앱이라, 기능 �
 현재 주요 의존성:
 
 - Electron (devDependency지만 앱에 통째로 들어간다)
-- `active-win` — 활성 창 조회
+- `get-windows` — 활성 창 조회
 - `systeminformation` — 시스템 모니터 수치
 - `electron-updater` — 자동 업데이트
 
@@ -237,8 +237,8 @@ Chromium 고지는 electron-builder가 macOS 타깃에서 자동으로 넣어주
 | 스크립트 | `npm run dist` = `electron-builder --mac` |
 
 번들에서 빼는 것(`files`의 `!` 규칙): `docs/`, `test/`, `scripts/`, `assets/licenses/`.
-반대로 asar 밖으로 빼는 것(`asarUnpack`): `assets/helper/**`, `node_modules/active-win/main`,
-`node_modules/active-win/lib/binding/**` — 이유는 6.1.3.
+반대로 asar 밖으로 빼는 것(`asarUnpack`): `assets/helper/**`, `node_modules/get-windows/main`,
+`node_modules/get-windows/lib/binding/**` — 이유는 6.1.3.
 
 실제 릴리스는 `npm run dist`가 아니라 `./scripts/release.sh`로 한다(6.4.4). 서명·공증·검증·업로드까지 한 번에 처리하기 때문이다.
 
@@ -315,7 +315,7 @@ const KEYBLOCKER_APP_PATH = path
 
 개발 실행에는 경로에 `app.asar`가 없어 아무 영향이 없다.
 
-**`active-win`은 이 처리가 필요 없다.** `execFile`을 쓰는데, Electron이 asar 경로를 지원하는 유일한 child_process 메서드라 알아서 unpacked로 해결된다. `spawn`·`exec`는 지원되지 않는다.
+**`get-windows`는 이 처리가 필요 없다.** `execFile`을 쓰는데, Electron이 asar 경로를 지원하는 유일한 child_process 메서드라 알아서 unpacked로 해결된다. `spawn`·`exec`는 지원되지 않는다.
 
 **앞으로 네이티브 실행파일을 추가하면**: `asarUnpack`에 넣는 것만으로는 부족하다. 그 파일을 **어떤 방법으로 실행하는지** 확인하고, `spawn` 계열이면 위 `.replace()`를 반드시 붙인다.
 
@@ -372,7 +372,7 @@ macOS의 권한 저장소(TCC)는 앱의 코드 서명으로 앱을 식별한다
 
 일반적인 Electron 앱과 달리 네이티브 실행파일이 두 군데 섞여 있어, 여기서 notarization이 실패하기 쉽다.
 
-- **`node_modules/active-win/main`** — Mach-O universal 실행파일. `lib/binding/` 아래에 `.node` 바이너리도 arm64/x64 두 개가 있다. asar에 묶이면 실행되지 않으므로 `asarUnpack`으로 빼고 각각 개별 서명되어야 한다.
+- **`node_modules/get-windows/main`** — Mach-O universal 실행파일. `lib/binding/` 아래에 `.node` 바이너리도 arm64/x64 두 개가 있다. asar에 묶이면 실행되지 않으므로 `asarUnpack`으로 빼고 각각 개별 서명되어야 한다.
 - **`assets/helper/KeyBlocker.app`** — `package.json`의 `build:helper` 스크립트는 서명 ID 기본값이 `-`(ad-hoc)이다. 이대로 패키징하면 notarization이 거부된다. 배포 빌드에서는 `KEYBLOCKER_CODESIGN_IDENTITY`에 실제 Developer ID를 넣고, 헬퍼도 Hardened Runtime(`--options runtime`)으로 서명해야 한다.
 - **서명 순서** — 중첩 번들은 안쪽부터 서명해야 한다(KeyBlocker.app → Electron Framework → 최상위 `.app`). electron-builder가 대부분 처리하지만, `assets/` 안에 앱 번들이 들어 있는 구조는 비표준이라 수동 확인이 필요하다.
 
@@ -606,9 +606,33 @@ macOS 자동 업데이트는 Squirrel.Mac이 담당하는데 **zip만 받는다.
 - 앱 버전 표시
 - 개인정보처리방침 · 이용약관 · 오픈소스 라이선스 · 문의 링크
 
+**(2026-08-23 반영 완료)** 설정에 "말풍선" 패널을 넣었다. 갈래마다 켜고 끄는 줄
+세 개다. 서로 독립이라 셋 다 꺼도 되고 셋 다 켜도 된다.
+
+| 줄 | 저장 키 | 끄면 안 나오는 말 |
+| --- | --- | --- |
+| 앱 반응 | `settings.bubbleApp` | `WINDOW_RULES` — 앱 이름·창(탭) 제목에 반응하는 말 |
+| 자동 반응 | `settings.bubbleAuto` | 배터리 부족·진화 예고·화면 기록 권한 안내 |
+| 클릭 반응 | `settings.bubbleClick` | 눌렀을 때 하는 말(시간대별·장시간 사용 반응 포함) |
+
+셋 다 기본값은 `true`다. 처음엔 배타 선택 칩 4개(`모두 켜기`/`앱 반응 끄기`/
+`자동 끄기`/`모두 끄기`)였는데, 앱 반응만 남기고 싶은 조합을 만들 수 없어
+독립 토글로 바꿨다. 일반 패널의 토글과 같은 `set-row[data-setting]` 구조라
+`tray-settings.js`의 공용 토글 배선이 그대로 처리한다 — 칩 때 필요했던
+전용 클릭 핸들러와 설명 갈아끼우기 코드는 지웠다.
+
+판정은 `pet.js`의 `bubbleAllowed(kind)` 한 곳에 모았다(`kind`는 `"app"` | `"auto"` | `"click"`).
+세 갈래 어디에도 없는 말 — 진화 완료, 이름 보상, 집중 종료 — 은 끄지 않는다.
+사용자가 방금 한 행동의 결과라서, 안 알려주면 무슨 일이 일어났는지 알 수 없다.
+집중 모드의 남은 시간은 `renderFocusBubble`이 말풍선 요소를 직접 쓰는 별도 경로라
+애초에 이 판정을 타지 않는다.
+
+클릭 반응을 꺼도 효과음과 멈칫하는 동작은 남긴다 — 눌렀다는 감각까지 없애면
+클릭이 먹었는지 알 수 없다. 첫 클릭의 모드 안내는 꺼져 있는 동안 "아직 못 봤음"으로
+남겨 뒀다가 다시 켰을 때 보여준다(`modeHintPending`을 소비하지 않는다).
+
 추가 고려:
 
-- 앱별 말풍선 비활성화 토글
 - 장시간 사용 리액션 비활성화 토글
 - 시스템 모니터 표시 비활성화 토글
 
@@ -651,6 +675,7 @@ macOS 자동 업데이트는 Squirrel.Mac이 담당하는데 **zip만 받는다.
 - 트레이 메뉴 열기/닫기, 펫 보이기/숨기기
 - 시스템 모니터 수치·게이지·상세 드롭다운
 - 설정 전 항목: 자동실행, 질문 알림, 효과음, 위치, 크기, 집중 시간, 쪽잠 시간
+- 말풍선 세 토글: 앱 반응·자동 반응·클릭 반응을 각각 껐을 때 그 갈래만 멈추는지 (클릭 반응을 꺼도 효과음은 나는지)
 - 언어 전환 후 모든 화면의 문구 (특히 앱 버전 표시가 지워지지 않는지)
 - 정책 링크 4종이 브라우저·메일 앱으로 열리는지
 - 데이터 초기화
@@ -724,7 +749,6 @@ Windows (보류, 착수 시 확인):
 
 남은 권장 항목:
 
-- 앱별 말풍선 토글 추가 (7절)
 - (보류) Windows 실행 파일 생성 및 코드 서명 (6.3)
 
 ---

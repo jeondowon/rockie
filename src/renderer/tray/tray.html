@@ -857,13 +857,16 @@
                     화면 기록 권한
                   </div>
                   <div id="perm-hint" class="set-desc">
-                    활성 앱 감지(말풍선)에 필요합니다.
+                    창 제목을 읽는 데 필요해요.
                   </div>
                 </div>
               </button>
-              <!-- 자동화 권한은 거부됐을 때만 보여준다. 허용돼 있으면 사용자가 할 일이
-                 없고, 첫 osascript 호출 전에는 상태를 알 수 없다. -->
-              <button id="auto-perm-row" class="set-row hidden">
+              <!-- Dock 회피 권한. 자동화와 손쉬운 사용이 둘 다 있어야 정확해지고
+                 하나만 켜면 효과가 없다(dock-tracker.js 머리말). 그래서 허용 여부와
+                 상관없이 늘 둘 다 보여준다 — 하나만 보여주면 나머지 하나가 왜
+                 필요한지 알 길이 없다. 설명 줄은 화면 기록 행과 마찬가지로
+                 tray-settings.js가 클릭 단계에 맞춰 바꾼다. -->
+              <button id="auto-perm-row" class="set-row">
                 <span id="auto-perm-box" class="set-box">[&nbsp;&nbsp;]</span>
                 <div class="set-text">
                   <div
@@ -872,11 +875,66 @@
                   >
                     자동화 권한
                   </div>
+                  <div id="auto-perm-hint" class="set-desc">
+                    애완돌이 Dock 위치를 정확히 읽고 회피하는 데 필요해요.
+                  </div>
+                </div>
+              </button>
+              <button id="ax-perm-row" class="set-row">
+                <span id="ax-perm-box" class="set-box">[&nbsp;&nbsp;]</span>
+                <div class="set-text">
                   <div
-                    class="set-desc"
-                    data-i18n="settings.automationPermissionDesc"
+                    class="set-title"
+                    data-i18n="settings.accessibilityPermission"
                   >
-                    Dock 위에 올라서려면 필요합니다.
+                    손쉬운 사용 권한
+                  </div>
+                  <div id="ax-perm-hint" class="set-desc">
+                    Dock 회피를 위해 자동화와 함께 필요해요.
+                  </div>
+                </div>
+              </button>
+            </div>
+          </section>
+
+          <!-- 말풍선 — 갈래별로 따로 켜고 끈다. 서로 독립이라 셋 다 꺼도 되고
+               셋 다 켜도 된다. 판정은 pet.js의 bubbleAllowed 한 곳에서 한다. -->
+          <section class="panel">
+            <div class="panel-label" data-i18n="settings.bubbles">말풍선</div>
+            <div class="set-list">
+              <button class="set-row" data-setting="bubbleAuto">
+                <span class="set-box">[&nbsp;&nbsp;]</span>
+                <div class="set-text">
+                  <div class="set-title">
+                    <span data-i18n="settings.bubbleAuto">자동 반응</span>
+                    <span class="set-tag" data-i18n="perm.recommended"
+                      >권장</span
+                    >
+                  </div>
+                  <div class="set-desc" data-i18n="settings.bubbleAutoDesc">
+                    배터리 부족 · 진화 예고 등 상태를 확인하고 먼저 말을 건네요.
+                  </div>
+                </div>
+              </button>
+              <button class="set-row" data-setting="bubbleApp">
+                <span class="set-box">[&nbsp;&nbsp;]</span>
+                <div class="set-text">
+                  <div class="set-title" data-i18n="settings.bubbleApp">
+                    앱 반응
+                  </div>
+                  <div class="set-desc" data-i18n="settings.bubbleAppDesc">
+                    지금 보고 있는 앱과 창 제목에 맞춰 말을 걸어요.
+                  </div>
+                </div>
+              </button>
+              <button class="set-row" data-setting="bubbleClick">
+                <span class="set-box">[&nbsp;&nbsp;]</span>
+                <div class="set-text">
+                  <div class="set-title" data-i18n="settings.bubbleClick">
+                    클릭 반응
+                  </div>
+                  <div class="set-desc" data-i18n="settings.bubbleClickDesc">
+                    애완돌을 클릭하면 그때그때 다른 말을 해요.
                   </div>
                 </div>
               </button>
@@ -1076,8 +1134,8 @@
             </div>
             <div class="app-info">
               Rockie v<span id="app-version">–</span> ·
-              <span data-i18n="settings.appTagline">데스크톱 애완돌</span><br />©
-              2026 · jeondowon
+              <span data-i18n="settings.appTagline">데스크톱 애완돌</span
+              ><br />© 2026 · jeondowon
             </div>
           </section>
         </div>

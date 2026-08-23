@@ -45,6 +45,24 @@ let SPRITE_MARGIN = 36;
 // 설정 '펫 위치'. "follow"=커서 추적, "bottom-left"/"bottom-right"=하단 모서리 고정
 let placement = "follow";
 let petSize = "medium"; // 설정 '크기'. 레벨 scale과 곱해 실제 CHAR_SIZE를 만든다
+// 설정 '말풍선'. 갈래별로 켜고 끈다(서로 독립이다).
+// app   = 지금 보는 앱 이름·창(탭) 제목에 반응하는 말 (WINDOW_RULES)
+// auto  = 배터리 부족·진화 예고·권한 안내처럼 사용자가 부르지 않았는데 뜨는 말
+// click = 눌렀을 때 하는 말 (시간대·장시간 사용 반응 포함)
+// 세 갈래에 없는 말(진화 완료·이름 보상·집중 종료)은 사용자가 방금 한 행동의
+// 결과라서 끄지 않는다 — 껐다고 결과를 안 알려주면 무슨 일이 일어났는지 알 수 없다.
+const bubbleOn = { app: true, auto: true, click: true };
+
+function bubbleAllowed(kind) {
+  return bubbleOn[kind];
+}
+
+// 첫 설정 조회와 이후 변경 알림이 같은 키로 온다. 안 실린 값은 그대로 둔다.
+function applyBubbleSettings(s) {
+  if (s.bubbleApp !== undefined) bubbleOn.app = s.bubbleApp;
+  if (s.bubbleAuto !== undefined) bubbleOn.auto = s.bubbleAuto;
+  if (s.bubbleClick !== undefined) bubbleOn.click = s.bubbleClick;
+}
 
 let paused = false;
 let pauseTimer = null;
@@ -690,12 +708,17 @@ character.addEventListener("click", (e) => {
   clearTimeout(clickReactionTimer);
   clickReactionTimer = setTimeout(() => {
     playSound("click");
-    if (modeHintPending) {
-      modeHintPending = false;
-      window.petAPI.markModeHintShown();
-      showBubble(MODE_HINT, 5000);
-    } else {
-      showBubble(formatMessage(pickRandom(currentClickReactions())));
+    // 클릭 반응을 꺼도 소리와 멈칫하는 반응은 남긴다 — 눌렀다는 감각까지 없애면
+    // 클릭이 먹은 건지 알 수 없다. 모드 안내는 아직 못 본 것으로 남겨 뒀다가
+    // 다시 켰을 때 보여준다.
+    if (bubbleAllowed("click")) {
+      if (modeHintPending) {
+        modeHintPending = false;
+        window.petAPI.markModeHintShown();
+        showBubble(MODE_HINT, 5000);
+      } else {
+        showBubble(formatMessage(pickRandom(currentClickReactions())));
+      }
     }
     pauseWalking(1500);
   }, DOUBLE_CLICK_MS);
@@ -829,6 +852,10 @@ window.petAPI.onActiveWindowInfo(({ appName, title }) => {
     announcedStage = null;
   }
 
+  // 규칙 추적(currentRuleId·ruleEnteredAt)은 위에서 이미 끝냈으므로, 껐다가 다시 켜면
+  // 지금 보고 있는 창부터 자연스럽게 이어진다.
+  if (!bubbleAllowed("app")) return;
+
   if (rule.silent) return;
 
   // 체류 시간 단계형 규칙: 같은 창에 머물러도 단계가 오르면 새 멘트를 띄운다
@@ -849,9 +876,10 @@ window.petAPI.onActiveWindowInfo(({ appName, title }) => {
   }
 });
 
-// macOS 화면 기록 권한이 없으면 활성 창 감지 자체가 실패해서
-// 위의 앱별 말풍선이 전부 동작하지 않는다. 사용자에게 해결 방법을 안내한다.
+// macOS 화면 기록 권한이 없으면 창 제목이 빈 문자열로 온다(앱 이름은 그대로 읽힌다).
+// 위 규칙 중 제목까지 봐야 하는 것만 안 걸리므로, 해결 방법을 한 번 안내한다.
 window.petAPI.onScreenPermissionMissing(() => {
+  if (!bubbleAllowed("auto")) return;
   showAutoBubble(t("pet.noScreenPerm"), 8000);
 });
 
@@ -885,7 +913,9 @@ function updateBatteryState(battery) {
     return;
   }
 
+  // 표정은 말풍선 설정과 무관하게 바꾼다 — 말이 아니라 모습이다.
   setTiredSprite(tier.sprite);
+  if (!bubbleAllowed("auto")) return;
   // 건너뛰었으면 기록하지 않는다 — 다음 배터리 변화 때 다시 시도한다.
   if (announcedTier !== tier.level) {
     if (showAutoBubble(formatMessage(tier.message), 5000))
@@ -994,6 +1024,7 @@ function setPendingEvolution(pending) {
   pendingEvolution = pending;
   if (!pendingEvolution) return;
   applyEvolution(pendingEvolution.from);
+  if (!bubbleAllowed("auto")) return;
   showBubble(t("pet.evolveStarting", { owner: ownerDisplayName() }), 3000);
 }
 
@@ -1385,6 +1416,7 @@ async function initSettings() {
     setSoundEnabled(s.soundEnabled);
     focusMinutes = Number(s.focusMinutes) || 25;
     napMinutes = Number(s.napMinutes) || 20;
+    applyBubbleSettings(s);
     modeHintPending = !s.modeHintSeen;
   } catch (_err) {
     // 설정을 못 읽으면 기본값(따라오기 · 보통)을 유지
@@ -1400,23 +1432,29 @@ async function initSettings() {
 }
 
 // 트레이 설정에서 위치/크기를 바꾸면 즉시 반영
-window.petAPI.onPetSettings(
-  ({ placement: p, size, sound, focusMinutes: fm, napMinutes: nm }) => {
-    if (p) {
-      // 위치 모드가 바뀌면 드래그/정지 상태를 취소해 얼어붙지 않게 한다
-      if (holdTimer) clearTimeout(holdTimer);
-      if (dropTimer) clearTimeout(dropTimer);
-      holdTimer = dropTimer = null;
-      dragging = pinned = false;
-      document.body.classList.remove("dragging");
-      placement = p;
-    }
-    if (size) applyPetSize(size);
-    if (sound !== undefined) setSoundEnabled(sound);
-    if (fm) focusMinutes = Number(fm) || 25;
-    if (nm) napMinutes = Number(nm) || 20;
-  },
-);
+window.petAPI.onPetSettings((settings) => {
+  const {
+    placement: p,
+    size,
+    sound,
+    focusMinutes: fm,
+    napMinutes: nm,
+  } = settings;
+  if (p) {
+    // 위치 모드가 바뀌면 드래그/정지 상태를 취소해 얼어붙지 않게 한다
+    if (holdTimer) clearTimeout(holdTimer);
+    if (dropTimer) clearTimeout(dropTimer);
+    holdTimer = dropTimer = null;
+    dragging = pinned = false;
+    document.body.classList.remove("dragging");
+    placement = p;
+  }
+  if (size) applyPetSize(size);
+  if (sound !== undefined) setSoundEnabled(sound);
+  if (fm) focusMinutes = Number(fm) || 25;
+  if (nm) napMinutes = Number(nm) || 20;
+  applyBubbleSettings(settings);
+});
 
 // ---------- 7. 모드 (더블클릭 옵션창: 청소 / 집중 / 쪽잠) ----------
 // 모든 모드 UI는 펫 창 안에서 자족적으로 처리한다(별도 창·트레이 배선 없음).
