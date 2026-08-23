@@ -22,6 +22,7 @@ const I18N_STRINGS = {
     // ---- 메뉴 ----
     "menu.installUpdate": "업데이트 설치 후 재시작",
     "menu.myPet": "나의 애완돌",
+    "menu.newQuestion": "새로운 질문",
     "menu.settings": "설정",
     "menu.systemMonitor": "시스템 모니터",
     "menu.togglePet": "애완돌 숨기기 / 보이기",
@@ -299,6 +300,7 @@ const I18N_STRINGS = {
     // ---- 메뉴 ----
     "menu.installUpdate": "Install update and restart",
     "menu.myPet": "My Pet",
+    "menu.newQuestion": "New question",
     "menu.settings": "Settings",
     "menu.systemMonitor": "System Monitor",
     "menu.togglePet": "Show / Hide Pet",

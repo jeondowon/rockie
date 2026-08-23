@@ -384,12 +384,14 @@ body {
   visibility: visible;
 }
 
+/* "새로운 질문" 배지. 오늘 답할 질문이 남아 있을 때만 보인다. */
 .mrow-badge {
-  margin-left: auto;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #a8432b;
+  padding: 3px 6px;
+  border: 1px solid #1b1b16;
+  background: #e9c85b;
+  font-size: 10px;
+  line-height: 1;
+  white-space: nowrap;
   visibility: hidden;
 }
 
