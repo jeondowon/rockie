@@ -464,21 +464,21 @@ const I18N_STRINGS = {
     "system.weeklySession": "Weekly session usage",
     // ---- 설정 ----
     "settings.permRevokeHint":
-      "To revoke it, uncheck Rockie in the Settings window that just opened.",
-    "settings.permRestartNote": "If you allowed it, restart the app to apply.",
-    "settings.permAutoRetry": "If you allowed it, it applies right away.",
+      "To revoke, uncheck Rockie in the window that just opened.",
+    "settings.permRestartNote": "Restart the app to apply.",
+    "settings.permAutoRetry": "Applies right away once allowed.",
     "settings.appTagline": "Desktop Pet Rock",
     "settings.autoLaunch": "Launch at login",
-    "settings.autoLaunchDesc": "Your pet wakes up when your computer does",
+    "settings.autoLaunchDesc": "Wakes up with your computer",
     "settings.bottomLeft": "Bottom left",
     "settings.bottomRight": "Bottom right",
-    "settings.dragNote": "Drag your pet to park it somewhere for a while.",
+    "settings.dragNote": "Drag your pet to park it for a while.",
     "settings.focusDuration": "Focus session length",
     "settings.follow": "Follow",
     "settings.general": "General",
     "settings.hideFromCapture": "Hide from screen capture",
     "settings.hideFromCaptureDesc":
-      "Your pet won't appear in screenshots, recordings, or shared screens",
+      "Hidden from screenshots, recordings, and screen shares",
     "settings.homepage": "Visit the homepage",
     "settings.privacy": "Privacy",
     "settings.terms": "Terms",
@@ -491,7 +491,7 @@ const I18N_STRINGS = {
     "settings.min60": "60 min",
     "settings.napDuration": "Nap length",
     "settings.notifications": "Question alerts",
-    "settings.notificationsDesc": "Show a banner when a new question arrives",
+    "settings.notificationsDesc": "Banner alert for new questions",
     "settings.permissions": "Permissions",
     "settings.petDisplay": "Pet display",
     "settings.displayAuto": "Automatic",
@@ -501,28 +501,26 @@ const I18N_STRINGS = {
     "settings.petSize": "Pet size",
     "settings.bubbles": "Speech bubbles",
     "settings.bubbleApp": "App reactions",
-    "settings.bubbleAppDesc":
-      "Talks to you about the app and window title you're looking at.",
+    "settings.bubbleAppDesc": "Reacts to the app and window you're using.",
     "settings.bubbleAuto": "Automatic reactions",
     "settings.bubbleAutoDesc":
-      "Watches for things like low battery or an upcoming evolution and speaks up first.",
+      "Speaks up first on low battery, evolution, and more.",
     "settings.bubbleClick": "Click reactions",
-    "settings.bubbleClickDesc":
-      "Says something different each time you click your pet.",
+    "settings.bubbleClickDesc": "Says something new on every click.",
     "settings.resetBtn": "↻ Start over from scratch",
     "settings.automationPermission": "Automation permission",
     "settings.automationPermissionDesc":
-      "Needed so your pet can read the Dock's position and avoid it.",
+      "Keeps your pet from covering the Dock.",
     "settings.accessibilityPermission": "Accessibility permission",
     "settings.accessibilityPermissionDesc":
-      "Needed together with Automation to avoid the Dock.",
+      "Needed with Automation to dodge the Dock.",
     "settings.screenPermission": "Screen Recording permission",
     "settings.screenPermissionDesc": "Needed to read window titles.",
     "settings.sizeLarge": "Large",
     "settings.sizeMedium": "Medium",
     "settings.sizeSmall": "Small",
     "settings.sound": "Sound effects",
-    "settings.soundDesc": "Play a small sound on interaction",
+    "settings.soundDesc": "Small sound on interaction",
     // ---- 초기화 확인창 ----
     "confirm.reset": "Reset",
     "confirm.resetDesc":
@@ -533,8 +531,7 @@ const I18N_STRINGS = {
     "onboarding.step1": "One day, a small shooting star fell from the sky.",
     "onboarding.step2":
       "Thud! A mysterious meteorite just crashed down in front of you!",
-    "onboarding.step3":
-      "Huh..? Something seems to be rattling inside the meteorite.",
+    "onboarding.step3": "Huh..? Something's rattling inside the meteorite.",
     "onboarding.step4": "....clatter... clatter...",
     "onboarding.step5": "Crrrack... crrrack...",
     "onboarding.step6":
@@ -542,23 +539,21 @@ const I18N_STRINGS = {
     "onboarding.step7":
       "The meteorite splits open, and a little pebble appears inside.",
     "onboarding.step8": "The pebble looks up at you.",
-    "onboarding.step9":
-      "Somehow, it doesn't feel right to just walk away and leave it here.",
+    "onboarding.step9": "Somehow, you can't bring yourself to leave it here.",
     "onboarding.step10":
-      "The little pebble has settled in by your side.\nFrom now on, live alongside ROCKIE.",
+      "The little pebble has settled in by your side.\nFrom now on, ROCKIE lives with you.",
     "onboarding.step11": "Living together takes three permissions.",
     "onboarding.start": "Start",
     "onboarding.next": "Click to continue",
     "onboarding.relaunchStart": "Restart and begin",
     "perm.screen": "Screen Recording",
     "perm.screenDesc":
-      "Reads window titles and says something that fits.\nNothing is captured, and no information is saved.",
+      "Reads window titles and reacts to them.\nNothing is captured or saved.",
     "perm.automation": "Automation",
     "perm.automationDesc":
-      "Keeps your pet from covering the Dock. Please allow this with Accessibility.",
+      "Keeps your pet from covering the Dock. Needs Accessibility.",
     "perm.accessibility": "Accessibility",
-    "perm.accessibilityDesc":
-      "Needed to read where the Dock is. Please allow this with Automation.",
+    "perm.accessibilityDesc": "Reads where the Dock is. Needs Automation.",
     "perm.recommended": "Recommended",
     "perm.openSettings": "Open Settings",
   },
