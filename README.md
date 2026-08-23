@@ -1,6 +1,6 @@
 ![Rockie 배너](assets/img/rockie_banner.png)
 
-# Rockie - 데스크롭 애완돌 키우기 앱
+# Rockie - 데스크톱 애완돌 키우기 앱
 
 화면 위에 작은 캐릭터가 살면서 마우스를 따라다니고, 클릭에 반응하고, 활성 앱에 따라 말풍선을 띄우는 Electron 데스크톱 펫입니다.
 성향 질문에 답하면 캐릭터가 네 종류의 "돌" 중 하나로 확정(진화)됩니다.
@@ -11,7 +11,13 @@
 npm install
 npm start        # 일반 실행
 npm run dev      # 파일 저장 시 렌더러 자동 새로고침 (개발용)
+npm test         # 진화·저장·사용량 테스트 (node --test)
 ```
+
+빌드·배포용 스크립트는 `npm run notices`(오픈소스 고지 생성),
+`npm run build:helper`(KeyBlocker.app 빌드), `npm run dist`(패키징)입니다.
+실제 릴리스는 `npm run dist`가 아니라 `./scripts/release.sh`로 합니다 — 서명·공증·검증·업로드를
+한 번에 처리합니다. 자세한 절차는 `docs/release.md`가 정본입니다.
 
 ## 2. 파일 구조
 
@@ -20,27 +26,43 @@ src/
   main/                메인 프로세스
     main.js            창·트레이 팝업 생성, IPC 배선, 커서/활성 창 폴링, 알림·설정
     dock-tracker.js    macOS Dock 위치·표시 추적 (AppleScript + 휴리스틱)
+    keyblocker.js      청소·쪽잠 모드의 키보드 잠금 (별도 KeyBlocker.app 실행)
+    tray-icon.js       메뉴바 아이콘·배지 생성
+    updater.js         자동 업데이트 (electron-updater + GitHub Releases)
     system-stats.js    시스템 모니터 데이터 조회 (systeminformation)
+    ai-usage.js        시스템 모니터의 Codex 사용량 행
+    codex-usage-cache.js  Codex 세션 로그(jsonl) 증분 파싱·캐시
     store.js           상태를 userData/petdata.json 단일 JSON으로 영속화
     evolution.js       진화 판정 엔진 (질문 집계·타이브레이커·단계 확정, Electron 무의존)
-    questions.js       성향 질문 데이터 (본 12 + 타이브레이커 6 + E/I 12 + E/I 타이브레이커)
+    questions.js       성향 질문 데이터 (온보딩 4 + 본 12 + 타이브레이커 6 + E/I 6 + E/I 타이브레이커)
+    i18n.js            메인 프로세스 문구(트레이 메뉴·알림)의 한/영 번역
   preload/             렌더러 ↔ 메인 IPC 브릿지
     pet.js             window.petAPI (펫 오버레이 창)
     tray.js            window.trayAPI (트레이 팝업 창)
   renderer/
     pet/               펫 오버레이 (index.html · pet.js · pet-data.js · style.css)
-    tray/              트레이 팝업 4화면 (tray.html · tray.js · tray-data.js · tray.css)
+    tray/              트레이 팝업 (tray.html · tray.css · tray-data.js와
+                       화면별 스크립트 tray.js · tray-onboarding.js · tray-pet.js ·
+                       tray-system.js · tray-settings.js — 로드 순서가 계약이다)
     shared/sprites.js  진화 상태 ↔ GIF 매핑 단일 정의처 (두 렌더러 공용)
     shared/icons.js    라인 아이콘 SVG + svgIcon() (두 렌더러 공용)
     shared/sound.js    효과음·알람 (Web Audio 합성)
+    shared/i18n.js     렌더러 문구의 한/영 번역 + t()
 assets/
   gif/level0~3/        단계별 스프라이트 ({접두어}_{포즈}.gif) + heart.gif
   tray/                메뉴바 아이콘 (template.png, 배지 new_dark/new_light.png)
-docs/                  기획·스펙 문서
-test/                  진화 로직 테스트 (node --test)
+  fonts/               Galmuri11 · Galmuri14 woff2 (CDN 없이 번들, 오프라인 대응)
+  helper/              KeyBlocker.app (키보드 잠금 전용 별도 번들)
+  licenses/            THIRD-PARTY-NOTICES.md (npm run notices로 생성)
+  img/                 배너 등 문서용 이미지
+scripts/
+  release.sh           서명·공증·검증·업로드까지 한 번에 하는 릴리스 스크립트
+  gen-notices.js       오픈소스 고지 생성 (npm run notices)
+docs/                  기획·스펙·정책 문서
+test/                  진화·저장·사용량 테스트 (node --test)
 ```
 
-관련 설계 문서: `docs/plan.md`(기획·작업 현황), `docs/evolution.md`(진화 단계·근거 정본), `docs/dataschema.md`(저장 데이터 구조)
+관련 설계 문서: `docs/plan.md`(기획·작업 현황), `docs/evolution.md`(진화 단계·근거 정본), `docs/dataschema.md`(저장 데이터 구조), `docs/release.md`(배포·서명·QA 정본), `docs/release-notes.md`(버전별 사용자 대상 변경사항), `docs/install.md`(사용자용 설치·권한 안내)
 
 ## 3. 동작 방식
 
@@ -52,7 +74,7 @@ test/                  진화 로직 테스트 (node --test)
 4. macOS Dock이 캐릭터와 겹치면 Dock 바로 위로 부드럽게 올라갔다가, 벗어나면 다시 화면 맨 아래로 내려옵니다.
 5. 마우스가 캐릭터 위에 있을 때만 일시적으로 클릭을 받도록 전환합니다(그 외 영역은 클릭 통과).
 6. 클릭하면 랜덤한 짧은 반응 메시지를 보여주고 잠시 멈춥니다.
-7. 3초마다 현재 활성 창(앱 이름, 창 제목)을 확인해서, `pet.js`의 규칙과 일치하면 해당 메시지를 말풍선으로 띄웁니다.
+7. 3초마다 현재 활성 창(앱 이름, 창 제목)을 확인해서, `pet.js`의 규칙과 일치하면 해당 메시지를 말풍선으로 띄웁니다. 말풍선은 설정에서 갈래별로 끌 수 있습니다(앱 반응 · 자동 반응 · 클릭 반응).
    - 예: VSCode/IntelliJ/Cursor 등 코드 에디터 → "집중모드 ON!"
    - 예: 창 제목에 "YouTube" 포함 → "즐감하세요~"
 
@@ -67,9 +89,13 @@ test/                  진화 로직 테스트 (node --test)
 
 메뉴바(macOS) / 시스템 트레이(Windows) 아이콘을 클릭하면 커스텀 픽셀아트 팝업이 열립니다.
 
-- **상태 보기** : 나의 애완돌 뷰(성향 질문 / 확정 결과)
-- **펫 보이기 / 숨기기** : 오버레이 캐릭터 표시 토글
-- **설정** : 화면 기록 권한 상태 확인·요청
+- **나의 애완돌** : 성향 질문 / 확정 결과 / 성향 태그 / 답변 히스토리 / 스킨
+- **시스템 모니터** : CPU·메모리·디스크·배터리·네트워크와 Codex 사용량
+- **애완돌 숨기기 / 보이기** : 오버레이 캐릭터 표시 토글
+- **설정** : 자동 실행·알림·효과음·화면 캡처 제외, 애완돌 위치/크기/표시할 모니터,
+  말풍선 세 갈래(앱 반응·자동 반응·클릭 반응) 토글, 집중/쪽잠 시간, 표시 언어,
+  권한 3종(화면 기록·자동화·손쉬운 사용) 상태 확인·요청, 처음부터 다시 키우기
+- **업데이트 설치 후 재시작** : 새 버전을 다 내려받았을 때만 나타납니다
 - **종료** : 앱 종료
 
 ## 5. AI 사용량 표시
@@ -92,10 +118,9 @@ test/                  진화 로직 테스트 (node --test)
 
 ## 7. 향후 확장 아이디어
 
-- 로컬 LLM(`node-llama-cpp`) 기반 캐릭터 채팅 (`plan.md` 참고)
-- 확정 이후 친밀도·추가 진화 단계
-- 클릭 시 캐릭터를 드래그해서 위치 이동
+- 로컬 LLM(`node-llama-cpp`) 기반 캐릭터 채팅 (`docs/plan.md` 17절 참고)
 - 앱별 메시지 규칙을 JSON 설정 파일로 분리해 코드 수정 없이 편집
+- GIF를 PNG 시퀀스 + Canvas로 바꿔 팔레트 스왑·레이어 합성 (`docs/plan.md` 16절)
 
 ## 8. 라이선스
 

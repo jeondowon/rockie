@@ -1,6 +1,6 @@
 # Rockie Privacy Policy
 
-Last updated: 2026-08-22
+Last updated: 2026-08-23
 Applies to: Rockie 1.0.1 and later
 
 Rockie ("the app") is a free macOS desktop app made by an individual developer, jeondowon. This policy explains what information the app handles and where that information stays.
@@ -54,6 +54,8 @@ The information below is read only while the app is running, so it can react on 
 
 A window title can contain private details, such as a document name or a web page title. Here is how the app treats them.
 
+**Without Screen Recording permission, window titles are not read at all.** In that case the app picks bubbles from the app name alone, and the window title arrives empty.
+
 **Window titles are never displayed.** The app matches the title against a fixed set of built-in conditions to decide which speech bubble to show. Every line your pet says is written into the app in advance; there is no path by which a window title you have open appears on screen.
 
 **In the following areas, no speech bubble is shown at all.**
@@ -73,9 +75,12 @@ The app can use three macOS permissions. **The core features work whether or not
 
 | Permission | Used for | If you decline |
 | --- | --- | --- |
-| Screen Recording | Reading the name and title of the frontmost window | Only the app-aware speech bubbles stop appearing |
+| Screen Recording | Reading the title of the frontmost window | App names are still readable, so most bubbles keep appearing — only the ones that need the title stop |
 | Automation (System Events) | Reading the Dock's position and size | Your pet may overlap the Dock |
-| Accessibility | Locking the keyboard in nap and cleaning modes | The keyboard is not locked in those modes |
+| Accessibility (`Rockie`) | Reading the Dock's position and size | Your pet may overlap the Dock |
+| Accessibility (`KeyBlocker`) | Locking the keyboard in nap and cleaning modes | The keyboard is not locked in those modes |
+
+Reading the Dock's position needs Automation and Accessibility **together**: macOS splits it into asking `System Events` to look (Automation) and `System Events` actually reading the on-screen elements (Accessibility). Two entries appear under Accessibility because the keyboard-locking feature is split out into a separate program named `KeyBlocker`.
 
 Despite its name, macOS "Screen Recording" permission is **not used here to capture or record your screen.** macOS requires it in order to read other apps' window titles, which is why the app asks for it. The app does not capture your screen.
 

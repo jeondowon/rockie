@@ -1,6 +1,6 @@
 # Installing Rockie
 
-Last updated: 2026-08-22
+Last updated: 2026-08-23
 Requires: macOS 12 (Monterey) or later · Apple Silicon (M1 or newer)
 
 ---
@@ -32,13 +32,28 @@ The reason is that the pet needs to stay visible **on top of full-screen apps.**
 
 ## 3. Permissions
 
-Rockie uses three macOS permissions. **Your pet works normally whether or not you grant them** — each one is tied to a single feature.
+Rockie uses three macOS permissions. **Your pet works normally whether or not you grant them.**
 
 | Permission | When it is requested | Used for | If you decline |
 | --- | --- | --- | --- |
-| Screen Recording | During first-run setup | Noticing which app you are using, so the pet can react to it | Only the app-aware speech bubbles stop appearing |
-| Automation | During first-run setup (optional) | Reading the Dock's position so the pet steps around it | The pet may overlap the Dock |
-| Accessibility | The first time you start nap or cleaning mode | Locking the keyboard | The keyboard is not locked in those modes (the alarm still rings) |
+| Screen Recording | During first-run setup | Reading the **title** of the window you are looking at | App names are still readable, so most bubbles keep appearing — only the ones that need the title drop out |
+| Automation **(recommended)** | During first-run setup | Asking macOS where the Dock is | The pet may overlap the Dock |
+| Accessibility **(recommended)** | During first-run setup · the first time you start nap or cleaning mode | Reading the Dock's position · locking the keyboard | The pet may overlap the Dock, and the keyboard is not locked in those modes (the alarm still rings) |
+
+The Automation and Accessibility prompts appear **only when you tap those rows yourself during first-run setup** (Screen Recording is the one asked automatically, once). If you decline, macOS will not ask again — see "Changing permissions later" below if you change your mind.
+
+They are marked **(recommended)** because the app runs fine without them, but the pet visibly overlaps the Dock, which looks off. The two work as a pair: granting only one has no effect.
+
+### Why avoiding the Dock takes two permissions
+
+Reading the Dock's position is a one-line command, but macOS splits it into two steps.
+
+1. Rockie asks macOS's `System Events` to go look at where the Dock is → **Automation**
+2. `System Events` actually reads the Dock's on-screen elements → **Accessibility**
+
+At step 2 macOS checks the permission of **Rockie, the app that asked** — not of `System Events`, the app doing the errand. That is deliberate: it stops apps from using a shared tool as a shield. So granting only Automation clears step 1 and gets blocked at step 2.
+
+Declining both is fine — your pet still works, it just becomes less precise at stepping around the Dock.
 
 ### If "Screen Recording" gives you pause
 
@@ -52,9 +67,14 @@ Window titles are used solely to pick which speech bubble to show. They are neve
 
 ### Changing permissions later
 
-Menu bar icon → **Settings → Permissions** shows the current state and can open System Settings for you.
+Menu bar icon → **Settings → Permissions** shows the current state and can open System Settings for you. Tapping a row you have not granted yet shows the permission prompt once, then opens System Settings.
 
-You can also change them directly in macOS **System Settings → Privacy & Security**. Under Accessibility, the entry appears as **`KeyBlocker`**, not `Rockie` — the keyboard-locking feature is a separate small program.
+You can also change them directly in macOS **System Settings → Privacy & Security**.
+
+Under Accessibility you will find **two** entries. They do different jobs, so macOS lists them separately.
+
+- **`Rockie`** — reads the Dock's position. Turn it off and the pet may overlap the Dock.
+- **`KeyBlocker`** — locks the keyboard in nap and cleaning modes. The keyboard-locking feature is split out into a separate small program.
 
 ---
 
@@ -94,8 +114,9 @@ For a clean removal, also delete the `Rockie` and `KeyBlocker` entries in System
 | Symptom | What to check |
 | --- | --- |
 | The pet is not visible | The menu bar's "Hide / show pet" may be set to hidden |
-| App-aware bubbles never appear | Confirm you granted Screen Recording **and restarted the app** |
-| The pet overlaps the Dock | Grant Automation permission (Settings → Permissions) |
+| Bubbles that react to window titles never appear | Confirm you granted Screen Recording **and restarted the app** (bubbles that only look at the app name work without it) |
+| No bubbles appear at all | Check the three switches under Settings → Speech bubbles |
+| The pet overlaps the Dock | Grant **both** Automation and Accessibility (Settings → Permissions). Accessibility takes effect only after you restart the app |
 | The keyboard is not locked in nap mode | Enable **`KeyBlocker`** under Accessibility, then restart the app |
 | You cannot find the icon in the menu bar | With many items it can be pushed off screen — clear out other icons, or check with a tool like Bartender |
 

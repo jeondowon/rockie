@@ -90,7 +90,11 @@
     "soundEnabled": true,
     "hideFromCapture": false,
     "petPlacement": "follow",
+    "petDisplayId": null,
     "petSize": "medium",
+    "bubbleApp": true,
+    "bubbleAuto": true,
+    "bubbleClick": true,
     "focusMinutes": 25,
     "napMinutes": 20,
     "language": "ko"
@@ -198,7 +202,11 @@
 | `soundEnabled`    | boolean | `true`     | 효과음 on/off. 펫 렌더러가 Web Audio로 클릭·돌보기·진화 시 8비트풍 효과음 재생. **쪽잠 알람은 이 설정과 무관하게 울린다** |
 | `hideFromCapture` | boolean | `false`    | 켜면 펫 창을 `setContentProtection`으로 캡처 대상에서 제외 — 스크린샷·화면 녹화·화면 공유에 애완돌이 안 찍힌다(내 모니터에는 그대로 보임) |
 | `petPlacement`    | enum    | `"follow"` | `follow`(커서 따라오기) / `bottom-left`(좌하단 고정) / `bottom-right`(우하단 고정) |
+| `petDisplayId`    | int\|null | `null`   | 애완돌을 띄울 모니터의 Display id. `null`이면 주 모니터를 따라간다. 고른 모니터를 뽑으면 id를 못 찾게 되는데, 그때도 주 모니터로 되돌아간다. 설정의 "표시할 모니터"는 모니터가 2대 이상일 때만 나타난다 |
 | `petSize`         | enum    | `"medium"` | `small` / `medium` / `large`                                                  |
+| `bubbleApp`       | boolean | `true`     | 앱 이름·창(탭) 제목에 반응하는 말풍선(`WINDOW_RULES`). 끄면 그 갈래만 멈춘다 |
+| `bubbleAuto`      | boolean | `true`     | 저절로 뜨는 말풍선 — 배터리 부족·진화 예고·화면 기록 권한 안내 |
+| `bubbleClick`     | boolean | `true`     | 눌렀을 때 하는 말(시간대별·장시간 사용 반응 포함). **꺼도 효과음과 멈칫하는 동작은 남는다** |
 | `focusMinutes`    | int     | `25`       | 집중 모드 길이(분). 설정 화면의 칩 4개(15/25/45/60)로 고른다                  |
 | `napMinutes`      | int     | `20`       | 쪽잠 모드 길이(분). 설정 화면의 슬라이더로 고른다(10분 배수에 자석 스냅)      |
 | `language`        | enum    | `"ko"`     | 표시 언어 `ko` / `en`. **저장 데이터의 키는 언어와 무관하게 유지된다**(`traitScores`가 한글 키인 이유) |
