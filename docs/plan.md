@@ -605,7 +605,7 @@ Codex (`src/main/codex-usage-cache.js`):
 | 갈래 | 저장 키 | 끄면 안 나오는 말 |
 | --- | --- | --- |
 | 앱 반응 | `settings.bubbleApp` | `WINDOW_RULES` — 앱 이름·창(탭) 제목에 반응하는 말 |
-| 자동 반응 | `settings.bubbleAuto` | 배터리 부족 · 진화 예고 · 화면 기록 권한 안내 |
+| 자동 반응 | `settings.bubbleAuto` | 배터리 부족 · 진화 예고 |
 | 클릭 반응 | `settings.bubbleClick` | 눌렀을 때 하는 말(시간대별·장시간 사용 반응 포함) |
 
 판정은 `pet.js`의 `bubbleAllowed(kind)` 한 곳에 모았다(`kind`는 `"app"` | `"auto"` | `"click"`).

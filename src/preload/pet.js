@@ -45,9 +45,6 @@ contextBridge.exposeInMainWorld("petAPI", {
   onScreenGeometry: (callback) => {
     ipcRenderer.on("screen-geometry", (_event, data) => callback(data));
   },
-  onScreenPermissionMissing: (callback) => {
-    ipcRenderer.on("screen-permission-missing", () => callback());
-  },
   onEvolved: (callback) => {
     ipcRenderer.on("evolution:evolved", (_event, info) => callback(info));
   },

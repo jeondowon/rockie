@@ -612,7 +612,7 @@ macOS 자동 업데이트는 Squirrel.Mac이 담당하는데 **zip만 받는다.
 | 줄 | 저장 키 | 끄면 안 나오는 말 |
 | --- | --- | --- |
 | 앱 반응 | `settings.bubbleApp` | `WINDOW_RULES` — 앱 이름·창(탭) 제목에 반응하는 말 |
-| 자동 반응 | `settings.bubbleAuto` | 배터리 부족·진화 예고·화면 기록 권한 안내 |
+| 자동 반응 | `settings.bubbleAuto` | 배터리 부족·진화 예고 |
 | 클릭 반응 | `settings.bubbleClick` | 눌렀을 때 하는 말(시간대별·장시간 사용 반응 포함) |
 
 셋 다 기본값은 `true`다. 처음엔 배타 선택 칩 4개(`모두 켜기`/`앱 반응 끄기`/

@@ -985,9 +985,6 @@ async function ensureScreenRecordingPermission() {
     `[active-window] 화면 기록 권한 없음(상태: ${status}). 앱 이름만으로 동작합니다. ` +
       "메뉴바 > 설정 > 화면 기록 권한에서 허용한 뒤 앱을 재시작하면 창 제목도 읽습니다.",
   );
-  mainWindow.webContents.once("did-finish-load", () => {
-    sendToPet("screen-permission-missing");
-  });
   return false;
 }
 

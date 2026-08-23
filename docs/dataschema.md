@@ -205,7 +205,7 @@
 | `petDisplayId`    | int\|null | `null`   | 애완돌을 띄울 모니터의 Display id. `null`이면 주 모니터를 따라간다. 고른 모니터를 뽑으면 id를 못 찾게 되는데, 그때도 주 모니터로 되돌아간다. 설정의 "표시할 모니터"는 모니터가 2대 이상일 때만 나타난다 |
 | `petSize`         | enum    | `"medium"` | `small` / `medium` / `large`                                                  |
 | `bubbleApp`       | boolean | `true`     | 앱 이름·창(탭) 제목에 반응하는 말풍선(`WINDOW_RULES`). 끄면 그 갈래만 멈춘다 |
-| `bubbleAuto`      | boolean | `true`     | 저절로 뜨는 말풍선 — 배터리 부족·진화 예고·화면 기록 권한 안내 |
+| `bubbleAuto`      | boolean | `true`     | 저절로 뜨는 말풍선 — 배터리 부족·진화 예고 |
 | `bubbleClick`     | boolean | `true`     | 눌렀을 때 하는 말(시간대별·장시간 사용 반응 포함). **꺼도 효과음과 멈칫하는 동작은 남는다** |
 | `focusMinutes`    | int     | `25`       | 집중 모드 길이(분). 설정 화면의 칩 4개(15/25/45/60)로 고른다                  |
 | `napMinutes`      | int     | `20`       | 쪽잠 모드 길이(분). 설정 화면의 슬라이더로 고른다(10분 배수에 자석 스냅)      |

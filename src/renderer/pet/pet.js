@@ -876,13 +876,6 @@ window.petAPI.onActiveWindowInfo(({ appName, title }) => {
   }
 });
 
-// macOS 화면 기록 권한이 없으면 창 제목이 빈 문자열로 온다(앱 이름은 그대로 읽힌다).
-// 위 규칙 중 제목까지 봐야 하는 것만 안 걸리므로, 해결 방법을 한 번 안내한다.
-window.petAPI.onScreenPermissionMissing(() => {
-  if (!bubbleAllowed("auto")) return;
-  showAutoBubble(t("pet.noScreenPerm"), 8000);
-});
-
 // ---------- 5. 배터리 상태 리액션 ----------
 
 let tiredSprite = null; // 지친 상태 표정 이름("sad"/"sleepy"). null이면 평소 걷기 gif (applySprite에서 참조)

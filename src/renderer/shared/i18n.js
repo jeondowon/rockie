@@ -29,8 +29,6 @@ const I18N_STRINGS = {
     "pet.ownerSuffix": "{name}님",
     "pet.ownerDefault": "주인님",
     "pet.modeHint": " 저를 더블클릭하면 여러 모드를 사용할 수 있어요!",
-    "pet.noScreenPerm":
-      "창 제목을 못 읽어서 몇몇 말풍선이 빠져요. 메뉴바 펫 아이콘 → '화면 기록 권한 설정 열기'에서 허용해주세요!",
     "pet.evolvedStone": "저, {stone}이 됐어요!",
     "pet.evolvedVariant": "저, 변성체가 됐어요!",
     "pet.evolvedGem": "반짝… 드디어 보석이 됐어요! ✨",
@@ -308,8 +306,6 @@ const I18N_STRINGS = {
     "pet.ownerSuffix": "{name}",
     "pet.ownerDefault": "master",
     "pet.modeHint": " Double-click me to open the modes!",
-    "pet.noScreenPerm":
-      "I can't read window titles, so some of my lines are missing. Allow it from the menu bar pet icon → 'Open Screen Recording settings'!",
     "pet.evolvedStone": "I became {stone}!",
     "pet.evolvedVariant": "I turned into a metamorphic form!",
     "pet.evolvedGem": "Sparkle… I'm finally a gem! ✨",
