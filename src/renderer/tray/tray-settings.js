@@ -114,8 +114,9 @@ async function showSettings() {
 const settingToggles = document.querySelectorAll(".set-row[data-setting]");
 const placeChips = document.querySelectorAll(".chip[data-place]");
 const sizeChips = document.querySelectorAll(".chip[data-size]");
-const focusMinuteChips = document.querySelectorAll(".chip[data-focus-minutes]");
 const languageChips = document.querySelectorAll(".chip[data-language]");
+const focusRange = document.getElementById("focus-minutes-range");
+const focusValueEl = document.getElementById("focus-minutes-value");
 const napRange = document.getElementById("nap-minutes-range");
 const napValueEl = document.getElementById("nap-minutes-value");
 const appVersionEl = document.getElementById("app-version");
@@ -147,17 +148,13 @@ async function refreshSettings() {
   sizeChips.forEach((chip) =>
     chip.classList.toggle("on", chip.dataset.size === s.petSize),
   );
-  focusMinuteChips.forEach((chip) =>
-    chip.classList.toggle(
-      "on",
-      Number(chip.dataset.focusMinutes) === Number(s.focusMinutes || 25),
-    ),
-  );
   languageChips.forEach((chip) =>
     chip.classList.toggle("on", chip.dataset.language === getLocale()),
   );
+  focusRange.value = String(Number(s.focusMinutes) || 25);
+  focusValueEl.textContent = focusRange.value; // 슬라이더가 값을 범위 안으로 다듬은 뒤 읽는다
   napRange.value = String(Number(s.napMinutes) || 20);
-  napValueEl.textContent = napRange.value; // 슬라이더가 값을 범위 안으로 다듬은 뒤 읽는다
+  napValueEl.textContent = napRange.value;
   // 언어를 바꿔도 지워지지 않도록 data-i18n이 없는 자리에 따로 넣는다.
   appVersionEl.textContent = s.appVersion || "?";
 }
@@ -246,49 +243,43 @@ languageChips.forEach((chip) => {
   });
 });
 
-focusMinuteChips.forEach((chip) => {
-  chip.addEventListener("click", () => {
-    focusMinuteChips.forEach((c) => c.classList.toggle("on", c === chip));
-    window.trayAPI.setSetting(
-      "focusMinutes",
-      Number(chip.dataset.focusMinutes),
-    );
-  });
-});
-
 // 10분 배수 근처(±2분)에 오면 끌어당기는 자석 효과.
 // 끌 때만 걸어서, 방향키로는 1분 단위 미세 조정이 그대로 되게 둔다.
-const NAP_SNAP_STEP = 10;
-const NAP_SNAP_PULL = 2;
-let napDragging = false;
+const SNAP_STEP = 10;
+const SNAP_PULL = 2;
+let sliderDragging = false;
 
-function snapNapMinutes(v) {
-  const nearest = Math.round(v / NAP_SNAP_STEP) * NAP_SNAP_STEP;
+function snapMinutes(range, v) {
+  const nearest = Math.round(v / SNAP_STEP) * SNAP_STEP;
   // 배수가 범위 밖이면(예: 1~4분의 0) 끌어당기지 않는다
-  if (nearest < Number(napRange.min) || nearest > Number(napRange.max))
-    return v;
-  return Math.abs(v - nearest) <= NAP_SNAP_PULL ? nearest : v;
+  if (nearest < Number(range.min) || nearest > Number(range.max)) return v;
+  return Math.abs(v - nearest) <= SNAP_PULL ? nearest : v;
 }
 
-napRange.addEventListener("pointerdown", () => {
-  napDragging = true;
-});
 // 슬라이더 밖에서 손을 떼도 풀리도록 window에 건다
 window.addEventListener("pointerup", () => {
-  napDragging = false;
+  sliderDragging = false;
 });
 
-// 끄는 동안엔 숫자만 따라 움직이고, 손을 뗄 때(change) 한 번만 저장한다.
-napRange.addEventListener("input", () => {
-  if (napDragging) {
-    napRange.value = String(snapNapMinutes(Number(napRange.value)));
-  }
-  napValueEl.textContent = napRange.value;
-});
+// 집중·쪽잠 슬라이더는 저장하는 설정 이름만 다르고 동작이 같다.
+function bindMinutesSlider(range, valueEl, key) {
+  range.addEventListener("pointerdown", () => {
+    sliderDragging = true;
+  });
+  // 끄는 동안엔 숫자만 따라 움직이고, 손을 뗄 때(change) 한 번만 저장한다.
+  range.addEventListener("input", () => {
+    if (sliderDragging) {
+      range.value = String(snapMinutes(range, Number(range.value)));
+    }
+    valueEl.textContent = range.value;
+  });
+  range.addEventListener("change", () => {
+    window.trayAPI.setSetting(key, Number(range.value));
+  });
+}
 
-napRange.addEventListener("change", () => {
-  window.trayAPI.setSetting("napMinutes", Number(napRange.value));
-});
+bindMinutesSlider(focusRange, focusValueEl, "focusMinutes");
+bindMinutesSlider(napRange, napValueEl, "napMinutes");
 
 // 되돌릴 수 없는 동작은 기본 macOS 알림창 대신 이 인앱 확인창을 거친다.
 // 초기화와 앱 종료가 함께 쓰므로 문구와 확인 후 동작을 띄울 때 받는다.

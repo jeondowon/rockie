@@ -859,7 +859,11 @@ ipcMain.on("settings:set", (_event, { key, value }) => {
       sendPetSettings();
       break;
     case "focusMinutes":
-      data.settings.focusMinutes = Math.max(1, Number(value) || 25);
+      // 슬라이더 범위(1~120분) 밖의 값이 들어와도 저장 단계에서 잘라낸다
+      data.settings.focusMinutes = Math.min(
+        120,
+        Math.max(1, Number(value) || 25),
+      );
       sendPetSettings();
       break;
     case "napMinutes":
