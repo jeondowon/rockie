@@ -1300,7 +1300,7 @@ html[lang="en"]
   background: #3a382e;
 }
 
-/* 권한을 다 허용하기 전까지는 시작할 수 없다 */
+/* 손쉬운 사용을 허용하기 전까지는 시작할 수 없다 (tray-onboarding.js syncStartButton) */
 .onboarding-next:disabled {
   cursor: default;
   background: #cbc4b1;

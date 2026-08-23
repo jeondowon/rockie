@@ -207,7 +207,7 @@ async function refreshBadge() {
   }
 }
 
-// 팝업이 열릴 때마다 메뉴로 초기화하고 권한 상태·배지를 갱신
+// 팝업이 열릴 때마다 메뉴로 초기화하고 배지·업데이트·모드 배너를 갱신
 window.trayAPI.onWillShow(async () => {
   popupVisible = true;
   hideConfirm(); // 이전에 열려 있던 확인창이 남지 않도록
@@ -217,7 +217,6 @@ window.trayAPI.onWillShow(async () => {
     return;
   }
   showScreen("menu");
-  refreshPermToggle();
   refreshBadge();
   renderUpdateRow(await window.trayAPI.getUpdateStatus()); // 받아둔 업데이트가 있으면 설치 항목
   renderModeBanner(await window.trayAPI.getModeStatus()); // 진행 중 모드 배너

@@ -381,18 +381,22 @@ const ONBOARDING_FLOW = [
 // 권장 두 개를 위에, 그냥 선택인 화면 기록을 아래에 둔다.
 // 자동화와 손쉬운 사용은 서로를 "함께 허용해주세요"라고 가리키는 한 쌍이라 붙여 놓는다.
 // 하나만 켜면 Dock 회피가 동작하지 않는다(dock-tracker.js 머리말).
+// 화면에 세우는 순서 그대로다. Dock 회피에는 손쉬운 사용과 자동화가 둘 다 필요한데
+// 손쉬운 사용이 없으면 자동화가 있어도 Dock 스크립트가 아예 안 도는(dock-tracker.js)
+// 종속 관계라 손쉬운 사용을 맨 앞에 세우고 "필수"로 둔다.
+// tagKey는 라벨 옆 배지 문구다. 없으면 배지를 안 붙인다.
 const ONBOARDING_PERMISSIONS = [
-  {
-    key: "automation",
-    labelKey: "perm.automation",
-    descKey: "perm.automationDesc",
-    recommended: true,
-  },
   {
     key: "accessibility",
     labelKey: "perm.accessibility",
     descKey: "perm.accessibilityDesc",
-    recommended: true,
+    tagKey: "perm.required",
+  },
+  {
+    key: "automation",
+    labelKey: "perm.automation",
+    descKey: "perm.automationDesc",
+    tagKey: "perm.recommended",
   },
   {
     key: "screen",

@@ -105,6 +105,11 @@ function startDockTracker(getWindow, getDisplay) {
   let heuristicVisible = false;
   let lastVisible = false; // 스크립트가 마지막으로 판정한 표시 여부
   let lastHint = false; // 직전 틱의 커서 힌트 (바뀌는 순간에만 스크립트를 앞당긴다)
+  // 마지막으로 osascript가 읽어낸 Dock의 가로 범위(화면 절대 좌표). 스크립트를 건너뛰는
+  // 틱에서는 이 값을 재사용해, 호출을 줄이면서도 가로 범위는 정확히 유지한다.
+  let lastRect = null; // { x, width } — Dock이 숨어 있어도 유효하다
+  // 마지막으로 '올라와 있는' Dock에서 관측한 lift. 숨은 관측(lift 0)으로는 덮어쓰지 않는다.
+  let lastLift = 0;
   // osascript 호출 간격. 자동 숨김 Dock은 올라옴/내려감을 따라가야 해서 자주 읽고,
   // 상시 표시 Dock은 위치가 거의 안 바뀌므로 드물게 읽는다.
   const SCRIPT_INTERVAL_AUTOHIDE = 500;
@@ -144,6 +149,15 @@ function startDockTracker(getWindow, getDisplay) {
   };
 
   const HIDDEN = { visible: false, x: 0, width: 0, lift: 0 };
+
+  // 상시 표시 Dock이 화면 하단에 예약해 둔 높이. macOS가 Dock을 위해 비워 둔 영역
+  // 그 자체라 '높이'로는 AX보다 정확하다. 단 **표시 여부를 판단하는 데는 쓸 수 없다** —
+  // 전체화면 앱이 떠서 Dock이 화면에서 사라져도 이 값은 그대로다(2026-08-22 실측:
+  // 1440×900에서 전체화면 내내 67 유지). 표시 여부는 AX 판정(lastVisible)만이 안다.
+  const workAreaDockHeight = () => {
+    const { bounds, workArea } = getDisplay();
+    return bounds.y + bounds.height - (workArea.y + workArea.height);
+  };
 
   // 자동 숨김 Dock이 지금 올라와 있는지 커서 위치로 추정한다.
   // 화면 맨 아래에 닿으면 "올라옴", Dock 높이 위로 벗어나면 "내려감".
@@ -186,21 +200,6 @@ function startDockTracker(getWindow, getDisplay) {
       width: bounds.width,
       lift: estHeight,
     });
-  };
-
-  // 마지막으로 osascript가 읽어낸 Dock의 가로 범위(화면 절대 좌표). 스크립트를 건너뛰는
-  // 틱에서는 이 값을 재사용해, 호출을 줄이면서도 가로 범위는 정확히 유지한다.
-  let lastRect = null; // { x, width } — Dock이 숨어 있어도 유효하다
-  // 마지막으로 '올라와 있는' Dock에서 관측한 lift. 숨은 관측(lift 0)으로는 덮어쓰지 않는다.
-  let lastLift = 0;
-
-  // 상시 표시 Dock이 화면 하단에 예약해 둔 높이. macOS가 Dock을 위해 비워 둔 영역
-  // 그 자체라 '높이'로는 AX보다 정확하다. 단 **표시 여부를 판단하는 데는 쓸 수 없다** —
-  // 전체화면 앱이 떠서 Dock이 화면에서 사라져도 이 값은 그대로다(2026-08-22 실측:
-  // 1440×900에서 전체화면 내내 67 유지). 표시 여부는 AX 판정(lastVisible)만이 안다.
-  const workAreaDockHeight = () => {
-    const { bounds, workArea } = getDisplay();
-    return bounds.y + bounds.height - (workArea.y + workArea.height);
   };
 
   const sendCachedDockState = () => {

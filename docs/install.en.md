@@ -32,17 +32,19 @@ The reason is that the pet needs to stay visible **on top of full-screen apps.**
 
 ## 3. Permissions
 
-Rockie uses three macOS permissions. **Your pet works normally whether or not you grant them.**
+Rockie uses three macOS permissions. **Accessibility is required** — the Start button stays locked during first-run setup until you grant it. **The other two are optional; your pet works normally without them.**
 
 | Permission | When it is requested | Used for | If you decline |
 | --- | --- | --- | --- |
-| Screen Recording | During first-run setup | Reading the **title** of the window you are looking at | App names are still readable, so most bubbles keep appearing — only the ones that need the title drop out |
+| Accessibility **(required)** | During first-run setup · the first time you start nap or cleaning mode | Reading the Dock's position · locking the keyboard | You cannot finish first-run setup. The keyboard is not locked in those modes either (the alarm still rings) |
 | Automation **(recommended)** | During first-run setup | Asking macOS where the Dock is | The pet may overlap the Dock |
-| Accessibility **(recommended)** | During first-run setup · the first time you start nap or cleaning mode | Reading the Dock's position · locking the keyboard | The pet may overlap the Dock, and the keyboard is not locked in those modes (the alarm still rings) |
+| Screen Recording | During first-run setup | Reading the **title** of the window you are looking at | App names are still readable, so most bubbles keep appearing — only the ones that need the title drop out |
 
-The Automation and Accessibility prompts appear **only when you tap those rows yourself during first-run setup** (Screen Recording is the one asked automatically, once). If you decline, macOS will not ask again — see "Changing permissions later" below if you change your mind.
+The Automation and Accessibility prompts appear **only when you tap those rows yourself during first-run setup** (Screen Recording is the one asked automatically, once).
 
-They are marked **(recommended)** because the app runs fine without them, but the pet visibly overlaps the Dock, which looks off. The two work as a pair: granting only one has no effect.
+Declining works differently per permission. **Automation and Screen Recording are asked only once — decline, and macOS will not ask again.** **Accessibility keeps no record of a refusal, so tapping the row again brings the prompt back.** That is what makes it safe to require: declining it by mistake does not lock you out. See "Changing permissions later" below if you change your mind.
+
+Accessibility is marked **(required)** because without it the Dock-reading command never runs at all, even with Automation granted — Dock avoidance stops working entirely. Automation is marked **(recommended)** because the app runs fine without it, but the pet visibly overlaps the Dock, which looks off. The two work as a pair: granting only one has no effect.
 
 ### Why avoiding the Dock takes two permissions
 
@@ -53,7 +55,7 @@ Reading the Dock's position is a one-line command, but macOS splits it into two 
 
 At step 2 macOS checks the permission of **Rockie, the app that asked** — not of `System Events`, the app doing the errand. That is deliberate: it stops apps from using a shared tool as a shield. So granting only Automation clears step 1 and gets blocked at step 2.
 
-Declining both is fine — your pet still works, it just becomes less precise at stepping around the Dock.
+Declining Automation alone is fine — your pet still works, it just becomes less precise at stepping around the Dock.
 
 ### If "Screen Recording" gives you pause
 

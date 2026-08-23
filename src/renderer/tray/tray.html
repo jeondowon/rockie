@@ -801,7 +801,7 @@
             <div class="panel-label" data-i18n="settings.general">일반</div>
             <div class="set-list">
               <button class="set-row" data-setting="autoLaunch">
-                <span class="set-box">[&nbsp;&nbsp;]</span>
+                <span class="set-box">[&nbsp;]</span>
                 <div class="set-text">
                   <div class="set-title" data-i18n="settings.autoLaunch">
                     로그인 시 자동 실행
@@ -812,7 +812,7 @@
                 </div>
               </button>
               <button class="set-row" data-setting="notifications">
-                <span class="set-box">[&nbsp;&nbsp;]</span>
+                <span class="set-box">[&nbsp;]</span>
                 <div class="set-text">
                   <div class="set-title" data-i18n="settings.notifications">
                     질문 알림
@@ -823,7 +823,7 @@
                 </div>
               </button>
               <button class="set-row" data-setting="hideFromCapture">
-                <span class="set-box">[&nbsp;&nbsp;]</span>
+                <span class="set-box">[&nbsp;]</span>
                 <div class="set-text">
                   <div class="set-title" data-i18n="settings.hideFromCapture">
                     화면 캡처에서 숨기기
@@ -837,7 +837,7 @@
                 </div>
               </button>
               <button class="set-row" data-setting="soundEnabled">
-                <span class="set-box">[&nbsp;&nbsp;]</span>
+                <span class="set-box">[&nbsp;]</span>
                 <div class="set-text">
                   <div class="set-title" data-i18n="settings.sound">효과음</div>
                   <div class="set-desc" data-i18n="settings.soundDesc">
@@ -918,45 +918,46 @@
               <!-- Dock 회피 권한. 자동화와 손쉬운 사용이 둘 다 있어야 정확해지고
                  하나만 켜면 효과가 없다(dock-tracker.js 머리말). 그래서 허용 여부와
                  상관없이 늘 둘 다 보여준다 — 하나만 보여주면 나머지 하나가 왜
-                 필요한지 알 길이 없다. 설명 줄은 화면 기록 행과 마찬가지로
-                 tray-settings.js가 클릭 단계에 맞춰 바꾼다. -->
+                 필요한지 알 길이 없다. 손쉬운 사용이 없으면 자동화가 있어도 Dock
+                 스크립트가 아예 안 돌기 때문에 그쪽을 먼저 세우고 "필수"로 둔다
+                 (온보딩 권한 화면 ONBOARDING_PERMISSIONS와 같은 순서·배지다).
+                 설명 줄은 화면 기록 행과 마찬가지로 tray-settings.js가 클릭 단계에
+                 맞춰 바꾼다. -->
+              <button id="ax-perm-row" class="set-row">
+                <span id="ax-perm-box" class="set-box">[&nbsp;]</span>
+                <div class="set-text">
+                  <div class="set-title">
+                    <span data-i18n="settings.accessibilityPermission"
+                      >손쉬운 사용</span
+                    >
+                    <span class="set-tag" data-i18n="perm.required">필수</span>
+                  </div>
+                  <div id="ax-perm-hint" class="set-desc">
+                    애완돌이 Dock 위치를 정확히 읽고 회피하는 데 필요해요.
+                  </div>
+                </div>
+              </button>
               <button id="auto-perm-row" class="set-row">
-                <span id="auto-perm-box" class="set-box">[&nbsp;&nbsp;]</span>
+                <span id="auto-perm-box" class="set-box">[&nbsp;]</span>
                 <div class="set-text">
                   <div class="set-title">
                     <span data-i18n="settings.automationPermission"
-                      >자동화 권한</span
+                      >자동화</span
                     >
                     <span class="set-tag" data-i18n="perm.recommended"
                       >권장</span
                     >
                   </div>
                   <div id="auto-perm-hint" class="set-desc">
-                    애완돌이 Dock 위치를 정확히 읽고 회피하는 데 필요해요.
-                  </div>
-                </div>
-              </button>
-              <button id="ax-perm-row" class="set-row">
-                <span id="ax-perm-box" class="set-box">[&nbsp;&nbsp;]</span>
-                <div class="set-text">
-                  <div class="set-title">
-                    <span data-i18n="settings.accessibilityPermission"
-                      >손쉬운 사용 권한</span
-                    >
-                    <span class="set-tag" data-i18n="perm.recommended"
-                      >권장</span
-                    >
-                  </div>
-                  <div id="ax-perm-hint" class="set-desc">
-                    Dock 회피를 위해 자동화와 함께 필요해요.
+                    Dock 회피를 위해 손쉬운 사용과 함께 필요해요.
                   </div>
                 </div>
               </button>
               <button id="perm-row" class="set-row">
-                <span id="perm-box" class="set-box">[&nbsp;&nbsp;]</span>
+                <span id="perm-box" class="set-box">[&nbsp;]</span>
                 <div class="set-text">
                   <div class="set-title" data-i18n="settings.screenPermission">
-                    화면 기록 권한
+                    화면 기록
                   </div>
                   <div id="perm-hint" class="set-desc">
                     창 제목을 읽는 데 필요해요.
@@ -972,7 +973,7 @@
             <div class="panel-label" data-i18n="settings.bubbles">말풍선</div>
             <div class="set-list">
               <button class="set-row" data-setting="bubbleAuto">
-                <span class="set-box">[&nbsp;&nbsp;]</span>
+                <span class="set-box">[&nbsp;]</span>
                 <div class="set-text">
                   <div class="set-title">
                     <span data-i18n="settings.bubbleAuto">자동 반응</span>
@@ -986,7 +987,7 @@
                 </div>
               </button>
               <button class="set-row" data-setting="bubbleApp">
-                <span class="set-box">[&nbsp;&nbsp;]</span>
+                <span class="set-box">[&nbsp;]</span>
                 <div class="set-text">
                   <div class="set-title" data-i18n="settings.bubbleApp">
                     앱 반응
@@ -997,7 +998,7 @@
                 </div>
               </button>
               <button class="set-row" data-setting="bubbleClick">
-                <span class="set-box">[&nbsp;&nbsp;]</span>
+                <span class="set-box">[&nbsp;]</span>
                 <div class="set-text">
                   <div class="set-title" data-i18n="settings.bubbleClick">
                     클릭 반응

@@ -42,12 +42,14 @@ function clearOnboardingLandWait() {
   onboardingLandTimer = null;
 }
 
+// 저장된 진행 단계. 흐름보다 큰 값이 들어와도(옛 저장 파일 등) 마지막 단계로 눌러 둔다.
+function currentStepIndex() {
+  return Math.min(onboardingState?.step || 0, ONBOARDING_FLOW.length - 1);
+}
+
 function renderOnboardingStep() {
   clearOnboardingLandWait(); // 이전 스텝의 착지 대기 정리
-  const stepIndex = Math.min(
-    onboardingState?.step || 0,
-    ONBOARDING_FLOW.length - 1,
-  );
+  const stepIndex = currentStepIndex();
   const step = ONBOARDING_FLOW[stepIndex];
   // 단계가 바뀌면 착지 연출을 처음부터 다시 본다(장면 클래스가 바뀌어 실제로 재생된다).
   if (stepIndex !== lastRenderedStep) {
@@ -67,10 +69,13 @@ function renderOnboardingStep() {
     ? t(step.buttonKey)
     : t("onboarding.next");
 
-  // 마지막 단계: 권한을 모두 허용해야 시작할 수 있다.
+  // 마지막 단계: 권한 목록. 손쉬운 사용을 허용해야 시작할 수 있다(syncStartButton).
   if (step.permissions) {
     onboardingText.textContent = t(step.textKey);
     onboardingPerms.classList.remove("hidden");
+    // 상태를 읽기 전에는 잠가 둔다. 위에서 disabled를 풀어 놨는데 조회가 IPC라
+    // 곧바로 끝나지 않아, 그 사이 눌리면 잠금을 그냥 지나칠 수 있다.
+    onboardingNext.disabled = true;
     renderPermissionRows(); // 먼저 뼈대를 그리고 (여기서 창 높이도 맞춘다)
     loadPermissionState(); // 조회가 끝나면 체크 표시와 버튼 상태를 갱신
     return;
@@ -148,9 +153,18 @@ let permTried = { screen: false, automation: false, accessibility: false };
 let permRelaunchMode = false;
 
 function syncStartButton() {
-  // 세 권한 모두 선택이라 시작을 막지 않는다. 재시작이 필요한지만 문구로 알린다.
-  // 예전엔 "필수 권한이 다 있나"로 버튼을 잠갔는데, 셋 다 선택이 되면서 그 판정이
-  // 늘 참이 되어(빈 배열의 every는 참) 재시작 문구까지 같이 지워 버렸다.
+  // 손쉬운 사용은 필수다. 이것이 없으면 자동화를 허용해도 Dock 스크립트가 아예
+  // 안 돌아(dock-tracker.js) Dock 회피가 통째로 동작하지 않는다.
+  //
+  // 아직 눌러 보지도 않았으면 시작을 막고, 버튼 문구로 무엇이 필요한지 알린다.
+  // 한 번 요청한 뒤에는 잠그지 않는다 — macOS는 손쉬운 사용을 켜도 실행 중인
+  // 프로세스에 바로 반영하지 않으므로, 재시작 버튼까지 잠그면 허용을 하고도
+  // 빠져나갈 길이 없어진다. 재시작하면 이 판정을 처음부터 다시 거친다.
+  if (!permGranted.accessibility && !permTried.accessibility) {
+    onboardingNext.textContent = t("onboarding.needAccessibility");
+    onboardingNext.disabled = true;
+    return;
+  }
   onboardingNext.textContent = permRelaunchMode
     ? t("onboarding.relaunchStart")
     : t("onboarding.start");
@@ -174,11 +188,11 @@ function renderPermissionRows() {
       const label = document.createElement("div");
       label.className = "onboarding-perm-label";
       label.textContent = t(perm.labelKey);
-      // 허용한 뒤에는 권장 표시가 의미 없다(이미 켰으니). 미허용일 때만 붙인다.
-      if (perm.recommended && !granted) {
+      // 허용한 뒤에는 필수·권장 표시가 의미 없다(이미 켰으니). 미허용일 때만 붙인다.
+      if (perm.tagKey && !granted) {
         const tag = document.createElement("span");
         tag.className = "onboarding-perm-tag";
-        tag.textContent = t("perm.recommended");
+        tag.textContent = t(perm.tagKey);
         label.append(tag);
       }
       const desc = document.createElement("div");
@@ -283,10 +297,7 @@ async function requestPermission(key) {
 }
 
 async function advanceOnboarding() {
-  const stepIndex = Math.min(
-    onboardingState?.step || 0,
-    ONBOARDING_FLOW.length - 1,
-  );
+  const stepIndex = currentStepIndex();
   const step = ONBOARDING_FLOW[stepIndex];
   if (step.permissions && permRelaunchMode) {
     window.trayAPI.relaunchApp(); // 설정에서 허용한 값을 읽으려면 재시작해야 한다

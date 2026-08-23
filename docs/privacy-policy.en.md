@@ -71,13 +71,13 @@ In work chat tools such as Slack, Discord, and Microsoft Teams, a generic bubble
 
 ## 4. System permissions
 
-The app can use three macOS permissions. **The core features work whether or not you grant any of them.**
+The app can use three macOS permissions. **Accessibility (`Rockie`) is needed to finish first-run setup**; **the rest are optional and the core features work without them.** None of these permissions is used to send personal data anywhere.
 
 | Permission | Used for | If you decline |
 | --- | --- | --- |
 | Screen Recording | Reading the title of the frontmost window | App names are still readable, so most bubbles keep appearing — only the ones that need the title stop |
 | Automation (System Events) | Reading the Dock's position and size | Your pet may overlap the Dock |
-| Accessibility (`Rockie`) | Reading the Dock's position and size | Your pet may overlap the Dock |
+| Accessibility (`Rockie`) | Reading the Dock's position and size | You cannot finish first-run setup, and your pet overlaps the Dock |
 | Accessibility (`KeyBlocker`) | Locking the keyboard in nap and cleaning modes | The keyboard is not locked in those modes |
 
 Reading the Dock's position needs Automation and Accessibility **together**: macOS splits it into asking `System Events` to look (Automation) and `System Events` actually reading the on-screen elements (Accessibility). Two entries appear under Accessibility because the keyboard-locking feature is split out into a separate program named `KeyBlocker`.

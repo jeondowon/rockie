@@ -858,22 +858,18 @@ ipcMain.on("settings:set", (_event, { key, value }) => {
       data.settings[key] = !!value;
       sendPetSettings();
       break;
+    // 집중·쪽잠 시간. 슬라이더 범위(1~120분) 밖의 값이 들어와도 저장 단계에서
+    // 잘라낸다. 기본값만 서로 다르다.
     case "focusMinutes":
-      // 슬라이더 범위(1~120분) 밖의 값이 들어와도 저장 단계에서 잘라낸다
-      data.settings.focusMinutes = Math.min(
+    case "napMinutes": {
+      const fallback = key === "focusMinutes" ? 25 : 20;
+      data.settings[key] = Math.min(
         120,
-        Math.max(1, Number(value) || 25),
+        Math.max(1, Number(value) || fallback),
       );
       sendPetSettings();
       break;
-    case "napMinutes":
-      // 슬라이더 범위(1~120분) 밖의 값이 들어와도 저장 단계에서 잘라낸다
-      data.settings.napMinutes = Math.min(
-        120,
-        Math.max(1, Number(value) || 20),
-      );
-      sendPetSettings();
-      break;
+    }
     case "language":
       // 표시 언어만 바꾼다. 저장된 성향 점수·답변 기록의 키는 한글 그대로 유지된다.
       data.settings.language = value === "en" ? "en" : "ko";
