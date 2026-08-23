@@ -21,7 +21,7 @@ Rockie(이하 "앱")는 개인 개발자 jeondowon이 무료로 제공하는 mac
 아래 정보는 이용자의 Mac에 있는 다음 파일 한 곳에만 저장됩니다.
 
 ```
-~/Library/Application Support/Rockie/petdata.json
+~/Library/Application Support/rockie-desktop-pet/petdata.json
 ```
 
 | 항목 | 사용 목적 |
@@ -118,7 +118,7 @@ macOS의 "화면 기록" 권한은 이름과 달리 **화면을 촬영하거나 
 앱을 삭제하신 뒤 아래 폴더를 함께 지우시면 남는 데이터가 없습니다.
 
 ```
-~/Library/Application Support/Rockie/
+~/Library/Application Support/rockie-desktop-pet/
 ```
 
 시스템 설정 → 개인정보 보호 및 보안에서 Rockie에 부여한 권한도 함께 해제하실 수 있습니다.

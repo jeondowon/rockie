@@ -1,6 +1,6 @@
 # Installing Rockie
 
-Last updated: 2026-08-23
+Last updated: 2026-08-24
 Requires: macOS 12 (Monterey) or later · Apple Silicon (M1 or newer)
 
 ---
@@ -100,7 +100,7 @@ Your current version is shown at the bottom of the Settings screen.
 To remove your saved pet data as well, delete this folder:
 
 ```
-~/Library/Application Support/Rockie/
+~/Library/Application Support/rockie-desktop-pet/
 ```
 
 In Finder, press `Shift+Cmd+G` and paste the path to go straight there.

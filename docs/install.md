@@ -1,6 +1,6 @@
 # Rockie 설치 안내
 
-최종 수정일: 2026-08-23
+최종 수정일: 2026-08-24
 대상: macOS 12(Monterey) 이상 · Apple Silicon(M1 이후)
 
 ---
@@ -100,7 +100,7 @@ Rockie는 새 버전을 **자동으로 확인하고 내려받습니다.** 다 �
 저장된 애완돌 정보까지 완전히 지우시려면 아래 폴더를 함께 삭제해 주세요.
 
 ```
-~/Library/Application Support/Rockie/
+~/Library/Application Support/rockie-desktop-pet/
 ```
 
 Finder에서 `Shift+Cmd+G`를 누르고 위 경로를 붙여 넣으면 바로 이동할 수 있습니다.

@@ -3,7 +3,7 @@
 `src/main/store.js`의 `defaultData()`가 이 스키마의 **정본**이다. 이 문서는 그 구조를
 읽기 좋게 옮기고 각 필드의 용도를 설명한다. 코드와 어긋나면 코드가 맞다.
 
-- 저장 위치: `~/Library/Application Support/Rockie/petdata.json` (단일 JSON 파일)
+- 저장 위치: `~/Library/Application Support/rockie-desktop-pet/petdata.json` (단일 JSON 파일)
 - 사용자 계정 개념이 없는 로컬 앱이라 전체를 하나의 루트 객체로 관리한다.
 - 저장은 임시 파일에 쓴 뒤 `rename`으로 바꿔치기한다(원자적). 읽다가 실패하면 원본을
   `petdata.corrupt-<타임스탬프>.json`으로 옮겨 보존하고 기본값으로 시작한다.

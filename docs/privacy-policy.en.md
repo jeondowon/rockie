@@ -21,7 +21,7 @@ Rockie ("the app") is a free macOS desktop app made by an individual developer, 
 The information below is stored in exactly one file on your Mac:
 
 ```
-~/Library/Application Support/Rockie/petdata.json
+~/Library/Application Support/rockie-desktop-pet/petdata.json
 ```
 
 | Item | Purpose |
@@ -118,7 +118,7 @@ Menu bar icon → Settings → "Start over" erases your saved progress, personal
 Delete the app, then delete the folder below and nothing will remain.
 
 ```
-~/Library/Application Support/Rockie/
+~/Library/Application Support/rockie-desktop-pet/
 ```
 
 You can also revoke the permissions you granted to Rockie in System Settings → Privacy & Security.
