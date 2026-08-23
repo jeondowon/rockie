@@ -345,6 +345,9 @@ function applyNames(userName, petName) {
 // 편집 모드 진입: 값 숨기고 입력창 노출, 버튼을 "저장"으로
 function enterNameEdit() {
   editingName = true;
+  // 한글은 영문의 2배 폭이라 언어별로 글자 수를 나눈다 (둘 다 입력창 폭 안에 들어간다).
+  userNameInput.maxLength = petNameInput.maxLength =
+    getLocale() === "en" ? 25 : 12;
   userNameValue.classList.add("hidden");
   petNameValue.classList.add("hidden");
   userNameInput.classList.remove("hidden");
