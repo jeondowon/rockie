@@ -1,6 +1,6 @@
 # Rockie Privacy Policy
 
-Last updated: 2026-08-23
+Last updated: 2026-08-24
 Applies to: Rockie 1.0.1 and later
 
 Rockie ("the app") is a free macOS desktop app made by an individual developer, jeondowon. This policy explains what information the app handles and where that information stays.
