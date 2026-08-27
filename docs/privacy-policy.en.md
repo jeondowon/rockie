@@ -141,7 +141,7 @@ If a new feature changes what information the app handles, this policy will be u
 
 For questions about the app or how it handles information:
 
-- Email: dowon.9102@gmail.com
+- Email: jeondowon.dev@gmail.com
 - GitHub Issues: https://github.com/jeondowon/rockie/issues
 
 ---

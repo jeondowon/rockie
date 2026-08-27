@@ -12,7 +12,7 @@
 ## 제2조 (제공자와 연락처)
 
 - 제공자: jeondowon (개인)
-- 이메일: dowon.9102@gmail.com
+- 이메일: jeondowon.dev@gmail.com
 - 웹사이트: https://jeondowon.com/rockie
 - 저장소·이슈: https://github.com/jeondowon/rockie
 

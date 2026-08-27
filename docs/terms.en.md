@@ -12,7 +12,7 @@ These terms set out the conditions for using Rockie ("the app"), a macOS desktop
 ## 2. Provider and contact
 
 - Provider: jeondowon (individual)
-- Email: dowon.9102@gmail.com
+- Email: jeondowon.dev@gmail.com
 - Website: https://jeondowon.com/rockie
 - Repository and issues: https://github.com/jeondowon/rockie
 

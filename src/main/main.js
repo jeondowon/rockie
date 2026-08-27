@@ -49,7 +49,7 @@ const EXTERNAL_LINKS = {
   privacy: { ko: "/rockie/privacy", en: "/rockie/en/privacy" },
   terms: { ko: "/rockie/terms", en: "/rockie/en/terms" },
   licenses: "https://jeondowon.com/rockie/licenses",
-  contact: "mailto:dowon.9102@gmail.com",
+  contact: "mailto:jeondowon.dev@gmail.com",
 };
 
 // { ko, en } 형태면 현재 표시 언어에 맞는 주소를 고른다.

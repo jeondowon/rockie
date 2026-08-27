@@ -141,5 +141,5 @@ macOS의 "화면 기록" 권한은 이름과 달리 **화면을 촬영하거나 
 
 앱과 개인정보 처리에 관한 문의는 아래로 보내주시기 바랍니다.
 
-- 이메일: dowon.9102@gmail.com
+- 이메일: jeondowon.dev@gmail.com
 - GitHub Issues: https://github.com/jeondowon/rockie/issues

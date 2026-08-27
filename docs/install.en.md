@@ -122,4 +122,4 @@ For a clean removal, also delete the `Rockie` and `KeyBlocker` entries in System
 | The keyboard is not locked in nap mode | Enable **`KeyBlocker`** under Accessibility, then restart the app |
 | You cannot find the icon in the menu bar | With many items it can be pushed off screen — clear out other icons, or check with a tool like Bartender |
 
-If none of this helps, reach out at [dowon.9102@gmail.com](mailto:dowon.9102@gmail.com) or on [GitHub Issues](https://github.com/jeondowon/rockie/issues).
+If none of this helps, reach out at [jeondowon.dev@gmail.com](mailto:jeondowon.dev@gmail.com) or on [GitHub Issues](https://github.com/jeondowon/rockie/issues).

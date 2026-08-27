@@ -122,4 +122,4 @@ Finder에서 `Shift+Cmd+G`를 누르고 위 경로를 붙여 넣으면 바로 �
 | 쪽잠 모드에서 키보드가 안 잠깁니다 | 손쉬운 사용에서 **`KeyBlocker`** 를 켜고 앱을 재시작해 주세요 |
 | 메뉴 막대에서 아이콘을 못 찾겠습니다 | 항목이 많으면 화면 밖으로 밀려 보이지 않을 수 있습니다. 다른 아이콘을 정리하거나 Bartender 같은 도구로 확인해 보세요 |
 
-해결되지 않으면 [dowon.9102@gmail.com](mailto:dowon.9102@gmail.com) 또는 [GitHub Issues](https://github.com/jeondowon/rockie/issues)로 알려주세요.
+해결되지 않으면 [jeondowon.dev@gmail.com](mailto:jeondowon.dev@gmail.com) 또는 [GitHub Issues](https://github.com/jeondowon/rockie/issues)로 알려주세요.
