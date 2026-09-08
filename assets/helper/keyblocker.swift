@@ -97,7 +97,9 @@ var tapPort: CFMachPort?
 let eventMask: CGEventMask =
     (1 << CGEventType.keyDown.rawValue) |
     (1 << CGEventType.keyUp.rawValue) |
-    (1 << CGEventType.flagsChanged.rawValue)
+    (1 << CGEventType.flagsChanged.rawValue) |
+    (1 << 14) // NX_SYSDEFINED: F1~F12가 미디어 키(밝기·볼륨·미션 컨트롤 등)로 동작할 때
+              // keyDown이 아닌 이 타입으로 온다. CGEventType에 심볼 이름이 없어 raw 14로 넣는다.
 
 func eventCallback(
     proxy: CGEventTapProxy,
