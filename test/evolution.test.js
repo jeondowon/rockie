@@ -332,6 +332,53 @@ test("2단계 이상에서는 일일 갱신 후에도 질문 배지가 남지 �
   assert.equal(data.notifications.hasUnreadBadge, false);
 });
 
+test("일일 갱신은 온보딩과 진화 단계에 맞춰 질문을 채우고 돌보기 제한을 푼다", () => {
+  const now = "2026-09-27T08:00:00.000Z";
+  for (const { completed, stage, remaining, expected } of [
+    { completed: false, stage: 0, remaining: ["main_02"], expected: [] },
+    { completed: true, stage: 0, remaining: ["main_02", "unknown"],
+      expected: ["main_02", "main_03", "main_04"] },
+    { completed: true, stage: 1, remaining: ["ei_02"],
+      expected: ["ei_02", "ei_01"] },
+    { completed: true, stage: 2, remaining: ["ei_02"], expected: [] },
+    { completed: true, stage: 3, remaining: ["ei_02"], expected: [] },
+  ]) {
+    const data = makeData({ onboardingCompleted: completed });
+    data.pet.evolutionStage = stage;
+    data.questions.todaysQuestions = remaining;
+    data.questions.answeredQuestions = [{ questionId: "main_01" }];
+    data.affinity.dailyCleanDone = true;
+    data.affinity.dailyPetDone = true;
+    data.affinity.affinityPoints = 42;
+    data.notifications.hasUnreadBadge = true;
+
+    const result = evolution.onDailyReset(data, now);
+
+    assert.deepEqual(data.questions.todaysQuestions, expected);
+    assert.equal(data.questions.dailyResetAt, now);
+    assert.equal(data.notifications.hasUnreadBadge, expected.length > 0);
+    assert.equal(result.showBanner, expected.length > 0);
+    assert.deepEqual(data.affinity, {
+      affinityPoints: 42, dailyCleanDone: false, dailyPetDone: false,
+    });
+  }
+});
+
+test("일일 질문 한도를 채웠거나 질문을 소진했으면 추가하지 않는다", () => {
+  const data = makeData();
+  data.questions.todaysQuestions = ["main_03", "main_02", "main_01"];
+  evolution.onDailyReset(data, "2026-09-27T08:00:00.000Z");
+  assert.deepEqual(data.questions.todaysQuestions, ["main_03", "main_02", "main_01"]);
+
+  data.questions.todaysQuestions = [];
+  data.questions.answeredQuestions = mainIds().map((questionId) => ({ questionId }));
+  assert.deepEqual(evolution.onDailyReset(data, "2026-09-28T08:00:00.000Z"), {
+    showBanner: false,
+  });
+  assert.deepEqual(data.questions.todaysQuestions, []);
+  assert.equal(data.notifications.hasUnreadBadge, false);
+});
+
 test("성향 태그는 카테고리별 최다 답변 태그로 계산된다", () => {
   const data = makeData();
 

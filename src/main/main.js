@@ -69,7 +69,7 @@ let cursorInterval;
 let dockTracker;
 
 // 온보딩 완료 시점과 앱 시작 시점 양쪽에서 부르므로 중복 시작을 막는다.
-function startDockTracker0() {
+function ensureDockTrackerStarted() {
   if (dockTracker) return;
   dockTracker = startDockTracker(() => mainWindow, getPetDisplay);
 }
@@ -190,7 +190,7 @@ function createWindow() {
   startCursorTracker();
   // 온보딩 중에는 시작하지 않는다 — 첫 틱의 osascript가 프롤로그 도중에
   // 자동화 권한 창을 띄운다. 권한 화면에서 직접 요청하고, 완료 시 시작한다.
-  if (store.get().onboarding.completed) startDockTracker0();
+  if (store.get().onboarding.completed) ensureDockTrackerStarted();
   startDailyResetTimer();
 
   if (isDev) startDevReload();
@@ -658,7 +658,7 @@ ipcMain.handle("onboarding:complete", () => {
     }
     sendToPet("onboarding:completed");
   }
-  startDockTracker0(); // 권한 화면을 지난 뒤부터 Dock을 추적한다
+  ensureDockTrackerStarted(); // 권한 화면을 지난 뒤부터 Dock을 추적한다
   return state;
 });
 
@@ -684,22 +684,19 @@ ipcMain.handle("evolution:answer", (_event, payload) => {
 // 호감도 획득. 트레이 "돌보기" 버튼(닦아주기/쓰다듬기)에서 호출된다.
 // 애정을 준 직후 펫 창이 애정 표현을 잠깐 띄운다 — 쓰다듬기는 하트,
 // 닦아주기는 웃는 얼굴(smile gif)로 구분한다.
-ipcMain.handle("evolution:clean", () => {
-  const data = store.get();
-  const result = evolution.cleanPet(data);
-  store.save();
-  sendToPet("pet:show-smile");
-  if (result.evolved) notifyEvolved(data);
-  return result;
-});
-ipcMain.handle("evolution:pet", () => {
-  const data = store.get();
-  const result = evolution.petPet(data);
-  store.save();
-  sendToPet("pet:show-heart");
-  if (result.evolved) notifyEvolved(data);
-  return result;
-});
+for (const [channel, care, reaction] of [
+  ["evolution:clean", evolution.cleanPet, "pet:show-smile"],
+  ["evolution:pet", evolution.petPet, "pet:show-heart"],
+]) {
+  ipcMain.handle(channel, () => {
+    const data = store.get();
+    const result = care(data);
+    store.save();
+    sendToPet(reaction);
+    if (result.evolved) notifyEvolved(data);
+    return result;
+  });
+}
 // 스킨 착용/해제. 펫 창이 표시 형태를 바꾸도록 해석된 단계 정보를 보낸다.
 ipcMain.handle("evolution:set-skin", (_event, stage) => {
   const data = store.get();
@@ -845,15 +842,9 @@ ipcMain.on("settings:set", (_event, { key, value }) => {
       applyCaptureProtection(value);
       break;
     case "soundEnabled":
-      data.settings.soundEnabled = value;
-      sendPetSettings(); // 펫 렌더러의 효과음 on/off 즉시 반영
-      break;
     case "petPlacement":
-      data.settings.petPlacement = value;
-      sendPetSettings();
-      break;
     case "petSize":
-      data.settings.petSize = value;
+      data.settings[key] = value;
       sendPetSettings();
       break;
     // 말풍선 갈래 세 가지. 서로 독립이라 한 줄씩 켜고 끈다.

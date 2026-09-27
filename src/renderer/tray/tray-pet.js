@@ -427,18 +427,17 @@ petCallout.addEventListener("click", () => {
 
 // 닦아주기/쓰다듬기 → 호감도 +3 (하루 1회). 게이지·버튼을 즉시 갱신한다.
 // 90 도달로 진화하면 펫 창이 축하 연출을 띄운다(메인의 notifyEvolved).
-cleanBtn.addEventListener("click", async () => {
-  const { state, evolved } = await window.trayAPI.cleanPet();
-  renderAffinity(state.affinityPoints);
-  renderCareButtons(state.dailyCleanDone, state.dailyPetDone);
-  if (evolved) renderForm(state);
-});
-petBtn.addEventListener("click", async () => {
-  const { state, evolved } = await window.trayAPI.petPet();
-  renderAffinity(state.affinityPoints);
-  renderCareButtons(state.dailyCleanDone, state.dailyPetDone);
-  if (evolved) renderForm(state);
-});
+for (const [button, care] of [
+  [cleanBtn, () => window.trayAPI.cleanPet()],
+  [petBtn, () => window.trayAPI.petPet()],
+]) {
+  button.addEventListener("click", async () => {
+    const { state, evolved } = await care();
+    renderAffinity(state.affinityPoints);
+    renderCareButtons(state.dailyCleanDone, state.dailyPetDone);
+    if (evolved) renderForm(state);
+  });
+}
 
 // 펫 화면 후원 카드 → 홈페이지
 document.getElementById("support-btn").addEventListener("click", () => {

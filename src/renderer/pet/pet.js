@@ -2,6 +2,7 @@ const character = document.getElementById("character");
 const heart = document.getElementById("heart");
 const petDecoration = document.getElementById("pet-decoration");
 const petDecorationImage = document.getElementById("pet-decoration-image");
+const petLayers = [character, heart, petDecoration];
 let equippedDecoration = null;
 function renderPetDecoration(state) {
   equippedDecoration = state.catalog.some((item) => item.kind === "decoration" && item.id === state.decoration)
@@ -183,13 +184,11 @@ function clampY(y) {
 }
 
 function placeCharacter() {
-  character.style.left = posX + "px";
-  character.style.top = posY + "px";
-  // 하트는 캐릭터와 같은 320 캔버스라 같은 좌표에 두면 원하는 자리에 정확히 겹친다
-  heart.style.left = posX + "px";
-  heart.style.top = posY + "px";
-  petDecoration.style.left = posX + "px";
-  petDecoration.style.top = posY + "px";
+  // 하트·장식은 캐릭터와 같은 캔버스이므로 위치를 함께 맞춘다.
+  for (const layer of petLayers) {
+    layer.style.left = posX + "px";
+    layer.style.top = posY + "px";
+  }
   updateTuneGuide();
 }
 
@@ -579,13 +578,8 @@ function followStep() {
       // 투명 여백(SPRITE_MARGIN)을 상쇄하고 화면 끝에서 FIXED_EDGE_GAP만큼 안쪽으로
       // 들여놓아, 말풍선/카드가 펼쳐질 여유 공간을 둔다.
       cap = MAX_SPEED_FIXED;
-      if (placement === "bottom-left") {
-        targetX = -SPRITE_MARGIN + FIXED_EDGE_GAP;
-        setFacing("right");
-      } else {
-        targetX = window.innerWidth - CHAR_SIZE + SPRITE_MARGIN - FIXED_EDGE_GAP;
-        setFacing("left");
-      }
+      targetX = startX();
+      setFacing(placement === "bottom-left" ? "right" : "left");
     }
 
     let delta = (targetX - posX) * EASE;
@@ -928,7 +922,7 @@ window.petAPI.onActiveWindowInfo(({ appName, title }) => {
   }
 
   // 일반 규칙: 카테고리에 새로 진입했을 때만 한 번 말한다
-  // (quiet 규칙도 진입 멘트 한 번은 보여주고, 머무는 동안은 자연히 조용해진다)
+  // 회의 앱도 이 규칙으로 진입 멘트만 보여주고 머무는 동안은 조용해진다.
   if (isNewRule) {
     showAutoBubble(formatMessage(pickRandom(rule.messages)));
   }
@@ -1440,12 +1434,10 @@ function applySizing() {
   const px = Math.round(base * spriteGeom().scale);
   CHAR_SIZE = px;
   SPRITE_MARGIN = Math.round((px * 36) / 128);
-  character.style.width = px + "px";
-  character.style.height = px + "px";
-  heart.style.width = px + "px";
-  heart.style.height = px + "px";
-  petDecoration.style.width = px + "px";
-  petDecoration.style.height = px + "px";
+  for (const layer of petLayers) {
+    layer.style.width = px + "px";
+    layer.style.height = px + "px";
+  }
   updatePetDecoration();
 }
 

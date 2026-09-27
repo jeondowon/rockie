@@ -2,7 +2,7 @@
 // - 0→1: 본 질문 → 돌 종류 확정 (동점 시 타이브레이커)
 // - 1→2: E/I 질문 → 변성체 변형(extrovert/introvert) 확정 (동점 시 타이브레이커)
 // - 2→3: 호감도 90 도달 → 보석 확정 (질문 없음, 호감도 트리거)
-// 질문은 매일 오전 8시에 최대 2개를 뽑아 todaysQuestions에 채우고, 사용자가
+// 질문은 매일 오전 8시에 단계별 한도까지 todaysQuestions에 채우고, 사용자가
 // 트레이 버튼으로 능동적으로 답한다(정기 알림/강제 노출 없음).
 // 순수 데이터 + 계산만 담당하고, 저장은 호출부(main)에서 store로 처리한다.
 
@@ -250,29 +250,21 @@ function pickNextQuestions(data, count) {
 }
 
 // ---------- 매일 오전 8시 갱신 ----------
-// 어제 안 답한 질문은 유지하고, 부족분(2 - 남은 개수)만 새로 채운다.
+// 어제 안 답한 질문은 유지하고, 단계별 한도에서 부족한 개수만 새로 채운다.
 // 반환: { showBanner } — 갱신 후 답할 질문이 있으면 배너 알림 대상.
 function onDailyReset(data, nowIso) {
-  if (!onboardingCompleted(data)) {
-    data.questions.todaysQuestions = [];
-    data.affinity.dailyCleanDone = false;
-    data.affinity.dailyPetDone = false;
-    data.notifications.hasUnreadBadge = false;
-    data.questions.dailyResetAt = nowIso;
-    return { showBanner: false };
-  }
-  if (data.pet.evolutionStage >= 2) {
+  if (!onboardingCompleted(data) || data.pet.evolutionStage >= 2) {
     data.questions.todaysQuestions = [];
   } else {
     data.questions.todaysQuestions = validTodayQuestions(data);
+    refillToday(data, data.questions.todaysQuestions);
   }
-  refillToday(data, data.questions.todaysQuestions);
+  const hasQuestions = data.questions.todaysQuestions.length > 0;
   data.affinity.dailyCleanDone = false;
   data.affinity.dailyPetDone = false;
-  data.notifications.hasUnreadBadge =
-    data.pet.evolutionStage < 2 && validTodayQuestions(data).length > 0;
+  data.notifications.hasUnreadBadge = hasQuestions;
   data.questions.dailyResetAt = nowIso;
-  return { showBanner: validTodayQuestions(data).length > 0 };
+  return { showBanner: hasQuestions };
 }
 
 // ---------- 판정 보조 (본 질문 동점 처리) ----------
@@ -489,6 +481,15 @@ function petPet(data) {
 }
 
 // ---------- 답변 제출 ----------
+function recordAnswer(data, question, value, nowIso) {
+  data.questions.answeredQuestions.push({
+    questionId: question.id,
+    category: question.category ?? null,
+    selectedOption: value,
+    answeredAt: nowIso,
+  });
+}
+
 // { evolved, state } 반환. evolved는 이번 답변으로 올라간 단계 번호(없으면 null).
 function answer(data, { questionId, value }) {
   const q = QUESTION_BY_ID[questionId];
@@ -519,12 +520,7 @@ function answer(data, { questionId, value }) {
   }
 
   // 2. 답변 기록 + 오늘 목록에서 제거
-  data.questions.answeredQuestions.push({
-    questionId,
-    category: q.category ?? null,
-    selectedOption: value,
-    answeredAt: now,
-  });
+  recordAnswer(data, q, value, now);
   data.questions.todaysQuestions = data.questions.todaysQuestions.filter(
     (id) => id !== questionId,
   );
@@ -582,12 +578,7 @@ function answerOnboarding(data, { questionId, value, nextStep }) {
   if (!alreadyAnswered) {
     const now = new Date().toISOString();
     data.traits.traitScores[KO_BY_KEY[value]] += 1;
-    data.questions.answeredQuestions.push({
-      questionId,
-      category: q.category ?? null,
-      selectedOption: value,
-      answeredAt: now,
-    });
+    recordAnswer(data, q, value, now);
   }
 
   data.onboarding.step =

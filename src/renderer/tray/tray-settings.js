@@ -237,26 +237,18 @@ settingToggles.forEach((btn) => {
   });
 });
 
-placeChips.forEach((chip) => {
-  chip.addEventListener("click", () => {
-    placeChips.forEach((c) => c.classList.toggle("on", c === chip));
-    window.trayAPI.setSetting("petPlacement", chip.dataset.place);
+function bindSettingChips(chips, key, dataKey) {
+  chips.forEach((chip) => {
+    chip.addEventListener("click", () => {
+      chips.forEach((c) => c.classList.toggle("on", c === chip));
+      window.trayAPI.setSetting(key, chip.dataset[dataKey]);
+    });
   });
-});
+}
 
-sizeChips.forEach((chip) => {
-  chip.addEventListener("click", () => {
-    sizeChips.forEach((c) => c.classList.toggle("on", c === chip));
-    window.trayAPI.setSetting("petSize", chip.dataset.size);
-  });
-});
-
-languageChips.forEach((chip) => {
-  chip.addEventListener("click", () => {
-    languageChips.forEach((c) => c.classList.toggle("on", c === chip));
-    window.trayAPI.setSetting("language", chip.dataset.language);
-  });
-});
+bindSettingChips(placeChips, "petPlacement", "place");
+bindSettingChips(sizeChips, "petSize", "size");
+bindSettingChips(languageChips, "language", "language");
 
 // 10분 배수 근처(±2분)에 오면 끌어당기는 자석 효과.
 // 끌 때만 걸어서, 방향키로는 1분 단위 미세 조정이 그대로 되게 둔다.

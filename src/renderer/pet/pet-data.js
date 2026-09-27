@@ -542,7 +542,6 @@ const LONG_USE_CLICK_REACTIONS = [
 //
 // - messages: 그 카테고리에서 랜덤으로 하나를 골라 보여줄 멘트 목록
 // - silent: 매칭은 하되 아무 말도 안 함 (사생활 영역 - 뒤의 일반 규칙에 걸리는 것 방지)
-// - quiet: 진입 멘트 한 번만 보여주고, 머무는 동안 추가 말풍선을 억제 (회의 등)
 // - stages: 체류 시간(ms)에 따라 톤이 바뀌는 카테고리 (SNS 잔소리 등).
 //           배터리 티어처럼 "현재 속한 구간"을 찾는 구조라, 같은 패턴을 재사용할 수 있다.
 const WINDOW_RULES = [
@@ -566,7 +565,6 @@ const WINDOW_RULES = [
         en: "Just double-check whether your mic is on.",
       },
     ],
-    quiet: true,
   },
   {
     id: "chat",
