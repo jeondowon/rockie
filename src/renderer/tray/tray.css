@@ -2055,13 +2055,35 @@ html[lang="en"]
 }
 
 .game-hud {
-  width: 320px;
+  width: 326px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 2px 4px;
+  gap: 10px;
+  padding: 0 8px 4px;
   color: #1b1b16;
   font-size: 16px;
+}
+
+.game-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin-right: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+#game-score {
+  font-size: 18px;
+}
+
+.game-shards {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #916522;
+  font-size: 12px;
 }
 
 .game-hud-actions {
@@ -2071,50 +2093,99 @@ html[lang="en"]
 }
 
 .game-icon-btn {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex: 0 0 30px;
+  flex: 0 0 32px;
   font-family: inherit;
   font-size: 12px;
   line-height: 1;
   padding: 4px;
   border: 2px solid #1b1b16;
-  border-radius: 5px;
-  background: transparent;
+  border-radius: 0;
+  background: #f2ede1;
+  box-shadow: 2px 2px 0 #1b1b16;
   color: #1b1b16;
   cursor: pointer;
 }
 
-.game-icon-btn:hover {
+.game-icon-btn:hover:not(:disabled) {
   background: #1b1b16;
   color: #f2ede1;
+}
+
+.game-icon-btn:active:not(:disabled),
+#game-restart:active,
+#game-resume:active {
+  transform: translate(2px, 2px);
+  box-shadow: none;
+}
+
+.game-icon-btn:focus-visible,
+#game-restart:focus-visible,
+#game-resume:focus-visible {
+  outline: 2px solid #4f7a3f;
+  outline-offset: 4px;
+}
+
+.game-icon-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+  box-shadow: none;
+}
+
+.game-icon-btn svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+}
+
+.game-icon-btn .game-play-icon,
+.game-icon-btn.is-paused .game-pause-icon {
+  display: none;
+}
+
+.game-icon-btn.is-paused .game-play-icon {
+  display: block;
 }
 
 .game-next {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 10px;
+  gap: 2px;
+  flex-shrink: 0;
+  font-size: 8px;
+  color: #6a6452;
+}
+
+.game-next-preview {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  overflow: hidden;
 }
 
 .game-next img {
-  width: 34px;
-  height: 34px;
+  position: absolute;
   image-rendering: pixelated;
 }
 
 .game-board-wrap {
   position: relative;
+  box-shadow: 3px 3px 0 #cbc4b1;
 }
 
 #game-board {
+  display: block;
   box-sizing: content-box;
   background: #e7e1d2;
   border: 3px solid #1b1b16;
-  border-radius: 8px;
   cursor: pointer;
 }
 
@@ -2123,13 +2194,9 @@ html[lang="en"]
   position: absolute;
   inset: 0;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  background: rgba(20, 15, 12, 0.82);
-  border-radius: 8px;
-  color: #f3ead9;
+  background: rgba(27, 27, 22, 0.55);
 }
 
 #game-over.hidden,
@@ -2139,25 +2206,61 @@ html[lang="en"]
 
 #game-over-title,
 #game-paused-title {
-  font-size: 24px;
+  font-family: "Galmuri14", monospace;
+  font-size: 18px;
+}
+
+.game-dialog {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  width: 240px;
+  padding: 24px 20px;
+  border: 3px solid #1b1b16;
+  background: #f2ede1;
+  box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.45);
+}
+
+#game-over-score {
+  color: #6a6452;
+  font-size: 12px;
 }
 
 #game-restart,
 #game-resume {
   font-family: inherit;
-  font-size: 14px;
-  padding: 8px 18px;
-  border: 2px solid #f3ead9;
-  border-radius: 6px;
-  background: transparent;
-  color: #f3ead9;
+  width: 100%;
+  font-size: 12px;
+  padding: 10px 16px;
+  border: 2px solid #1b1b16;
+  border-radius: 0;
+  background: #1b1b16;
+  color: #f2ede1;
+  box-shadow: 3px 3px 0 #b8b2a2;
   cursor: pointer;
 }
 
 #game-restart:hover,
 #game-resume:hover {
-  background: #f3ead9;
-  color: #2b2320;
+  background: #3c3c30;
+}
+
+#game-reward-error {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  padding: 10px;
+  border: 2px solid #ab423c;
+  background: #f2ede1;
+  color: #ab423c;
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+#game-reward-error:empty {
+  display: none;
 }
 
 /* ---------- SYSTEM ---------- */
@@ -2573,36 +2676,10 @@ html[lang="en"]
 }
 
 /* 조각 · 상점 · 인벤토리 */
-.game-icon-btn svg {
-  width: 18px;
-  height: 18px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2.5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
 .shard-balance {
   white-space: nowrap;
   color: #b98732;
   font-size: 10px;
-}
-.game-reward-line {
-  width: 320px;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  font-size: 10px;
-  color: #746d5e;
-}
-#game-reward-progress {
-  color: #1b1b16;
-}
-#game-reward-error {
-  color: #ab423c;
-}
-#game-reward-error:empty {
-  display: none;
 }
 .shop-tabs {
   display: flex;

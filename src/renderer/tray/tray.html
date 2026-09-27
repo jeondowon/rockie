@@ -19,13 +19,7 @@
              프롤로그가 끝나면 이 자리는 titlebar-meta(애완돌 이름)로 대체되고,
              언어는 설정 화면에서 바꾼다. -->
         <button id="onboarding-lang" class="onboarding-lang">EN</button>
-        <button
-          id="onboarding-quit"
-          class="onboarding-quit"
-          data-i18n="common.quit"
-        >
-          종료
-        </button>
+        <button id="onboarding-quit" class="onboarding-quit" data-i18n="common.quit">종료</button>
       </div>
 
       <!-- 뒤로가기 바 (메뉴 외 화면에서만 표시) -->
@@ -41,16 +35,8 @@
         <span id="mode-banner-label" class="mode-banner-label">집중 모드</span>
         <span id="mode-banner-time" class="mode-banner-time">25:00</span>
         <span class="mode-banner-actions">
-          <button id="mode-banner-pause" class="mode-banner-pause">
-            일시정지
-          </button>
-          <button
-            id="mode-banner-exit"
-            class="mode-banner-exit"
-            data-i18n="common.quit"
-          >
-            종료
-          </button>
+          <button id="mode-banner-pause" class="mode-banner-pause">일시정지</button>
+          <button id="mode-banner-exit" class="mode-banner-exit" data-i18n="common.quit">종료</button>
         </span>
       </div>
 
@@ -64,29 +50,19 @@
             <div class="intro-panel">
               <div class="intro-title">ROCKIE</div>
               <!-- 앱 한 줄 소개: ROCKIE 타이틀 바로 아래 -->
-              <div class="onboarding-tagline" data-i18n="onboarding.tagline">
-                화면 위에 사는 나만의 작은 애완돌
-              </div>
+              <div class="onboarding-tagline" data-i18n="onboarding.tagline">화면 위에 사는 나만의 작은 애완돌</div>
               <div class="intro-stones">
                 <img src="../../../assets/img/moonstone_left.png" alt="" />
                 <img src="../../../assets/img/granite_smile.png" alt="" />
                 <img src="../../../assets/img/basalt_left.png" alt="" />
-                <img
-                  src="../../../assets/img/rockie_left.png"
-                  alt=""
-                  class="intro-rockie"
-                />
+                <img src="../../../assets/img/rockie_left.png" alt="" class="intro-rockie" />
                 <img src="../../../assets/img/marble_smile.png" alt="" />
                 <img src="../../../assets/img/gneiss_right.png" alt="" />
                 <img src="../../../assets/img/topaz_sleepy.png" alt="" />
               </div>
             </div>
             <!-- 조약돌: ground보다 앞(DOM상 위)에 두어 땅 뒤에서 솟아오르게 -->
-            <img
-              class="pebble"
-              src="../../../assets/gif/level0/rockie_left.gif"
-              alt="조약돌"
-            />
+            <img class="pebble" src="../../../assets/gif/level0/rockie_left.gif" alt="조약돌" />
             <div class="ground"></div>
             <div class="impact-mark"></div>
             <div class="crack crack-a"></div>
@@ -101,18 +77,11 @@
             <div class="impact-dust"></div>
           </div>
           <div class="onboarding-dialog">
-            <div class="onboarding-speaker" id="onboarding-speaker">
-              PROLOGUE
-            </div>
+            <div class="onboarding-speaker" id="onboarding-speaker">PROLOGUE</div>
             <div class="onboarding-text" id="onboarding-text"></div>
             <div class="onboarding-perms hidden" id="onboarding-perms"></div>
-            <div
-              class="onboarding-options hidden"
-              id="onboarding-options"
-            ></div>
-            <button id="onboarding-next" class="onboarding-next">
-              클릭하여 진행
-            </button>
+            <div class="onboarding-options hidden" id="onboarding-options"></div>
+            <button id="onboarding-next" class="onboarding-next">클릭하여 진행</button>
           </div>
         </div>
 
@@ -125,13 +94,11 @@
             <button class="mrow" data-action="status">
               <span class="mrow-arrow">▶</span>
               <span class="mrow-label" data-i18n="menu.myPet">나의 애완돌</span>
-              <span class="mrow-badge" data-i18n="menu.newQuestion"
-                >새로운 질문</span
-              >
+              <span class="mrow-badge" data-i18n="menu.newQuestion">새로운 질문</span>
             </button>
             <button class="mrow" data-action="game">
               <span class="mrow-arrow">▶</span>
-              <span class="mrow-label" data-i18n="menu.game">게임</span>
+              <span class="mrow-label" data-i18n="menu.game">미니게임</span>
             </button>
             <button class="mrow" data-action="shop">
               <span class="mrow-arrow">▶</span>
@@ -139,29 +106,19 @@
             </button>
             <button class="mrow" data-action="system">
               <span class="mrow-arrow">▶</span>
-              <span class="mrow-label" data-i18n="menu.systemMonitor"
-                >시스템 모니터</span
-              >
+              <span class="mrow-label" data-i18n="menu.systemMonitor">시스템 모니터</span>
             </button>
             <button class="mrow" data-action="toggle-pet">
               <span class="mrow-arrow">▶</span>
-              <span class="mrow-label" data-i18n="menu.togglePet"
-                >애완돌 숨기기 / 보이기</span
-              >
+              <span class="mrow-label" data-i18n="menu.togglePet">애완돌 숨기기 / 보이기</span>
             </button>
             <button class="mrow" data-action="settings">
               <span class="mrow-arrow">▶</span>
               <span class="mrow-label" data-i18n="menu.settings">설정</span>
             </button>
-            <button
-              class="mrow hidden"
-              id="update-row"
-              data-action="install-update"
-            >
+            <button class="mrow hidden" id="update-row" data-action="install-update">
               <span class="mrow-arrow">▶</span>
-              <span class="mrow-label" data-i18n="menu.installUpdate"
-                >업데이트 설치 후 재시작</span
-              >
+              <span class="mrow-label" data-i18n="menu.installUpdate">업데이트 설치 후 재시작</span>
             </button>
             <button class="mrow danger" data-action="quit">
               <span class="mrow-arrow">▶</span>
@@ -176,12 +133,7 @@
           <div class="hero">
             <div class="hero-grid"></div>
             <div class="hero-stage">
-              <img
-                id="hero-img"
-                class="hero-img"
-                src="../../../assets/gif/level0/rockie_smile.gif"
-                alt="애완돌"
-              />
+              <img id="hero-img" class="hero-img" src="../../../assets/gif/level0/rockie_smile.gif" alt="애완돌" />
             </div>
             <div class="hero-status">
               <span id="pet-status-label">조약돌</span>
@@ -193,12 +145,8 @@
           <button id="pet-callout" class="callout">
             <span class="callout-icon">?</span>
             <div class="callout-text">
-              <div id="callout-title" class="callout-title">
-                새로운 질문에 답하기
-              </div>
-              <div id="callout-sub" class="callout-sub">
-                애완돌 옆에서 답해 주세요 ▶
-              </div>
+              <div id="callout-title" class="callout-title">새로운 질문에 답하기</div>
+              <div id="callout-sub" class="callout-sub">애완돌 옆에서 답해 주세요 ▶</div>
             </div>
           </button>
 
@@ -207,49 +155,29 @@
             <div class="panel-label" data-i18n="pet.name">이름</div>
             <div class="name-fields">
               <label class="name-field">
-                <span class="name-key" data-i18n="pet.userName"
-                  >사용자 이름</span
-                >
+                <span class="name-key" data-i18n="pet.userName">사용자 이름</span>
                 <span id="user-name-value" class="name-value">—</span>
                 <input id="user-name-input" class="name-input hidden" />
               </label>
               <label class="name-field">
-                <span class="name-key" data-i18n="pet.petName"
-                  >애완돌 이름</span
-                >
+                <span class="name-key" data-i18n="pet.petName">애완돌 이름</span>
                 <span id="pet-name-value" class="name-value">애완돌</span>
                 <input id="pet-name-input" class="name-input hidden" />
               </label>
             </div>
             <div class="name-actions">
-              <button
-                id="name-cancel-btn"
-                class="name-edit-btn hidden"
-                data-i18n="common.cancel"
-              >
-                취소
-              </button>
-              <button id="name-edit-btn" class="name-edit-btn">
-                ✎ 이름 수정
-              </button>
+              <button id="name-cancel-btn" class="name-edit-btn hidden" data-i18n="common.cancel">취소</button>
+              <button id="name-edit-btn" class="name-edit-btn">✎ 이름 수정</button>
             </div>
-            <div
-              id="name-reward-note"
-              class="panel-note"
-              data-i18n="pet.nameReward"
-            >
+            <div id="name-reward-note" class="panel-note" data-i18n="pet.nameReward">
               ✎ 이름을 지어주면 애완돌이 기뻐해요 (호감도 +)
             </div>
           </section>
 
           <!-- 성향 요약 -->
           <section class="panel">
-            <div class="panel-label" data-i18n="pet.personalitySummary">
-              성향 요약
-            </div>
-            <div id="pet-personality" class="personality-text">
-              아직 알아가는 중이에요
-            </div>
+            <div class="panel-label" data-i18n="pet.personalitySummary">성향 요약</div>
+            <div id="pet-personality" class="personality-text">아직 알아가는 중이에요</div>
             <div id="pet-personality-tags" class="tags hidden">
               <span class="tag">내향적</span>
               <span class="tag">관찰형</span>
@@ -260,23 +188,15 @@
           <!-- 질문 진행도 -->
           <section class="panel">
             <div class="panel-row">
-              <span class="panel-label" data-i18n="pet.questionProgress"
-                >질문 진행도</span
-              >
+              <span class="panel-label" data-i18n="pet.questionProgress">질문 진행도</span>
               <span id="pet-progress-label" class="panel-value">0 / 0</span>
             </div>
             <div class="gauge">
-              <div
-                id="pet-progress-fill"
-                class="gauge-fill green"
-                style="width: 0%"
-              ></div>
+              <div id="pet-progress-fill" class="gauge-fill green" style="width: 0%"></div>
               <div class="gauge-stage-break" aria-hidden="true"></div>
               <div class="gauge-ticks"></div>
             </div>
-            <div id="pet-evo-hint" class="panel-note">
-              🜨 요즘 부쩍 단단해지고 있어요. 다음 진화까지 조금만 더.
-            </div>
+            <div id="pet-evo-hint" class="panel-note">🜨 요즘 부쩍 단단해지고 있어요. 다음 진화까지 조금만 더.</div>
           </section>
 
           <!-- 호감도 -->
@@ -286,16 +206,10 @@
                 ><span data-i18n="pet.affinity">호감도</span>
                 <span id="aff-level" class="panel-label-sub">낯가림</span></span
               >
-              <span class="panel-value"
-                ><span id="aff-value">0</span> / 100</span
-              >
+              <span class="panel-value"><span id="aff-value">0</span> / 100</span>
             </div>
             <div class="gauge">
-              <div
-                id="aff-fill"
-                class="gauge-fill rust"
-                style="width: 0%"
-              ></div>
+              <div id="aff-fill" class="gauge-fill rust" style="width: 0%"></div>
               <div class="gauge-ticks"></div>
             </div>
           </section>
@@ -304,9 +218,7 @@
           <section class="panel">
             <div class="panel-label">
               <span data-i18n="pet.care">돌보기</span>
-              <span class="panel-label-sub" data-i18n="pet.careNote"
-                >· 하루 한 번, 호감도 +3</span
-              >
+              <span class="panel-label-sub" data-i18n="pet.careNote">· 하루 한 번, 호감도 +3</span>
             </div>
             <div class="care-grid">
               <button id="clean-btn" class="care-btn">닦아주기</button>
@@ -348,21 +260,15 @@
           <section class="panel">
             <div class="panel-label">
               <span data-i18n="pet.skin">스킨</span>
-              <span class="panel-label-sub" data-i18n="pet.skinNote"
-                >· 눌러서 장착/해제</span
-              >
+              <span class="panel-label-sub" data-i18n="pet.skinNote">· 눌러서 장착/해제</span>
             </div>
-            <div class="panel-note-tight" data-i18n="pet.skinHint">
-              진화 단계마다 새 스킨이 열려요.
-            </div>
+            <div class="panel-note-tight" data-i18n="pet.skinHint">진화 단계마다 새 스킨이 열려요.</div>
             <div class="skin-grid">
               <div class="skin-cell" data-stage="0">
                 <div class="skin-box">
                   <img class="skin-img" alt="" />
                   <div class="skin-cover"></div>
-                  <span class="skin-current hidden" data-i18n="pet.equipped"
-                    >착용중</span
-                  >
+                  <span class="skin-current hidden" data-i18n="pet.equipped">착용중</span>
                 </div>
                 <div class="skin-name">???</div>
                 <div class="skin-sub" data-i18n="pet.stageBase">기본</div>
@@ -371,9 +277,7 @@
                 <div class="skin-box">
                   <img class="skin-img" alt="" />
                   <div class="skin-cover"></div>
-                  <span class="skin-current hidden" data-i18n="pet.equipped"
-                    >착용중</span
-                  >
+                  <span class="skin-current hidden" data-i18n="pet.equipped">착용중</span>
                 </div>
                 <div class="skin-name">???</div>
                 <div class="skin-sub" data-i18n="pet.stage1">1단계</div>
@@ -382,9 +286,7 @@
                 <div class="skin-box">
                   <img class="skin-img" alt="" />
                   <div class="skin-cover"></div>
-                  <span class="skin-current hidden" data-i18n="pet.equipped"
-                    >착용중</span
-                  >
+                  <span class="skin-current hidden" data-i18n="pet.equipped">착용중</span>
                 </div>
                 <div class="skin-name">???</div>
                 <div class="skin-sub" data-i18n="pet.stage2">2단계</div>
@@ -393,9 +295,7 @@
                 <div class="skin-box">
                   <img class="skin-img" alt="" />
                   <div class="skin-cover"></div>
-                  <span class="skin-current hidden" data-i18n="pet.equipped"
-                    >착용중</span
-                  >
+                  <span class="skin-current hidden" data-i18n="pet.equipped">착용중</span>
                 </div>
                 <div class="skin-name">???</div>
                 <div class="skin-sub" data-i18n="pet.stage3">3단계</div>
@@ -405,9 +305,7 @@
 
           <!-- 답변 히스토리 -->
           <section class="panel">
-            <div class="panel-label" data-i18n="pet.answerHistory">
-              답변 히스토리
-            </div>
+            <div class="panel-label" data-i18n="pet.answerHistory">답변 히스토리</div>
             <div id="pet-history" class="history"></div>
           </section>
 
@@ -416,12 +314,8 @@
             <button id="support-btn" class="support-btn">
               <span class="support-icon">♡</span>
               <div>
-                <div class="support-title" data-i18n="pet.likeRockie">
-                  Rockie가 마음에 드시나요?
-                </div>
-                <div class="support-sub" data-i18n="pet.supportDev">
-                  홈페이지 방문하고 개발자 응원하기 ▶
-                </div>
+                <div class="support-title" data-i18n="pet.likeRockie">Rockie가 마음에 드시나요?</div>
+                <div class="support-sub" data-i18n="pet.supportDev">홈페이지 방문하고 개발자 응원하기 ▶</div>
               </div>
             </button>
           </section>
@@ -431,52 +325,45 @@
         <div id="game-view" class="screen hidden">
           <div class="game-wrap">
             <div class="game-hud">
-              <div id="game-score">0</div>
-              <div class="game-hud-actions">
-                <button
-                  id="game-pause-btn"
-                  class="game-icon-btn"
-                  aria-label="일시정지"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14" /></svg>
-                </button>
-                <button
-                  id="game-restart-btn"
-                  class="game-icon-btn"
-                  aria-label="다시 하기"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10a8 8 0 1 1 1 8M4 4v6h6" /></svg>
-                </button>
+              <div class="game-stats">
+                <div id="game-score">0</div>
+                <div class="game-shards" id="game-shards">
+                  <span aria-hidden="true">◆</span>
+                  <span id="game-shard-count">0</span>
+                </div>
               </div>
               <div class="game-next">
                 <span data-i18n="game.next">NEXT</span>
-                <img id="game-next-img" src="" alt="" draggable="false" />
+                <div class="game-next-preview">
+                  <img id="game-next-img" src="" alt="" draggable="false" />
+                </div>
               </div>
-            </div>
-            <div class="game-reward-line">
-              <span id="game-reward-progress"></span>
-              <span data-i18n="game.rewardRule">250점당 1조각 · 잔여 점수 이월 없음</span>
-              <span id="game-reward-error" role="status"></span>
+              <div class="game-hud-actions">
+                <button id="game-pause-btn" class="game-icon-btn" aria-label="일시정지">
+                  <svg class="game-pause-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14" /></svg>
+                  <svg class="game-play-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 10 7-10 7Z" /></svg>
+                </button>
+                <button id="game-restart-btn" class="game-icon-btn" aria-label="다시 하기">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10a8 8 0 1 1 1 8M4 4v6h6" /></svg>
+                </button>
+              </div>
             </div>
             <div class="game-board-wrap">
               <canvas id="game-board" width="320" height="460"></canvas>
               <div id="game-paused" class="hidden">
-                <div id="game-paused-title" data-i18n="game.paused">
-                  일시정지 중
+                <div class="game-dialog">
+                  <div id="game-paused-title" data-i18n="game.paused">일시정지 중</div>
+                  <button id="game-resume" data-i18n="game.resume">이어하기</button>
                 </div>
-                <button id="game-resume" data-i18n="game.resume">
-                  이어하기
-                </button>
               </div>
               <div id="game-over" class="hidden">
-                <div id="game-over-title" data-i18n="game.over">
-                  게임 종료
+                <div class="game-dialog">
+                  <div id="game-over-title" data-i18n="game.over">게임 종료</div>
+                  <div id="game-over-score">0점</div>
+                  <button id="game-restart" data-i18n="game.restart">다시 하기</button>
                 </div>
-                <div id="game-over-score">0점</div>
-                <button id="game-restart" data-i18n="game.restart">
-                  다시 하기
-                </button>
               </div>
+              <div id="game-reward-error" role="status"></div>
             </div>
           </div>
         </div>
@@ -490,8 +377,23 @@
             </div>
           </div>
           <div class="shop-tabs" role="tablist" aria-labelledby="screen-title">
-            <button id="shop-all-tab" role="tab" aria-selected="true" aria-controls="shop-all-panel" data-i18n="shop.all">전체 상품</button>
-            <button id="shop-owned-tab" role="tab" aria-selected="false" aria-controls="shop-owned-panel" tabindex="-1" data-i18n="shop.collection">보유 상품</button>
+            <button
+              id="shop-all-tab"
+              role="tab"
+              aria-selected="true"
+              aria-controls="shop-all-panel"
+              data-i18n="shop.all">
+              전체 상품
+            </button>
+            <button
+              id="shop-owned-tab"
+              role="tab"
+              aria-selected="false"
+              aria-controls="shop-owned-panel"
+              tabindex="-1"
+              data-i18n="shop.collection">
+              보유 상품
+            </button>
           </div>
           <p id="shop-feedback" class="shop-feedback hidden" role="status"></p>
           <div id="shop-all-panel" role="tabpanel" aria-labelledby="shop-all-tab" tabindex="0">
@@ -505,28 +407,17 @@
         <!-- ############ SYSTEM ############ -->
         <div id="system-view" class="screen hidden">
           <div class="sys-head">
-            <div class="sys-title" data-i18n="menu.systemMonitor">
-              시스템 모니터
-            </div>
+            <div class="sys-title" data-i18n="menu.systemMonitor">시스템 모니터</div>
             <div class="sys-desc" data-i18n-html="system.introHtml">
-              애완돌의 활동량은 컴퓨터 상태에 연결돼요.<br />부하가 높을수록
-              애완돌이 바쁘게 움직여요.
+              애완돌의 활동량은 컴퓨터 상태에 연결돼요.<br />부하가 높을수록 애완돌이 바쁘게 움직여요.
             </div>
           </div>
 
           <div class="sys-reaction">
-            <img
-              class="sys-pet"
-              src="../../../assets/gif/level0/rockie_smile.gif"
-              alt="애완돌"
-            />
+            <img class="sys-pet" src="../../../assets/gif/level0/rockie_smile.gif" alt="애완돌" />
             <div>
               <div class="sys-mood" id="sys-mood">꿈틀꿈틀 · 활동적</div>
-              <div
-                class="sys-mood-desc"
-                id="sys-mood-desc"
-                data-i18n="system.moodDesc"
-              >
+              <div class="sys-mood-desc" id="sys-mood-desc" data-i18n="system.moodDesc">
                 적당한 부하. 돌이 살짝 몸을 뒤척여요.
               </div>
             </div>
@@ -535,11 +426,7 @@
           <div class="sys-rows">
             <!-- CPU -->
             <div class="sys-row">
-              <button
-                class="sys-row-head"
-                data-metric="cpu"
-                aria-expanded="false"
-              >
+              <button class="sys-row-head" data-metric="cpu" aria-expanded="false">
                 <span class="sys-arrow">▶</span>
                 <span class="sys-glyph green" id="sc-cpu-glyph"
                   ><svg
@@ -548,48 +435,34 @@
                     stroke="currentColor"
                     stroke-width="2"
                     stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
+                    stroke-linejoin="round">
                     <rect x="7" y="7" width="10" height="10" rx="1" />
                     <rect x="10.5" y="10.5" width="3" height="3" />
-                    <path
-                      d="M10 4v3M14 4v3M10 17v3M14 17v3M4 10h3M4 14h3M17 10h3M17 14h3"
-                    /></svg
+                    <path d="M10 4v3M14 4v3M10 17v3M14 17v3M4 10h3M4 14h3M17 10h3M17 14h3" /></svg
                 ></span>
                 <span class="sys-label">CPU</span>
                 <span class="sys-sub" data-i18n="system.cpu">프로세서</span>
                 <span class="sys-val green" id="sc-cpu-val">--%</span>
               </button>
               <div class="gauge sys-gauge">
-                <div
-                  class="gauge-fill green"
-                  id="sc-cpu-fill"
-                  style="width: 0%"
-                ></div>
+                <div class="gauge-fill green" id="sc-cpu-fill" style="width: 0%"></div>
                 <div class="gauge-ticks"></div>
               </div>
               <div class="sys-detail" id="sc-cpu-detail">
                 <div class="sys-detail-row">
-                  <span class="k" data-i18n="system.systemLoad">시스템</span
-                  ><span class="v" id="sc-cpu-system">—</span>
+                  <span class="k" data-i18n="system.systemLoad">시스템</span><span class="v" id="sc-cpu-system">—</span>
                 </div>
                 <div class="sys-detail-row">
-                  <span class="k" data-i18n="system.userLoad">사용자</span
-                  ><span class="v" id="sc-cpu-user">—</span>
+                  <span class="k" data-i18n="system.userLoad">사용자</span><span class="v" id="sc-cpu-user">—</span>
                 </div>
                 <div class="sys-detail-row">
-                  <span class="k" data-i18n="system.idle">대기</span
-                  ><span class="v" id="sc-cpu-idle">—</span>
+                  <span class="k" data-i18n="system.idle">대기</span><span class="v" id="sc-cpu-idle">—</span>
                 </div>
               </div>
             </div>
             <!-- RAM -->
             <div class="sys-row">
-              <button
-                class="sys-row-head"
-                data-metric="ram"
-                aria-expanded="false"
-              >
+              <button class="sys-row-head" data-metric="ram" aria-expanded="false">
                 <span class="sys-arrow">▶</span>
                 <span class="sys-glyph green" id="sc-ram-glyph"
                   ><svg
@@ -598,8 +471,7 @@
                     stroke="currentColor"
                     stroke-width="2"
                     stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
+                    stroke-linejoin="round">
                     <rect x="2" y="7" width="20" height="9" rx="1" />
                     <path d="M9 7v9M15 7v9M7 16v2M17 16v2" /></svg
                 ></span>
@@ -608,39 +480,28 @@
                 <span class="sys-val green" id="sc-ram-val">--%</span>
               </button>
               <div class="gauge sys-gauge">
-                <div
-                  class="gauge-fill green"
-                  id="sc-ram-fill"
-                  style="width: 0%"
-                ></div>
+                <div class="gauge-fill green" id="sc-ram-fill" style="width: 0%"></div>
                 <div class="gauge-ticks"></div>
               </div>
               <div class="sys-detail" id="sc-ram-detail">
                 <div class="sys-detail-row">
-                  <span class="k" data-i18n="system.used">사용</span
-                  ><span class="v" id="sc-ram-active">—</span>
+                  <span class="k" data-i18n="system.used">사용</span><span class="v" id="sc-ram-active">—</span>
                 </div>
                 <div class="sys-detail-row">
                   <span class="k" data-i18n="system.available">사용 가능</span
                   ><span class="v" id="sc-ram-available">—</span>
                 </div>
                 <div class="sys-detail-row">
-                  <span class="k" data-i18n="system.total">전체</span
-                  ><span class="v" id="sc-ram-total">—</span>
+                  <span class="k" data-i18n="system.total">전체</span><span class="v" id="sc-ram-total">—</span>
                 </div>
                 <div class="sys-detail-row">
-                  <span class="k" data-i18n="system.swap">스왑</span
-                  ><span class="v" id="sc-ram-swap">—</span>
+                  <span class="k" data-i18n="system.swap">스왑</span><span class="v" id="sc-ram-swap">—</span>
                 </div>
               </div>
             </div>
             <!-- 저장 -->
             <div class="sys-row">
-              <button
-                class="sys-row-head"
-                data-metric="disk"
-                aria-expanded="false"
-              >
+              <button class="sys-row-head" data-metric="disk" aria-expanded="false">
                 <span class="sys-arrow">▶</span>
                 <span class="sys-glyph gold" id="sc-disk-glyph"
                   ><svg
@@ -649,8 +510,7 @@
                     stroke="currentColor"
                     stroke-width="2"
                     stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
+                    stroke-linejoin="round">
                     <ellipse cx="12" cy="6" rx="7" ry="3" />
                     <path d="M5 6v12c0 1.66 3.13 3 7 3s7-1.34 7-3V6" />
                     <path d="M5 12c0 1.66 3.13 3 7 3s7-1.34 7-3" /></svg
@@ -660,35 +520,24 @@
                 <span class="sys-val gold" id="sc-disk-val">--%</span>
               </button>
               <div class="gauge sys-gauge">
-                <div
-                  class="gauge-fill gold"
-                  id="sc-disk-fill"
-                  style="width: 0%"
-                ></div>
+                <div class="gauge-fill gold" id="sc-disk-fill" style="width: 0%"></div>
                 <div class="gauge-ticks"></div>
               </div>
               <div class="sys-detail" id="sc-disk-detail">
                 <div class="sys-detail-row">
-                  <span class="k" data-i18n="system.used">사용</span
-                  ><span class="v" id="sc-disk-used">—</span>
+                  <span class="k" data-i18n="system.used">사용</span><span class="v" id="sc-disk-used">—</span>
                 </div>
                 <div class="sys-detail-row">
-                  <span class="k" data-i18n="system.free">여유</span
-                  ><span class="v" id="sc-disk-free">—</span>
+                  <span class="k" data-i18n="system.free">여유</span><span class="v" id="sc-disk-free">—</span>
                 </div>
                 <div class="sys-detail-row">
-                  <span class="k" data-i18n="system.total">전체</span
-                  ><span class="v" id="sc-disk-total">—</span>
+                  <span class="k" data-i18n="system.total">전체</span><span class="v" id="sc-disk-total">—</span>
                 </div>
               </div>
             </div>
             <!-- 배터리 -->
             <div class="sys-row">
-              <button
-                class="sys-row-head"
-                data-metric="bat"
-                aria-expanded="false"
-              >
+              <button class="sys-row-head" data-metric="bat" aria-expanded="false">
                 <span class="sys-arrow">▶</span>
                 <span class="sys-glyph green" id="sc-bat-glyph"
                   ><svg
@@ -697,8 +546,7 @@
                     stroke="currentColor"
                     stroke-width="2"
                     stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
+                    stroke-linejoin="round">
                     <rect x="2" y="8" width="17" height="9" rx="2" />
                     <path d="M22 11.5v2M5 11.5v2M8 11.5v2M11 11.5v2" /></svg
                 ></span>
@@ -707,35 +555,25 @@
                 <span class="sys-val green" id="sc-bat-val">--%</span>
               </button>
               <div class="gauge sys-gauge">
-                <div
-                  class="gauge-fill green"
-                  id="sc-bat-fill"
-                  style="width: 0%"
-                ></div>
+                <div class="gauge-fill green" id="sc-bat-fill" style="width: 0%"></div>
                 <div class="gauge-ticks"></div>
               </div>
               <div class="sys-detail" id="sc-bat-detail">
                 <div class="sys-detail-row">
-                  <span class="k" data-i18n="system.power">전원</span
-                  ><span class="v" id="sc-bat-power">—</span>
+                  <span class="k" data-i18n="system.power">전원</span><span class="v" id="sc-bat-power">—</span>
                 </div>
                 <div class="sys-detail-row">
                   <span class="k" data-i18n="system.maxCapacity">최대 용량</span
                   ><span class="v" id="sc-bat-health">—</span>
                 </div>
                 <div class="sys-detail-row">
-                  <span class="k" data-i18n="system.cycles">사이클</span
-                  ><span class="v" id="sc-bat-cycles">—</span>
+                  <span class="k" data-i18n="system.cycles">사이클</span><span class="v" id="sc-bat-cycles">—</span>
                 </div>
               </div>
             </div>
             <!-- 네트워크 -->
             <div class="sys-row">
-              <button
-                class="sys-row-head"
-                data-metric="net"
-                aria-expanded="false"
-              >
+              <button class="sys-row-head" data-metric="net" aria-expanded="false">
                 <span class="sys-arrow">▶</span>
                 <span class="sys-glyph green" id="sc-net-glyph"
                   ><svg
@@ -744,49 +582,34 @@
                     stroke="currentColor"
                     stroke-width="2"
                     stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
+                    stroke-linejoin="round">
                     <circle cx="12" cy="12" r="9" />
                     <path
-                      d="M3 12h18M12 3c2.5 2.5 3.8 5.66 3.8 9s-1.3 6.5-3.8 9c-2.5-2.5-3.8-5.66-3.8-9s1.3-6.5 3.8-9z"
-                    /></svg
+                      d="M3 12h18M12 3c2.5 2.5 3.8 5.66 3.8 9s-1.3 6.5-3.8 9c-2.5-2.5-3.8-5.66-3.8-9s1.3-6.5 3.8-9z" /></svg
                 ></span>
-                <span class="sys-label" data-i18n="system.network"
-                  >네트워크</span
-                >
+                <span class="sys-label" data-i18n="system.network">네트워크</span>
                 <span class="sys-sub" id="sc-net-sub">—</span>
                 <span class="sys-val green" id="sc-net-val">—</span>
               </button>
               <div class="gauge sys-gauge">
-                <div
-                  class="gauge-fill green"
-                  id="sc-net-fill"
-                  style="width: 0%"
-                ></div>
+                <div class="gauge-fill green" id="sc-net-fill" style="width: 0%"></div>
                 <div class="gauge-ticks"></div>
               </div>
               <div class="sys-detail" id="sc-net-detail">
                 <div class="sys-detail-row">
-                  <span class="k" data-i18n="system.localIp">로컬 IP</span
-                  ><span class="v" id="sc-net-ip">—</span>
+                  <span class="k" data-i18n="system.localIp">로컬 IP</span><span class="v" id="sc-net-ip">—</span>
                 </div>
                 <div class="sys-detail-row">
-                  <span class="k" data-i18n="system.upload">업로드</span
-                  ><span class="v" id="sc-net-up">—</span>
+                  <span class="k" data-i18n="system.upload">업로드</span><span class="v" id="sc-net-up">—</span>
                 </div>
                 <div class="sys-detail-row">
-                  <span class="k" data-i18n="system.download">다운로드</span
-                  ><span class="v" id="sc-net-down">—</span>
+                  <span class="k" data-i18n="system.download">다운로드</span><span class="v" id="sc-net-down">—</span>
                 </div>
               </div>
             </div>
             <!-- CODEX 사용량 -->
             <div class="sys-row">
-              <button
-                class="sys-row-head"
-                data-metric="codex"
-                aria-expanded="false"
-              >
+              <button class="sys-row-head" data-metric="codex" aria-expanded="false">
                 <span class="sys-arrow">▶</span>
                 <span class="sys-glyph green" id="sc-codex-glyph"
                   ><svg
@@ -795,8 +618,7 @@
                     stroke="currentColor"
                     stroke-width="2"
                     stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
+                    stroke-linejoin="round">
                     <rect x="3" y="4" width="18" height="16" rx="2" />
                     <path d="M7 10l2.5 2.5L7 15M12.5 15h4.5" /></svg
                 ></span>
@@ -805,11 +627,7 @@
                 <span class="sys-val green" id="sc-codex-val">—</span>
               </button>
               <div class="gauge sys-gauge">
-                <div
-                  class="gauge-fill green"
-                  id="sc-codex-fill"
-                  style="width: 0%"
-                ></div>
+                <div class="gauge-fill green" id="sc-codex-fill" style="width: 0%"></div>
                 <div class="gauge-ticks"></div>
               </div>
               <div class="sys-detail" id="sc-codex-detail">
@@ -824,22 +642,14 @@
                   ><span class="v" id="sc-codex-5h-reset">—</span>
                 </div>
                 <div class="sys-detail-row" id="sc-codex-7d-reset-row">
-                  <span class="k" data-i18n="system.resetWeekly"
-                    >주간 초기화</span
+                  <span class="k" data-i18n="system.resetWeekly">주간 초기화</span
                   ><span class="v" id="sc-codex-7d-reset">—</span>
                 </div>
                 <div class="sys-detail-row">
-                  <span class="k" data-i18n="system.lastChecked"
-                    >마지막 확인</span
+                  <span class="k" data-i18n="system.lastChecked">마지막 확인</span
                   ><span class="v" id="sc-codex-checked">—</span>
                 </div>
-                <button
-                  class="sys-refresh-btn"
-                  type="button"
-                  data-i18n="common.refresh"
-                >
-                  새로고침
-                </button>
+                <button class="sys-refresh-btn" type="button" data-i18n="common.refresh">새로고침</button>
               </div>
             </div>
             <!-- CLAUDE: 사용량을 읽을 공식 경로가 없어 안내만 둔다.
@@ -854,16 +664,12 @@
                     stroke="currentColor"
                     stroke-width="2"
                     stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
+                    stroke-linejoin="round">
                     <path
-                      d="M12 2.5v5.5M12 16v5.5M2.5 12h5.5M16 12h5.5M6.3 6.3l3.2 3.2M14.5 14.5l3.2 3.2M17.7 6.3l-3.2 3.2M9.5 14.5l-3.2 3.2"
-                    /></svg
+                      d="M12 2.5v5.5M12 16v5.5M2.5 12h5.5M16 12h5.5M6.3 6.3l3.2 3.2M14.5 14.5l3.2 3.2M17.7 6.3l-3.2 3.2M9.5 14.5l-3.2 3.2" /></svg
                 ></span>
                 <span class="sys-label">Claude</span>
-                <span class="sys-sub" data-i18n="system.awaitingIntegration"
-                  >공식 연동 대기 중</span
-                >
+                <span class="sys-sub" data-i18n="system.awaitingIntegration">공식 연동 대기 중</span>
                 <span class="sys-val">—</span>
               </div>
               <div class="gauge sys-gauge">
@@ -873,8 +679,7 @@
             </div>
           </div>
           <div class="sys-legend" data-i18n-html="system.claudeLegendHtml">
-            Claude 사용량은 아직 표시할 수 없어요.<br />Anthropic의 공식 연동이
-            열리기를 기다리는 중이에요.
+            Claude 사용량은 아직 표시할 수 없어요.<br />Anthropic의 공식 연동이 열리기를 기다리는 중이에요.
           </div>
         </div>
 
@@ -887,35 +692,22 @@
               <button class="set-row" data-setting="autoLaunch">
                 <span class="set-box">[&nbsp;]</span>
                 <div class="set-text">
-                  <div class="set-title" data-i18n="settings.autoLaunch">
-                    로그인 시 자동 실행
-                  </div>
-                  <div class="set-desc" data-i18n="settings.autoLaunchDesc">
-                    컴퓨터를 켜면 애완돌이 함께 깨어나요
-                  </div>
+                  <div class="set-title" data-i18n="settings.autoLaunch">로그인 시 자동 실행</div>
+                  <div class="set-desc" data-i18n="settings.autoLaunchDesc">컴퓨터를 켜면 애완돌이 함께 깨어나요</div>
                 </div>
               </button>
               <button class="set-row" data-setting="notifications">
                 <span class="set-box">[&nbsp;]</span>
                 <div class="set-text">
-                  <div class="set-title" data-i18n="settings.notifications">
-                    질문 알림
-                  </div>
-                  <div class="set-desc" data-i18n="settings.notificationsDesc">
-                    새 질문이 오면 배너 알림 표시
-                  </div>
+                  <div class="set-title" data-i18n="settings.notifications">질문 알림</div>
+                  <div class="set-desc" data-i18n="settings.notificationsDesc">새 질문이 오면 배너 알림 표시</div>
                 </div>
               </button>
               <button class="set-row" data-setting="hideFromCapture">
                 <span class="set-box">[&nbsp;]</span>
                 <div class="set-text">
-                  <div class="set-title" data-i18n="settings.hideFromCapture">
-                    화면 캡처에서 숨기기
-                  </div>
-                  <div
-                    class="set-desc"
-                    data-i18n="settings.hideFromCaptureDesc"
-                  >
+                  <div class="set-title" data-i18n="settings.hideFromCapture">화면 캡처에서 숨기기</div>
+                  <div class="set-desc" data-i18n="settings.hideFromCaptureDesc">
                     스크린샷·녹화·화면 공유 시 애완돌이 찍히지 않아요
                   </div>
                 </div>
@@ -924,9 +716,7 @@
                 <span class="set-box">[&nbsp;]</span>
                 <div class="set-text">
                   <div class="set-title" data-i18n="settings.sound">효과음</div>
-                  <div class="set-desc" data-i18n="settings.soundDesc">
-                    상호작용 시 작은 소리 재생
-                  </div>
+                  <div class="set-desc" data-i18n="settings.soundDesc">상호작용 시 작은 소리 재생</div>
                 </div>
               </button>
             </div>
@@ -934,31 +724,11 @@
 
           <!-- 애완돌 위치 -->
           <section class="panel">
-            <div class="panel-label" data-i18n="settings.petPlacement">
-              애완돌 위치
-            </div>
+            <div class="panel-label" data-i18n="settings.petPlacement">애완돌 위치</div>
             <div class="grid-3">
-              <button
-                class="chip"
-                data-place="follow"
-                data-i18n="settings.follow"
-              >
-                따라오기
-              </button>
-              <button
-                class="chip"
-                data-place="bottom-left"
-                data-i18n="settings.bottomLeft"
-              >
-                좌하단
-              </button>
-              <button
-                class="chip"
-                data-place="bottom-right"
-                data-i18n="settings.bottomRight"
-              >
-                우하단
-              </button>
+              <button class="chip" data-place="follow" data-i18n="settings.follow">따라오기</button>
+              <button class="chip" data-place="bottom-left" data-i18n="settings.bottomLeft">좌하단</button>
+              <button class="chip" data-place="bottom-right" data-i18n="settings.bottomRight">우하단</button>
             </div>
             <div class="panel-note" data-i18n="settings.dragNote">
               드래그로 애완돌을 잠시동안 원하는 위치에 둘 수 있어요.
@@ -967,31 +737,11 @@
 
           <!-- 애완돌 크기 -->
           <section class="panel">
-            <div class="panel-label" data-i18n="settings.petSize">
-              애완돌 크기
-            </div>
+            <div class="panel-label" data-i18n="settings.petSize">애완돌 크기</div>
             <div class="grid-3">
-              <button
-                class="chip"
-                data-size="small"
-                data-i18n="settings.sizeSmall"
-              >
-                작게
-              </button>
-              <button
-                class="chip"
-                data-size="medium"
-                data-i18n="settings.sizeMedium"
-              >
-                보통
-              </button>
-              <button
-                class="chip"
-                data-size="large"
-                data-i18n="settings.sizeLarge"
-              >
-                크게
-              </button>
+              <button class="chip" data-size="small" data-i18n="settings.sizeSmall">작게</button>
+              <button class="chip" data-size="medium" data-i18n="settings.sizeMedium">보통</button>
+              <button class="chip" data-size="large" data-i18n="settings.sizeLarge">크게</button>
             </div>
           </section>
 
@@ -1011,41 +761,27 @@
                 <span id="ax-perm-box" class="set-box">[&nbsp;]</span>
                 <div class="set-text">
                   <div class="set-title">
-                    <span data-i18n="settings.accessibilityPermission"
-                      >손쉬운 사용</span
-                    >
+                    <span data-i18n="settings.accessibilityPermission">손쉬운 사용</span>
                     <span class="set-tag" data-i18n="perm.required">필수</span>
                   </div>
-                  <div id="ax-perm-hint" class="set-desc">
-                    애완돌이 Dock 위치를 정확히 읽고 회피하는 데 필요해요.
-                  </div>
+                  <div id="ax-perm-hint" class="set-desc">애완돌이 Dock 위치를 정확히 읽고 회피하는 데 필요해요.</div>
                 </div>
               </button>
               <button id="auto-perm-row" class="set-row">
                 <span id="auto-perm-box" class="set-box">[&nbsp;]</span>
                 <div class="set-text">
                   <div class="set-title">
-                    <span data-i18n="settings.automationPermission"
-                      >자동화</span
-                    >
-                    <span class="set-tag" data-i18n="perm.recommended"
-                      >권장</span
-                    >
+                    <span data-i18n="settings.automationPermission">자동화</span>
+                    <span class="set-tag" data-i18n="perm.recommended">권장</span>
                   </div>
-                  <div id="auto-perm-hint" class="set-desc">
-                    Dock 회피를 위해 손쉬운 사용과 함께 필요해요.
-                  </div>
+                  <div id="auto-perm-hint" class="set-desc">Dock 회피를 위해 손쉬운 사용과 함께 필요해요.</div>
                 </div>
               </button>
               <button id="perm-row" class="set-row">
                 <span id="perm-box" class="set-box">[&nbsp;]</span>
                 <div class="set-text">
-                  <div class="set-title" data-i18n="settings.screenPermission">
-                    화면 기록
-                  </div>
-                  <div id="perm-hint" class="set-desc">
-                    창 제목을 읽는 데 필요해요.
-                  </div>
+                  <div class="set-title" data-i18n="settings.screenPermission">화면 기록</div>
+                  <div id="perm-hint" class="set-desc">창 제목을 읽는 데 필요해요.</div>
                 </div>
               </button>
             </div>
@@ -1061,9 +797,7 @@
                 <div class="set-text">
                   <div class="set-title">
                     <span data-i18n="settings.bubbleAuto">자동 반응</span>
-                    <span class="set-tag" data-i18n="perm.recommended"
-                      >권장</span
-                    >
+                    <span class="set-tag" data-i18n="perm.recommended">권장</span>
                   </div>
                   <div class="set-desc" data-i18n="settings.bubbleAutoDesc">
                     배터리 부족 · 진화 예고 등 상태를 확인하고 먼저 말을 건네요.
@@ -1073,9 +807,7 @@
               <button class="set-row" data-setting="bubbleApp">
                 <span class="set-box">[&nbsp;]</span>
                 <div class="set-text">
-                  <div class="set-title" data-i18n="settings.bubbleApp">
-                    앱 반응
-                  </div>
+                  <div class="set-title" data-i18n="settings.bubbleApp">앱 반응</div>
                   <div class="set-desc" data-i18n="settings.bubbleAppDesc">
                     지금 보고 있는 앱과 창 제목에 맞춰 말을 걸어요.
                   </div>
@@ -1084,9 +816,7 @@
               <button class="set-row" data-setting="bubbleClick">
                 <span class="set-box">[&nbsp;]</span>
                 <div class="set-text">
-                  <div class="set-title" data-i18n="settings.bubbleClick">
-                    클릭 반응
-                  </div>
+                  <div class="set-title" data-i18n="settings.bubbleClick">클릭 반응</div>
                   <div class="set-desc" data-i18n="settings.bubbleClickDesc">
                     애완돌을 클릭하면 그때그때 다른 말을 해요.
                   </div>
@@ -1098,12 +828,8 @@
           <!-- 집중 모드 -->
           <section class="panel">
             <div class="panel-row">
-              <span class="panel-label" data-i18n="settings.focusDuration"
-                >집중 모드 시간</span
-              >
-              <span class="panel-value"
-                ><span id="focus-minutes-value">25</span>분</span
-              >
+              <span class="panel-label" data-i18n="settings.focusDuration">집중 모드 시간</span>
+              <span class="panel-value"><span id="focus-minutes-value">25</span>분</span>
             </div>
             <div class="minutes-slider-row">
               <span class="minutes-slider-cap">1</span>
@@ -1114,8 +840,7 @@
                 min="1"
                 max="120"
                 step="1"
-                value="25"
-              />
+                value="25" />
               <span class="minutes-slider-cap">120</span>
             </div>
           </section>
@@ -1123,24 +848,12 @@
           <!-- 쪽잠 모드 -->
           <section class="panel">
             <div class="panel-row">
-              <span class="panel-label" data-i18n="settings.napDuration"
-                >쪽잠 모드 시간</span
-              >
-              <span class="panel-value"
-                ><span id="nap-minutes-value">20</span>분</span
-              >
+              <span class="panel-label" data-i18n="settings.napDuration">쪽잠 모드 시간</span>
+              <span class="panel-value"><span id="nap-minutes-value">20</span>분</span>
             </div>
             <div class="minutes-slider-row">
               <span class="minutes-slider-cap">1</span>
-              <input
-                id="nap-minutes-range"
-                class="minutes-range"
-                type="range"
-                min="1"
-                max="120"
-                step="1"
-                value="20"
-              />
+              <input id="nap-minutes-range" class="minutes-range" type="range" min="1" max="120" step="1" value="20" />
               <span class="minutes-slider-cap">120</span>
             </div>
           </section>
@@ -1148,9 +861,7 @@
           <!-- 표시할 모니터 — 목록이 실행 중에 정해지므로 tray-settings.js가 그린다.
                모니터가 하나뿐이면 고를 게 없으므로 패널째 숨긴다. -->
           <section id="display-panel" class="panel hidden">
-            <div class="panel-label" data-i18n="settings.petDisplay">
-              표시할 모니터
-            </div>
+            <div class="panel-label" data-i18n="settings.petDisplay">표시할 모니터</div>
             <div id="display-list" class="set-list"></div>
           </section>
 
@@ -1165,55 +876,18 @@
 
           <!-- 초기화 + 정보 -->
           <section class="panel panel-last">
-            <button
-              id="reset-btn"
-              class="reset-btn"
-              data-i18n="settings.resetBtn"
-            >
-              ↻ 처음부터 다시 키우기
-            </button>
-            <button
-              id="homepage-btn"
-              class="info-link"
-              data-i18n="settings.homepage"
-            >
-              홈페이지 방문하기
-            </button>
+            <button id="reset-btn" class="reset-btn" data-i18n="settings.resetBtn">↻ 처음부터 다시 키우기</button>
+            <button id="homepage-btn" class="info-link" data-i18n="settings.homepage">홈페이지 방문하기</button>
             <!-- 클릭은 컨테이너에서 위임 처리한다(tray-settings.js). data-link 값이
                  그대로 메인의 action 이름이 되므로 EXTERNAL_LINKS의 키와 같아야 한다. -->
             <div id="policy-links" class="policy-links">
-              <button
-                class="policy-link"
-                data-link="privacy"
-                data-i18n="settings.privacy"
-              >
-                개인정보처리방침
-              </button>
-              <button
-                class="policy-link"
-                data-link="terms"
-                data-i18n="settings.terms"
-              >
-                이용약관
-              </button>
-              <button
-                class="policy-link"
-                data-link="licenses"
-                data-i18n="settings.licenses"
-              >
-                오픈소스 라이선스
-              </button>
-              <button
-                class="policy-link"
-                data-link="contact"
-                data-i18n="settings.contact"
-              >
-                문의
-              </button>
+              <button class="policy-link" data-link="privacy" data-i18n="settings.privacy">개인정보처리방침</button>
+              <button class="policy-link" data-link="terms" data-i18n="settings.terms">이용약관</button>
+              <button class="policy-link" data-link="licenses" data-i18n="settings.licenses">오픈소스 라이선스</button>
+              <button class="policy-link" data-link="contact" data-i18n="settings.contact">문의</button>
             </div>
             <div class="app-info">
-              Rockie v<span id="app-version">–</span> ·
-              <span data-i18n="settings.appTagline">데스크톱 애완돌</span
+              Rockie v<span id="app-version">–</span> · <span data-i18n="settings.appTagline">데스크톱 애완돌</span
               ><br />© 2026 · jeondowon
             </div>
           </section>
@@ -1229,13 +903,7 @@
           <div id="confirm-title" class="confirm-title"></div>
           <div id="confirm-desc" class="confirm-desc"></div>
           <div class="confirm-actions">
-            <button
-              id="confirm-cancel"
-              class="confirm-btn"
-              data-i18n="common.cancel"
-            >
-              취소
-            </button>
+            <button id="confirm-cancel" class="confirm-btn" data-i18n="common.cancel">취소</button>
             <button id="confirm-ok" class="confirm-btn danger"></button>
           </div>
         </div>

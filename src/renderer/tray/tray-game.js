@@ -74,6 +74,8 @@ function syncGameCanvasResolution() {
   gameCtx.imageSmoothingEnabled = false;
 }
 const gameScoreEl = document.getElementById("game-score");
+const gameShardsEl = document.getElementById("game-shards");
+const gameShardCountEl = document.getElementById("game-shard-count");
 const gameNextImgEl = document.getElementById("game-next-img");
 const gameOverEl = document.getElementById("game-over");
 const gameOverScoreEl = document.getElementById("game-over-score");
@@ -152,6 +154,7 @@ function computeGameOpaqueBounds(img) {
 gameSprites.forEach((img, i) => {
   img.addEventListener("load", () => {
     gameSpriteCrops[i] = computeGameOpaqueBounds(img);
+    if (i === gameNextTier) updateGameNextPreview();
   });
 });
 
@@ -265,18 +268,28 @@ function setGamePaused(paused) {
   updateGameActionLabels();
 }
 
+function updateGameNextPreview() {
+  const img = gameSprites[gameNextTier];
+  const crop = gameSpriteCrops[gameNextTier];
+  gameNextImgEl.src = `../../../assets/img/${GAME_TIERS[gameNextTier].id}.png`;
+  // 34px 미리보기 안에 실제 캐릭터를 26px로 맞추고 원본 비율을 유지한다.
+  const scale = crop ? 26 / Math.max(crop.w, crop.h) : 0;
+  gameNextImgEl.style.width = `${crop ? img.naturalWidth * scale : 34}px`;
+  gameNextImgEl.style.height = `${crop ? img.naturalHeight * scale : 34}px`;
+  gameNextImgEl.style.left = `${crop ? (34 - crop.w * scale) / 2 - crop.x * scale : 0}px`;
+  gameNextImgEl.style.top = `${crop ? (34 - crop.h * scale) / 2 - crop.y * scale : 0}px`;
+}
+
 function updateGameHud() {
+  const shards = Math.floor(gameScore / 250);
   gameScoreEl.textContent = String(gameScore);
-  gameNextImgEl.src = GAME_TIERS[gameNextTier].img;
-  document.getElementById("game-reward-progress").textContent = t(
-    "game.rewardProgress",
-    {
-      count: Math.floor(gameScore / 250),
-      remaining: 250 - (gameScore % 250),
-    },
-  );
+  gameScoreEl.setAttribute("aria-label", t("game.score", { score: gameScore }));
+  gameShardCountEl.textContent = String(shards);
+  gameShardsEl.setAttribute("aria-label", t("game.shards", { count: shards }));
+  gameShardsEl.setAttribute("title", t("game.shards", { count: shards }));
+  updateGameNextPreview();
   gameOverScoreEl.textContent = t("game.score", { score: gameScore });
-  if (Math.floor(gameScore / 250) > gameRewardRequested)
+  if (shards > gameRewardRequested)
     syncGameReward().catch(() => {});
 }
 
@@ -320,11 +333,15 @@ gameRestartHudBtn.addEventListener("click", () => {
 });
 
 function updateGameActionLabels() {
+  gamePauseBtn.classList.toggle("is-paused", gameManuallyPaused);
   gamePauseBtn.setAttribute(
     "aria-label",
     t(gameManuallyPaused ? "game.resume" : "game.pause"),
   );
   gameRestartHudBtn.setAttribute("aria-label", t("game.restart"));
+  gamePauseBtn.setAttribute("title", t(gameManuallyPaused ? "game.resume" : "game.pause"));
+  gameRestartHudBtn.setAttribute("title", t("game.restart"));
+  gamePauseBtn.disabled = gameOver;
 }
 updateGameActionLabels();
 onLocaleChange(() => {
@@ -373,6 +390,7 @@ function gameStep(dt) {
     gameOver = true;
     gameOverScoreEl.textContent = t("game.score", { score: gameScore });
     gameOverEl.classList.remove("hidden");
+    updateGameActionLabels();
   }
 }
 
