@@ -12,6 +12,7 @@
       <div class="titlebar">
         <div class="brand">ROCKIE</div>
         <div class="titlebar-meta">
+          <span class="shard-balance" data-shard-balance></span>
           <span id="pet-name">애완돌</span>
         </div>
         <!-- 프롤로그 전용: 완료 전엔 트레이 메뉴가 없어 언어를 바꾸거나 종료할 방법이 없다.
@@ -127,6 +128,14 @@
               <span class="mrow-badge" data-i18n="menu.newQuestion"
                 >새로운 질문</span
               >
+            </button>
+            <button class="mrow" data-action="game">
+              <span class="mrow-arrow">▶</span>
+              <span class="mrow-label" data-i18n="menu.game">게임</span>
+            </button>
+            <button class="mrow" data-action="shop">
+              <span class="mrow-arrow">▶</span>
+              <span class="mrow-label" data-i18n="menu.shop">상점</span>
             </button>
             <button class="mrow" data-action="system">
               <span class="mrow-arrow">▶</span>
@@ -416,6 +425,81 @@
               </div>
             </button>
           </section>
+        </div>
+
+        <!-- ############ GAME (돌 합치기) ############ -->
+        <div id="game-view" class="screen hidden">
+          <div class="game-wrap">
+            <div class="game-hud">
+              <div id="game-score">0</div>
+              <div class="game-hud-actions">
+                <button
+                  id="game-pause-btn"
+                  class="game-icon-btn"
+                  aria-label="일시정지"
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14" /></svg>
+                </button>
+                <button
+                  id="game-restart-btn"
+                  class="game-icon-btn"
+                  aria-label="다시 하기"
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10a8 8 0 1 1 1 8M4 4v6h6" /></svg>
+                </button>
+              </div>
+              <div class="game-next">
+                <span data-i18n="game.next">NEXT</span>
+                <img id="game-next-img" src="" alt="" draggable="false" />
+              </div>
+            </div>
+            <div class="game-reward-line">
+              <span id="game-reward-progress"></span>
+              <span data-i18n="game.rewardRule">250점당 1조각 · 잔여 점수 이월 없음</span>
+              <span id="game-reward-error" role="status"></span>
+            </div>
+            <div class="game-board-wrap">
+              <canvas id="game-board" width="320" height="460"></canvas>
+              <div id="game-paused" class="hidden">
+                <div id="game-paused-title" data-i18n="game.paused">
+                  일시정지 중
+                </div>
+                <button id="game-resume" data-i18n="game.resume">
+                  이어하기
+                </button>
+              </div>
+              <div id="game-over" class="hidden">
+                <div id="game-over-title" data-i18n="game.over">
+                  게임 종료
+                </div>
+                <div id="game-over-score">0점</div>
+                <button id="game-restart" data-i18n="game.restart">
+                  다시 하기
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="shop-view" class="screen hidden">
+          <div class="sys-head">
+            <div class="sys-title" data-i18n="menu.shop">상점</div>
+            <div class="sys-desc">
+              <span data-i18n="shop.intro">게임으로 모은 조각으로 꾸며보세요.</span><br />
+              <span data-i18n="shop.permanent">모든 상품은 영구 보관됩니다.</span>
+            </div>
+          </div>
+          <div class="shop-tabs" role="tablist" aria-labelledby="screen-title">
+            <button id="shop-all-tab" role="tab" aria-selected="true" aria-controls="shop-all-panel" data-i18n="shop.all">전체 상품</button>
+            <button id="shop-owned-tab" role="tab" aria-selected="false" aria-controls="shop-owned-panel" tabindex="-1" data-i18n="shop.collection">보유 상품</button>
+          </div>
+          <p id="shop-feedback" class="shop-feedback hidden" role="status"></p>
+          <div id="shop-all-panel" role="tabpanel" aria-labelledby="shop-all-tab" tabindex="0">
+            <div id="shop-items" class="shop-items"></div>
+          </div>
+          <div id="shop-owned-panel" class="hidden" role="tabpanel" aria-labelledby="shop-owned-tab" tabindex="0">
+            <div id="inventory-items" class="shop-items"></div>
+          </div>
         </div>
 
         <!-- ############ SYSTEM ############ -->
@@ -1162,12 +1246,15 @@
          전역 스코프를 공유하므로 같은 이름을 두 파일에서 선언하면 렌더러가 통째로 죽는다. -->
     <script src="../shared/i18n.js"></script>
     <script src="../shared/sprites.js"></script>
+    <script src="../shared/attachments.js"></script>
     <script src="../shared/icons.js"></script>
     <script src="tray-data.js"></script>
     <script src="tray-onboarding.js"></script>
     <script src="tray-pet.js"></script>
     <script src="tray-system.js"></script>
     <script src="tray-settings.js"></script>
+    <script src="tray-shop.js"></script>
+    <script src="tray-game.js"></script>
     <script src="tray.js"></script>
   </body>
 </html>

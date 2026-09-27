@@ -1,6 +1,10 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("petAPI", {
+  getEconomy: () => ipcRenderer.invoke("economy:get"),
+  onEconomyChanged: (callback) => {
+    ipcRenderer.on("economy:changed", (_event, state) => callback(state));
+  },
   // 표시 언어. 첫 페인트 전에 필요해 동기 조회한다(앱 시작 시 1회).
   getLocale: () => ipcRenderer.sendSync("i18n:get-locale-sync"),
   onLocaleChanged: (callback) => {

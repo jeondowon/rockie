@@ -10,12 +10,16 @@ const screens = {
   onboarding: document.getElementById("onboarding-view"),
   menu: document.getElementById("menu-view"),
   pet: document.getElementById("pet-view"),
+  game: document.getElementById("game-view"),
+  shop: document.getElementById("shop-view"),
   system: document.getElementById("system-view"),
   settings: document.getElementById("settings-view"),
 };
 
 const SCREEN_TITLE_KEYS = {
   pet: "menu.myPet",
+  game: "menu.game",
+  shop: "menu.shop",
   system: "menu.systemMonitor",
   settings: "menu.settings",
 };
@@ -130,6 +134,8 @@ window.trayAPI.onUpdateStatus((status) => {
 
 // ---------- 화면 전환 ----------
 function showScreen(name) {
+  document.getElementById("shop-feedback").classList.add("hidden");
+  if (name === "shop") refreshEconomy();
   for (const [key, node] of Object.entries(screens)) {
     node.classList.toggle("hidden", key !== name);
   }
@@ -141,13 +147,23 @@ function showScreen(name) {
       ? t(SCREEN_TITLE_KEYS[name])
       : "";
   }
-  // 메뉴는 항목 높이에 맞춰 짧게, 하위 화면은 기존 높이(0 = full)로 창 리사이즈
-  window.trayAPI.resizePopup(name === "menu" ? menuWindowHeight() : 0);
+  // 메뉴는 항목 높이에 맞춰 짧게, 게임은 보드가 다 보이도록 넉넉하게,
+  // 그 외 하위 화면은 기존 높이(0 = full)로 창 리사이즈
+  window.trayAPI.resizePopup(
+    name === "menu"
+      ? menuWindowHeight()
+      : name === "game"
+        ? gameWindowHeight()
+        : 0,
+  );
   // 시스템 모니터는 화면이 보이는 동안만 폴링한다.
   if (name === "system") {
     refreshPetDisplaySprite();
     startSystemMonitor();
   } else stopSystemMonitor();
+  // 게임은 화면을 벗어나면 진행 상태를 유지한 채 일시정지한다(초기화 아님).
+  if (name === "game") resumeGame();
+  else pauseGame();
 }
 
 // ---------- 메뉴 항목 클릭 ----------
@@ -167,6 +183,10 @@ document.querySelectorAll(".mrow").forEach((item) => {
       case "toggle-pet":
       case "install-update":
         window.trayAPI.sendAction(action);
+        break;
+      case "shop":
+      case "game":
+        showScreen(action);
         break;
       // 종료는 되돌릴 수 없고 여기가 유일한 경로도 아니다(펫 옵션창에도 있다).
       // 초기화와 같은 인앱 확인창을 한 번 거친다. showConfirm은 tray-settings.js에 있다.
@@ -218,6 +238,7 @@ window.trayAPI.onWillShow(async () => {
   }
   showScreen("menu");
   refreshBadge();
+  refreshEconomy();
   renderUpdateRow(await window.trayAPI.getUpdateStatus()); // 받아둔 업데이트가 있으면 설치 항목
   renderModeBanner(await window.trayAPI.getModeStatus()); // 진행 중 모드 배너
 });
@@ -227,6 +248,7 @@ window.trayAPI.onWillHide(() => {
   popupVisible = false;
   stopSystemMonitor();
   stopModeCountdown();
+  pauseGame();
 });
 
 // ---------- 표시 언어 ----------

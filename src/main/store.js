@@ -54,6 +54,7 @@ function defaultData() {
       dailyPetDone: false,
     },
     notifications: { hasUnreadBadge: false, notificationsEnabled: true },
+    economy: { shards: 0, owned: [], decoration: null, theme: null },
     settings: {
       autoLaunch: true,
       soundEnabled: true,
@@ -167,9 +168,11 @@ function save() {
   fs.renameSync(TMP_FILE, FILE);
 }
 
-// "처음부터 다시 키우기" — 전체 상태를 기본값으로 되돌리고 저장한다.
+// "처음부터 다시 키우기" — 조각과 구매 상품은 보존한다.
 function reset() {
+  const economy = data?.economy;
   data = defaultData();
+  if (economy) data.economy = economy;
   dataIsFresh = true;
   save();
   return data;

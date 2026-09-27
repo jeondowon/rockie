@@ -15,6 +15,7 @@ body {
 
 body.onboarding-locked .character,
 body.onboarding-locked .heart,
+body.onboarding-locked .pet-decoration,
 body.onboarding-locked .bubble,
 body.onboarding-locked .qcard {
   display: none !important;
@@ -740,4 +741,28 @@ body.dragging .character {
   50% {
     opacity: 0.25;
   }
+}
+
+/* 바깥 상자는 펫과 함께 이동·확대되고, 안쪽 이미지는 공통 장착 기준점으로 배치된다. */
+.pet-decoration {
+  image-rendering: pixelated;
+  position: absolute;
+  width: 128px;
+  height: 128px;
+  pointer-events: none;
+  z-index: 2;
+  transition: transform 0.15s ease;
+}
+.pet-decoration.hidden {
+  display: none;
+}
+.pet-decoration img {
+  position: absolute;
+  max-width: none;
+}
+.character:active ~ .pet-decoration {
+  transform: scale(0.9);
+}
+body.dragging .pet-decoration {
+  transform: scale(1.08);
 }

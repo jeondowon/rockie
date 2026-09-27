@@ -82,3 +82,33 @@ test("초기화하면 isFreshData가 다시 참이 된다", () => {
   store.reset();
   assert.equal(store.isFreshData(), true);
 });
+
+test("기존 저장 파일에 조각과 인벤토리 기본값을 추가한다", () => {
+  writeSaved({ completed: true, step: 999, completedAt: null });
+  store.load();
+  assert.deepEqual(store.get().economy, {
+    shards: 0,
+    owned: [],
+    decoration: null,
+    theme: null,
+  });
+});
+
+test("다시 키우기와 재실행 후에도 조각·상품·장착 상태는 보존된다", () => {
+  store.load();
+  const economy = {
+    shards: 17,
+    owned: ["star-halo", "forest"],
+    decoration: "star-halo",
+    theme: "forest",
+  };
+  store.get().economy = economy;
+  store.get().pet.petName = "이전 펫";
+  store.get().pet.evolutionStage = 3;
+  store.save();
+  store.reset();
+  assert.equal(store.get().pet.evolutionStage, 0);
+  assert.equal(store.get().pet.petName, null);
+  store.load();
+  assert.deepEqual(store.get().economy, economy);
+});

@@ -13,6 +13,7 @@ const {
 const path = require("path");
 const fs = require("fs");
 const store = require("./store");
+const economy = require("./economy").createEconomy(store);
 const evolution = require("./evolution");
 const {
   startDockTracker,
@@ -210,6 +211,7 @@ function startDevReload() {
         "../renderer/shared/i18n.js",
         "../renderer/shared/sound.js",
         "../renderer/shared/sprites.js",
+        "../renderer/shared/attachments.js",
         "../renderer/shared/icons.js",
       ],
     },
@@ -223,10 +225,13 @@ function startDevReload() {
         "../renderer/tray/tray-pet.js",
         "../renderer/tray/tray-system.js",
         "../renderer/tray/tray-settings.js",
+        "../renderer/tray/tray-game.js",
+        "../renderer/tray/tray-shop.js",
         "../renderer/tray/tray.js",
         "../renderer/tray/tray.css",
         "../renderer/shared/i18n.js",
         "../renderer/shared/sprites.js",
+        "../renderer/shared/attachments.js",
         "../renderer/shared/icons.js",
       ],
     },
@@ -882,7 +887,7 @@ ipcMain.on("settings:set", (_event, { key, value }) => {
   store.save();
 });
 
-// "처음부터 다시 키우기" — 전체 상태 리셋 + 펫 렌더러 재초기화.
+// "처음부터 다시 키우기" — 조각·상품을 보존하고 펫 렌더러 재초기화.
 // (확인 절차는 트레이 팝업 안의 인앱 확인창에서 처리하므로 여기선 바로 실행한다)
 ipcMain.handle("settings:reset", () => {
   store.reset();
@@ -894,6 +899,31 @@ ipcMain.handle("settings:reset", () => {
 
 // 시스템 모니터: 트레이 SYSTEM 화면이 열려 있는 동안 렌더러가 주기적으로 호출한다.
 ipcMain.handle("system:get-stats", () => getSystemStats());
+
+ipcMain.handle("economy:get", () => economy.getState());
+function broadcastEconomy(state) {
+  for (const win of [mainWindow, trayPopup]) {
+    if (win && !win.isDestroyed()) win.webContents.send("economy:changed", state);
+  }
+}
+// 재화 변경은 트레이에서만 요청할 수 있고 가격·보유 여부는 메인이 결정한다.
+for (const [channel, handler] of Object.entries({
+  "game:start": () => economy.startRound(),
+  "game:score": (id, score) => {
+    const state = economy.reportScore(id, score);
+    broadcastEconomy(state);
+    return state;
+  },
+  "economy:buy": (id) => economy.buy(id),
+  "economy:equip": (kind, id) => economy.equip(kind, id),
+})) {
+  ipcMain.handle(channel, (event, ...args) => {
+    if (event.sender !== trayPopup?.webContents) throw new Error("invalid-sender");
+    const result = handler(...args);
+    if (result?.state) broadcastEconomy(result.state);
+    return result;
+  });
+}
 
 // AI 사용량: 호출될 때마다 Codex 로컬 로그를 다시 읽는다.
 // 트레이를 열 때와 수동 새로고침을 누를 때만 호출된다.

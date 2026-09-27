@@ -1,5 +1,28 @@
 const character = document.getElementById("character");
 const heart = document.getElementById("heart");
+const petDecoration = document.getElementById("pet-decoration");
+const petDecorationImage = document.getElementById("pet-decoration-image");
+let equippedDecoration = null;
+function renderPetDecoration(state) {
+  equippedDecoration = state.catalog.some((item) => item.kind === "decoration" && item.id === state.decoration)
+    ? state.decoration
+    : null;
+  updatePetDecoration();
+}
+
+function updatePetDecoration() {
+  const id = PREVIEW && tuneTarget === "decoration" ? TUNE_ITEMS[tuneItemIndex] : equippedDecoration;
+  petDecoration.classList.toggle("hidden", !id);
+  if (!id) return;
+  const src = `../../../assets/decorations/${id}.svg`;
+  if (!petDecorationImage.src.endsWith(src)) petDecorationImage.src = src;
+  placeAttachment(petDecorationImage, spritePrefix, id, CHAR_SIZE);
+}
+window.petAPI.onEconomyChanged(renderPetDecoration);
+window.petAPI
+  .getEconomy()
+  .then(renderPetDecoration)
+  .catch(() => {});
 const bubble = document.getElementById("bubble");
 const qcard = document.getElementById("qcard");
 
@@ -165,6 +188,9 @@ function placeCharacter() {
   // 하트는 캐릭터와 같은 320 캔버스라 같은 좌표에 두면 원하는 자리에 정확히 겹친다
   heart.style.left = posX + "px";
   heart.style.top = posY + "px";
+  petDecoration.style.left = posX + "px";
+  petDecoration.style.top = posY + "px";
+  updateTuneGuide();
 }
 
 function setFacing(dir) {
@@ -255,9 +281,7 @@ function initUsageWatcher() {
 // 표시할 파일은 현재 진화 단계에 따른 spriteLevel/spritePrefix로 결정된다.
 function applySprite() {
   if (onboardingLocked) return;
-  const name = smiling
-    ? "smile"
-    : tiredSprite || timeSprite() || (facing === "left" ? "left" : "right");
+  const name = smiling ? "smile" : tiredSprite || timeSprite() || (facing === "left" ? "left" : "right");
   const src = spriteUrl(name);
   if (!character.src.endsWith(src)) character.src = src;
   notifyDisplaySprite(name);
@@ -325,19 +349,34 @@ function triggerSmile() {
 
 window.petAPI.onShowSmile(triggerSmile);
 
-// ── 개발용: 하트 위치 실시간 튜닝 ─────────────────────────────────────────
-// PREVIEW를 {level, prefix}로 두면 실제 진화 없이 그 캐릭터로 시작해 하트를 계속 띄우고,
-// 방향키로 하트를 밀며 캐릭터별 HEART_OFFSET을 눈으로 맞출 수 있다. null이면 정상 동작.
+// ── 개발용: 하트·말풍선·장식 기준점 실시간 튜닝 ──────────────────────────
+// PREVIEW를 {level, prefix, item: "tiny-crown"}로 두면 장식 튜닝으로 시작한다.
+// item을 생략하면 하트부터 시작하며, null이면 정상 동작한다. 보유/장착 데이터는 바꾸지 않는다.
 // `npm run dev`면 저장 즉시 반영. (키 입력을 받으려면 이 앱 창이 포커스여야 함:
 //  방금 실행했거나 cmd-tab으로 이 앱을 앞으로 가져오면 됨)
-//   ← → ↑ ↓ : 하트 밀기 (Shift와 함께면 10px씩)
+//   ← → ↑ ↓ : 현재 기준점 이동 (320 캔버스에서 1px, Shift=10px)
 //   [  ]     : 이전 / 다음 캐릭터
+//   t        : 하트 → 말풍선 → 장식
+//   ,  .     : 이전 / 다음 장식 (장식 모드)
+//   -  =     : 장착 영역 너비 축소 / 확대 (장식 모드, Shift=10px)
 //   s        : 표시 크기 순환 (small→medium→large)
-//   c        : 지금까지 맞춘 HEART_OFFSET을 콘솔에 출력 (붙여넣기용)
-const PREVIEW = null; // { level: "level3", prefix: "moonstone" }; // {level, prefix}면 튜닝 켜기, null이면 정상 동작
+//   c        : 현재 대상의 설정을 클립보드와 콘솔로 내보내기 (수동으로 파일에 붙여넣기)
+const PREVIEW = null; // { level: "level3", prefix: "moonstone", item: "tiny-crown" };
 
 let tuneIndex = 0;
-let tuneTarget = "heart"; // 방향키가 조정할 대상: "heart" | "bubble" (t로 토글)
+let tuneTarget = PREVIEW?.item ? "decoration" : "heart";
+const TUNE_ITEMS = Object.keys(ITEM_ATTACHMENTS);
+let tuneItemIndex = Math.max(0, TUNE_ITEMS.indexOf(PREVIEW?.item || "tiny-crown"));
+
+function currentTuneOffset() {
+  const prefix = TUNE_CHARACTERS[tuneIndex].prefix;
+  if (tuneTarget === "decoration") {
+    const slot = ITEM_ATTACHMENTS[TUNE_ITEMS[tuneItemIndex]].slot;
+    return CHARACTER_ATTACHMENTS[prefix][slot];
+  }
+  const table = tuneTarget === "bubble" ? BUBBLE_OFFSET : HEART_OFFSET;
+  return table[prefix] || (table[prefix] = { x: 0, y: 0 });
+}
 
 function applyPreview() {
   if (!PREVIEW) return;
@@ -347,54 +386,54 @@ function applyPreview() {
   applySizing(); // 미리보기 캐릭터의 레벨 scale 반영
   applySprite();
   applyHeartOffset();
-  applyTuneVisibility(); // 현재 대상(하트/말풍선)만 상시 표시
+  applyTuneVisibility();
   positionBubble();
   updateTuneHud();
 }
 
-// 튜닝 표시: 대상이 하트면 하트만, 말풍선이면 말풍선만 띄운다.
+// 튜닝 대상(하트/말풍선/장식)을 표시한다.
 // 다른 showBubble의 자동 숨김 타임아웃에 가려지지 않도록 followStep에서 매 프레임 다시 확정한다.
 function applyTuneVisibility() {
   if (!PREVIEW) return;
   if (tuneTarget === "bubble") {
     hideHeart();
     clearTimeout(bubbleTimeout);
-    bubble.textContent =
-      "안녕하세요! 오늘도 열심히 작업 중이시네요. 잠깐 쉬어가도 좋아요!";
+    bubble.textContent = "안녕하세요! 오늘도 열심히 작업 중이시네요. 잠깐 쉬어가도 좋아요!";
     bubble.classList.remove("hidden");
-  } else {
+  } else if (tuneTarget === "heart") {
     bubble.classList.add("hidden");
     showHeart();
+  } else {
+    bubble.classList.add("hidden");
+    hideHeart();
   }
 }
 
-// 방향키 → 현재 캐릭터 HEART_OFFSET 조정 / 캐릭터·크기 전환 / 값 출력.
+// 현재 대상의 기준점 조정 / 캐릭터·장식·크기 전환 / 값 출력.
 // e.key가 아니라 e.code(물리 키)로 판정한다: 한글 입력기가 켜져 있으면 s/c 등이
 // e.key에서 한글 자모로 들어와 안 걸리기 때문(방향키는 IME 영향 없음).
 const TUNE_SIZES = ["small", "medium", "large"];
 function onTuneKey(e) {
-  const cur = TUNE_CHARACTERS[tuneIndex];
   const step = e.shiftKey ? 10 : 1;
   switch (e.code) {
     case "ArrowLeft":
     case "ArrowRight":
     case "ArrowUp":
     case "ArrowDown": {
-      const table = tuneTarget === "bubble" ? BUBBLE_OFFSET : HEART_OFFSET;
-      const o = table[cur.prefix] || (table[cur.prefix] = { x: 0, y: 0 });
+      const o = currentTuneOffset();
       if (e.code === "ArrowLeft") o.x -= step;
       else if (e.code === "ArrowRight") o.x += step;
       else if (e.code === "ArrowUp")
         o.y -= step; // -y = 위
       else o.y += step;
       if (tuneTarget === "bubble") positionBubble();
+      else if (tuneTarget === "decoration") updatePetDecoration();
       else applyHeartOffset();
       updateTuneHud();
       break;
     }
     case "BracketLeft":
-      tuneIndex =
-        (tuneIndex - 1 + TUNE_CHARACTERS.length) % TUNE_CHARACTERS.length;
+      tuneIndex = (tuneIndex - 1 + TUNE_CHARACTERS.length) % TUNE_CHARACTERS.length;
       applyPreview();
       break;
     case "BracketRight":
@@ -407,10 +446,27 @@ function onTuneKey(e) {
       break;
     }
     case "KeyT":
-      tuneTarget = tuneTarget === "heart" ? "bubble" : "heart";
+      tuneTarget = tuneTarget === "heart" ? "bubble" : tuneTarget === "bubble" ? "decoration" : "heart";
+      updatePetDecoration();
       applyTuneVisibility();
       updateTuneHud();
       break;
+    case "Comma":
+    case "Period":
+      if (tuneTarget !== "decoration") return;
+      tuneItemIndex = (tuneItemIndex + (e.code === "Period" ? 1 : -1) + TUNE_ITEMS.length) % TUNE_ITEMS.length;
+      updatePetDecoration();
+      updateTuneHud();
+      break;
+    case "Minus":
+    case "Equal": {
+      if (tuneTarget !== "decoration") return;
+      const anchor = currentTuneOffset();
+      anchor.width = Math.max(1, anchor.width + (e.code === "Equal" ? step : -step));
+      updatePetDecoration();
+      updateTuneHud();
+      break;
+    }
     case "KeyC":
       dumpOffset();
       break;
@@ -420,17 +476,23 @@ function onTuneKey(e) {
   e.preventDefault();
 }
 
-// 0이 아닌 값만 붙여넣기 좋은 형태로 만들어 클립보드에 복사한다(그대로 해당 테이블에 붙이면 됨).
-// 현재 대상(하트/말풍선)의 오프셋을 뽑는다. 콘솔에도 출력해 복사 실패 시 눈으로 확인 가능.
+// 장식은 기준점·너비 전체를, 하트/말풍선은 0이 아닌 오프셋을 복사한다.
 function dumpOffset() {
   const [name, table] =
-    tuneTarget === "bubble"
-      ? ["BUBBLE_OFFSET", BUBBLE_OFFSET]
-      : ["HEART_OFFSET", HEART_OFFSET];
-  const lines = Object.entries(table)
-    .filter(([, o]) => o.x !== 0 || o.y !== 0)
-    .map(([k, o]) => `  ${k}: { x: ${o.x}, y: ${o.y} },`);
-  const text = `const ${name} = {\n` + lines.join("\n") + "\n};";
+    tuneTarget === "decoration"
+      ? ["CHARACTER_ATTACHMENTS", CHARACTER_ATTACHMENTS]
+      : tuneTarget === "bubble"
+        ? ["BUBBLE_OFFSET", BUBBLE_OFFSET]
+        : ["HEART_OFFSET", HEART_OFFSET];
+  let text;
+  if (tuneTarget === "decoration") {
+    text = `const ${name} = ${JSON.stringify(table, null, 2)};`;
+  } else {
+    const lines = Object.entries(table)
+      .filter(([, o]) => o.x !== 0 || o.y !== 0)
+      .map(([k, o]) => `  ${k}: { x: ${o.x}, y: ${o.y} },`);
+    text = `const ${name} = {\n` + lines.join("\n") + "\n};";
+  }
   console.log(text);
   navigator.clipboard
     .writeText(text)
@@ -440,16 +502,33 @@ function dumpOffset() {
 
 // 화면 좌상단에 현재 캐릭터·오프셋·조작법을 보여주는 오버레이(개발용)
 let tuneHud = null;
+let tuneAnchorGuide = null;
+
+function updateTuneGuide() {
+  if (!tuneAnchorGuide) return;
+  tuneAnchorGuide.classList.toggle("hidden", tuneTarget !== "decoration");
+  if (tuneTarget !== "decoration") return;
+  const anchor = currentTuneOffset();
+  const k = CHAR_SIZE / 320;
+  tuneAnchorGuide.style.left = posX + (anchor.x - anchor.width / 2) * k + "px";
+  tuneAnchorGuide.style.top = posY + anchor.y * k + "px";
+  tuneAnchorGuide.style.width = anchor.width * k + "px";
+}
+
 function updateTuneHud(note) {
   if (!tuneHud) return;
   const cur = TUNE_CHARACTERS[tuneIndex];
-  const table = tuneTarget === "bubble" ? BUBBLE_OFFSET : HEART_OFFSET;
-  const o = table[cur.prefix] || { x: 0, y: 0 };
+  const o = currentTuneOffset();
+  const itemId = TUNE_ITEMS[tuneItemIndex];
   tuneHud.textContent =
     `[${tuneIndex + 1}/${TUNE_CHARACTERS.length}] ${cur.level} · ${cur.prefix}\n` +
     `▶ ${tuneTarget}  offset { x: ${o.x}, y: ${o.y} }   size: ${petSize}\n` +
+    (tuneTarget === "decoration"
+      ? `${t(`item.${itemId}`)} · ${ITEM_ATTACHMENTS[itemId].slot} · 너비 ${o.width}\n, . 장식 · - = 너비 · 노란 선=기준점/너비\n`
+      : "") +
     `← → ↑ ↓ 이동(Shift=10) · [ ] 캐릭터 · t 대상 · s 크기 · c 복사` +
     (note ? `\n${note}` : "");
+  updateTuneGuide();
 }
 
 // PREVIEW가 설정돼 있을 때만 튜닝을 켠다: 시작 캐릭터 지정 + HUD 생성 + 키 입력 연결
@@ -463,6 +542,9 @@ function initTuning() {
     "color:#fff;font:12px/1.6 monospace;padding:8px 10px;border-radius:6px;" +
     "white-space:pre;pointer-events:none;";
   document.body.appendChild(tuneHud);
+  tuneAnchorGuide = document.createElement("div");
+  tuneAnchorGuide.className = "attachment-guide hidden";
+  document.body.appendChild(tuneAnchorGuide);
   applyPreview();
   window.addEventListener("keydown", onTuneKey);
 }
@@ -501,8 +583,7 @@ function followStep() {
         targetX = -SPRITE_MARGIN + FIXED_EDGE_GAP;
         setFacing("right");
       } else {
-        targetX =
-          window.innerWidth - CHAR_SIZE + SPRITE_MARGIN - FIXED_EDGE_GAP;
+        targetX = window.innerWidth - CHAR_SIZE + SPRITE_MARGIN - FIXED_EDGE_GAP;
         setFacing("left");
       }
     }
@@ -600,8 +681,7 @@ const BUBBLE_TAIL_PAD = 12; // 꼬리가 몸통의 둥근 모서리에 걸치지
 let bubbleBorderLeft = null;
 function bubbleBorderLeftWidth() {
   if (bubbleBorderLeft == null) {
-    bubbleBorderLeft =
-      parseFloat(getComputedStyle(bubble).borderLeftWidth) || 0;
+    bubbleBorderLeft = parseFloat(getComputedStyle(bubble).borderLeftWidth) || 0;
   }
   return bubbleBorderLeft;
 }
@@ -618,21 +698,12 @@ function positionBubble() {
   const tailX = posX + CHAR_SIZE / 2 + o.x * k;
 
   // 몸통은 꼬리 위에 중심을 두되, 화면 밖으로 나가면 안쪽으로 밀어 넣는다(길어져도 화면 안).
-  const left = Math.max(
-    BUBBLE_MARGIN,
-    Math.min(window.innerWidth - w - BUBBLE_MARGIN, tailX - w / 2),
-  );
+  const left = Math.max(BUBBLE_MARGIN, Math.min(window.innerWidth - w - BUBBLE_MARGIN, tailX - w / 2));
   bubble.style.left = left + "px";
 
   // 몸통이 밀려도 꼬리는 계속 펫 머리를 가리키도록, 꼬리의 몸통 내 x를 따로 잡는다.
-  const tailInBody = Math.max(
-    BUBBLE_TAIL_PAD,
-    Math.min(w - BUBBLE_TAIL_PAD, tailX - left),
-  );
-  bubble.style.setProperty(
-    "--tail-x",
-    tailInBody - bubbleBorderLeftWidth() + "px",
-  );
+  const tailInBody = Math.max(BUBBLE_TAIL_PAD, Math.min(w - BUBBLE_TAIL_PAD, tailX - left));
+  bubble.style.setProperty("--tail-x", tailInBody - bubbleBorderLeftWidth() + "px");
 
   // 세로는 박스 상단(posY)이 아니라 펫 '머리 상단'(posY + SPRITE_MARGIN) 기준으로 잡아
   // 크기가 커져 투명 여백이 늘어도 말풍선~펫 간격이 일정하게 유지되도록 한다.
@@ -643,9 +714,7 @@ function positionBubble() {
 // ---------- 3. 클릭 반응 ----------
 
 function currentLongUseReactions() {
-  return LONG_USE_CLICK_REACTIONS.flatMap((tier) =>
-    continuousActiveMs >= tier.after ? tier.messages : [],
-  );
+  return LONG_USE_CLICK_REACTIONS.flatMap((tier) => (continuousActiveMs >= tier.after ? tier.messages : []));
 }
 
 function currentClickReactions() {
@@ -656,9 +725,7 @@ function currentClickReactions() {
 }
 
 function ownerDisplayName() {
-  return userName
-    ? t("pet.ownerSuffix", { name: userName })
-    : t("pet.ownerDefault");
+  return userName ? t("pet.ownerSuffix", { name: userName }) : t("pet.ownerDefault");
 }
 
 // 애완돌 이름은 아직 안 지었으면 트레이와 같은 기본 표기("애완돌"/"Rockie")를 쓴다.
@@ -669,9 +736,7 @@ function petDisplayName() {
 function formatMessage(message) {
   // 말풍선 문구는 pet-data.js에 { ko, en }으로 들어 있다. 여기서 언어를 고르고
   // {owner}·{pet} 치환까지 끝낸다 — 말풍선으로 나가는 모든 문구가 이 함수를 지난다.
-  return pickText(message)
-    .replaceAll("{owner}", ownerDisplayName())
-    .replaceAll("{pet}", petDisplayName());
+  return pickText(message).replaceAll("{owner}", ownerDisplayName()).replaceAll("{pet}", petDisplayName());
 }
 
 // 더블클릭이 옵션창을 여는 동안 말풍선이 같이 뜨지 않도록, 클릭 반응은
@@ -755,13 +820,7 @@ character.addEventListener("dblclick", () => {
 character.addEventListener("mousedown", () => {
   justDragged = false; // 새 상호작용 시작 — 이전 드래그의 잔여 억제 플래그 해제
   // 모드 진행 중·진화 카드·질문 카드 중에는 드래그하지 않는다
-  if (
-    (activeMode && activeMode !== "focus") ||
-    modePanelOpen ||
-    pendingEvolution ||
-    cardOpen ||
-    onboardingLocked
-  )
+  if ((activeMode && activeMode !== "focus") || modePanelOpen || pendingEvolution || cardOpen || onboardingLocked)
     return;
   // 놓은 뒤 3초 정지 중에 다시 잡으면, 남은 정지 타이머가 드래그 도중 발동하지 않게 취소
   if (dropTimer) {
@@ -863,8 +922,7 @@ window.petAPI.onActiveWindowInfo(({ appName, title }) => {
     const stage = getStage(rule.stages, Date.now() - ruleEnteredAt);
     // 말풍선이 이미 떠 있어 건너뛰었으면 기록하지 않는다 — 3초 뒤 폴링에서 다시 시도한다.
     if (stage && announcedStage !== stage.after) {
-      if (showAutoBubble(formatMessage(pickRandom(stage.messages))))
-        announcedStage = stage.after;
+      if (showAutoBubble(formatMessage(pickRandom(stage.messages)))) announcedStage = stage.after;
     }
     return;
   }
@@ -911,8 +969,7 @@ function updateBatteryState(battery) {
   if (!bubbleAllowed("auto")) return;
   // 건너뛰었으면 기록하지 않는다 — 다음 배터리 변화 때 다시 시도한다.
   if (announcedTier !== tier.level) {
-    if (showAutoBubble(formatMessage(tier.message), 5000))
-      announcedTier = tier.level;
+    if (showAutoBubble(formatMessage(tier.message), 5000)) announcedTier = tier.level;
   }
 }
 
@@ -934,11 +991,7 @@ async function initBatteryWatcher() {
 // STONE_NAMES/VARIANT_STONE/GEM/resolveSprite/spriteGifUrl은 공용 ../shared/sprites.js에서 로드된다.
 
 function spriteUrlFor(info, name) {
-  const { level, prefix } = resolveSprite(
-    info.stage,
-    info.stoneType,
-    info.variant,
-  );
+  const { level, prefix } = resolveSprite(info.stage, info.stoneType, info.variant);
   return spriteGifUrl(level, prefix, name);
 }
 
@@ -984,8 +1037,7 @@ function setPetName(name) {
 }
 
 function evolveMessage({ stage, stoneType }) {
-  if (stage === 1)
-    return t("pet.evolvedStone", { stone: pickText(STONE_NAMES[stoneType]) });
+  if (stage === 1) return t("pet.evolvedStone", { stone: pickText(STONE_NAMES[stoneType]) });
   if (stage === 2) return t("pet.evolvedVariant");
   if (stage === 3) return t("pet.evolvedGem");
   return "";
@@ -1083,8 +1135,7 @@ async function initEvolution() {
     }
     applyEvolution({
       // 스킨을 착용 중이면 그 단계 형태로 표시(돌 종류·변형은 그대로 유지)
-      stage:
-        state.activeSkinStage != null ? state.activeSkinStage : state.stage,
+      stage: state.activeSkinStage != null ? state.activeSkinStage : state.stage,
       stoneType: state.stoneType,
       variant: state.variant,
     });
@@ -1318,13 +1369,7 @@ function renderQuestionContent(state, q) {
     head.appendChild(cardEl("p", "q-hint", t("pet.plusQuestionShort")));
   } else {
     // progress는 "답 완료 개수"라, 지금 답하는 질문은 그 다음 순번(+1)
-    head.appendChild(
-      cardEl(
-        "p",
-        "q-hint",
-        t("pet.questionCount", { n: state.progress + 1, total: state.total }),
-      ),
-    );
+    head.appendChild(cardEl("p", "q-hint", t("pet.questionCount", { n: state.progress + 1, total: state.total })));
   }
   qcard.appendChild(head);
   qcard.appendChild(cardEl("p", "q-text", q.text));
@@ -1399,6 +1444,9 @@ function applySizing() {
   character.style.height = px + "px";
   heart.style.width = px + "px";
   heart.style.height = px + "px";
+  petDecoration.style.width = px + "px";
+  petDecoration.style.height = px + "px";
+  updatePetDecoration();
 }
 
 function applyPetSize(size) {
@@ -1435,18 +1483,13 @@ async function initSettings() {
     placeCharacter();
     applySprite();
     character.style.visibility = "visible";
+    petDecoration.style.visibility = "visible";
   }
 }
 
 // 트레이 설정에서 위치/크기를 바꾸면 즉시 반영
 window.petAPI.onPetSettings((settings) => {
-  const {
-    placement: p,
-    size,
-    sound,
-    focusMinutes: fm,
-    napMinutes: nm,
-  } = settings;
+  const { placement: p, size, sound, focusMinutes: fm, napMinutes: nm } = settings;
   if (p) {
     // 위치 모드가 바뀌면 드래그/정지 상태를 취소해 얼어붙지 않게 한다
     if (holdTimer) clearTimeout(holdTimer);
@@ -1564,13 +1607,7 @@ function renderModeOptions() {
 function renderQuitConfirm() {
   modePanel.innerHTML = "";
   modePanel.appendChild(cardEl("div", "mode-title", t("confirm.quitTitle")));
-  modePanel.appendChild(
-    cardEl(
-      "div",
-      "mode-confirm-desc",
-      t("confirm.quitDesc", { owner: ownerDisplayName() }),
-    ),
-  );
+  modePanel.appendChild(cardEl("div", "mode-confirm-desc", t("confirm.quitDesc", { owner: ownerDisplayName() })));
   modePanel.appendChild(
     footEl(
       {
@@ -1590,11 +1627,7 @@ function renderQuitConfirm() {
 function footEl(...buttons) {
   const foot = cardEl("div", "mode-foot", null);
   for (const b of buttons) {
-    const btn = cardEl(
-      "button",
-      b.danger ? "mode-foot-btn danger" : "mode-foot-btn",
-      b.label,
-    );
+    const btn = cardEl("button", b.danger ? "mode-foot-btn danger" : "mode-foot-btn", b.label);
     btn.addEventListener("click", b.onClick);
     foot.appendChild(btn);
   }
@@ -1739,10 +1772,7 @@ function enterCleanMode() {
   captureClicks();
   window.petAPI.cleanEnter(CLEAN_LOCK_TTL_MS);
   // 닫을 때까지 잠금을 유지하기 위해 상한을 주기적으로 뒤로 민다
-  cleanHeartbeat = setInterval(
-    () => window.petAPI.cleanEnter(CLEAN_LOCK_TTL_MS),
-    CLEAN_HEARTBEAT_MS,
-  );
+  cleanHeartbeat = setInterval(() => window.petAPI.cleanEnter(CLEAN_LOCK_TTL_MS), CLEAN_HEARTBEAT_MS);
 }
 
 // 스페이스 연타 진행도를 점으로 보여준다(0이면 안내 문구로 되돌린다).
@@ -1873,8 +1903,7 @@ function setFocusControls(open) {
 
 function renderFocusBubble() {
   if (activeMode !== "focus") return;
-  const label =
-    focusPausedMs != null ? t("mode.pauseLabel") : t("mode.focusing");
+  const label = focusPausedMs != null ? t("mode.pauseLabel") : t("mode.focusing");
   focusTextEl.textContent = `${label} ${formatMMSS(focusRemainMs())}`;
   bubble.classList.remove("hidden");
   positionBubble();
@@ -1983,12 +2012,7 @@ function napDurationMs() {
 }
 
 function renderNapTime() {
-  const remain =
-    napPausedMs != null
-      ? napPausedMs
-      : napEndAt
-        ? Math.max(0, napEndAt - Date.now())
-        : 0;
+  const remain = napPausedMs != null ? napPausedMs : napEndAt ? Math.max(0, napEndAt - Date.now()) : 0;
   napTimeEl.textContent = formatMMSS(remain);
 }
 
@@ -2018,19 +2042,13 @@ function buildNapOverlay() {
   napActionsEl = cardEl("div", "nap-actions", null);
   napPauseBtn = napButton(t("mode.pauseLabel"), "nap-btn", toggleNapPause);
   napActionsEl.appendChild(napPauseBtn);
-  napActionsEl.appendChild(
-    napButton(t("mode.stop"), "nap-btn", () => exitMode()),
-  );
+  napActionsEl.appendChild(napButton(t("mode.stop"), "nap-btn", () => exitMode()));
   box.appendChild(napActionsEl);
 
   // 알람이 울릴 때만 보이는 줄
   napAlarmActionsEl = cardEl("div", "nap-actions hidden", null);
-  napAlarmActionsEl.appendChild(
-    napButton(t("mode.stopAlarm"), "nap-btn primary", () => exitMode()),
-  );
-  napAlarmActionsEl.appendChild(
-    napButton(t("mode.snooze"), "nap-btn", snoozeNap),
-  );
+  napAlarmActionsEl.appendChild(napButton(t("mode.stopAlarm"), "nap-btn primary", () => exitMode()));
+  napAlarmActionsEl.appendChild(napButton(t("mode.snooze"), "nap-btn", snoozeNap));
   box.appendChild(napAlarmActionsEl);
 
   // 키보드 차단 상태(권한 안내)는 청소 모드와 같은 줄·같은 메시지를 쓴다.
@@ -2148,6 +2166,7 @@ function exitNapMode() {
 
 // 시작 위치(설정에 맞는 코너)가 정해질 때까지 숨겨 둔다. initSettings에서 표시.
 character.style.visibility = "hidden";
+petDecoration.style.visibility = "hidden";
 placeCharacter();
 requestAnimationFrame(followStep);
 initTimeWatcher();
