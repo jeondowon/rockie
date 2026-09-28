@@ -37,6 +37,24 @@ test("새 판에는 잔여 점수를 버리고 이전 판 요청을 거부한다
   assert.throws(() => economy.reportScore(old, 1000), /invalid-score/);
 });
 
+test("게임을 바꿔도 각 판의 보상과 중복 방지를 유지한다", () => {
+  const { economy } = fixture();
+  const merge = economy.startRound();
+  const dungeon = economy.startRound("dungeon");
+  const sling = economy.startRound("slingshot");
+  assert.equal(economy.reportScore(merge, 250).shards, 1);
+  assert.equal(economy.reportScore(dungeon, 500).shards, 3);
+  assert.equal(economy.reportScore(sling, 250).shards, 4);
+  assert.equal(economy.reportScore(merge, 500).shards, 5);
+  assert.equal(economy.reportScore(dungeon, 500).shards, 5);
+  economy.startRound("dungeon");
+  assert.throws(() => economy.reportScore(dungeon, 750), /invalid-score/);
+  assert.equal(economy.reportScore(sling, 500).shards, 6);
+  assert.equal(economy.reportScore(merge, 750).shards, 7);
+  for (const game of ["missing", null, {}, "__proto__"])
+    assert.throws(() => economy.startRound(game), /invalid-game/);
+});
+
 test("잘못된 점수는 잔액에 반영하지 않는다", () => {
   const { economy } = fixture();
   const id = economy.startRound();

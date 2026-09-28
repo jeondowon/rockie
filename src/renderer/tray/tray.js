@@ -11,6 +11,9 @@ const screens = {
   menu: document.getElementById("menu-view"),
   pet: document.getElementById("pet-view"),
   game: document.getElementById("game-view"),
+  arcade: document.getElementById("arcade-view"),
+  dungeon: document.getElementById("dungeon-view"),
+  slingshot: document.getElementById("slingshot-view"),
   shop: document.getElementById("shop-view"),
   system: document.getElementById("system-view"),
   settings: document.getElementById("settings-view"),
@@ -18,7 +21,10 @@ const screens = {
 
 const SCREEN_TITLE_KEYS = {
   pet: "menu.myPet",
-  game: "menu.game",
+  game: "arcade.merge",
+  arcade: "menu.game",
+  dungeon: "arcade.dungeon",
+  slingshot: "arcade.slingshot",
   shop: "menu.shop",
   system: "menu.systemMonitor",
   settings: "menu.settings",
@@ -60,6 +66,7 @@ function menuWindowHeight() {
 // 집중 모드는 focusEndAt으로 남은 시간을 초당 갱신한다.
 let modeCountdown = null;
 let popupVisible = false;
+let activeScreen = "menu";
 
 function stopModeCountdown() {
   if (modeCountdown) {
@@ -134,6 +141,11 @@ window.trayAPI.onUpdateStatus((status) => {
 
 // ---------- 화면 전환 ----------
 function showScreen(name) {
+  activeScreen = name;
+  const backLabel = document.getElementById("back-label");
+  backLabel.dataset.i18n = ["game", "dungeon", "slingshot"].includes(name)
+    ? "arcade.back" : "common.backToMenu";
+  backLabel.textContent = t(backLabel.dataset.i18n);
   document.getElementById("shop-feedback").classList.add("hidden");
   if (name === "shop") refreshEconomy();
   for (const [key, node] of Object.entries(screens)) {
@@ -154,7 +166,9 @@ function showScreen(name) {
       ? menuWindowHeight()
       : name === "game"
         ? gameWindowHeight()
-        : 0,
+        : name === "dungeon" || name === "slingshot"
+          ? miniGameWindowHeight(name)
+          : 0,
   );
   // 시스템 모니터는 화면이 보이는 동안만 폴링한다.
   if (name === "system") {
@@ -164,7 +178,20 @@ function showScreen(name) {
   // 게임은 화면을 벗어나면 진행 상태를 유지한 채 일시정지한다(초기화 아님).
   if (name === "game") resumeGame();
   else pauseGame();
+  if (name === "dungeon") renderDungeon();
+  if (name === "slingshot") resumeSlingshot();
+  else pauseSlingshot();
 }
+
+function miniGameWindowHeight(name) {
+  return Math.ceil(document.querySelector(".titlebar").getBoundingClientRect().height +
+    backBar.getBoundingClientRect().height + modeBanner.offsetHeight +
+    screens[name].querySelector(".mini-wrap").getBoundingClientRect().height) + 17;
+}
+
+document.querySelectorAll("[data-game-screen]").forEach((button) => {
+  button.addEventListener("click", () => showScreen(button.dataset.gameScreen));
+});
 
 // ---------- 메뉴 항목 클릭 ----------
 document.querySelectorAll(".mrow").forEach((item) => {
@@ -185,8 +212,10 @@ document.querySelectorAll(".mrow").forEach((item) => {
         window.trayAPI.sendAction(action);
         break;
       case "shop":
-      case "game":
         showScreen(action);
+        break;
+      case "game":
+        showScreen("arcade");
         break;
       // 종료는 되돌릴 수 없고 여기가 유일한 경로도 아니다(펫 옵션창에도 있다).
       // 초기화와 같은 인앱 확인창을 한 번 거친다. showConfirm은 tray-settings.js에 있다.
@@ -202,7 +231,9 @@ document.querySelectorAll(".mrow").forEach((item) => {
   });
 });
 
-backBar.addEventListener("click", () => showScreen("menu"));
+backBar.addEventListener("click", () =>
+  showScreen(["game", "dungeon", "slingshot"].includes(activeScreen) ? "arcade" : "menu"),
+);
 
 // 종료 확인창의 {owner} 자리에 쓴다. 이름을 안 지었으면 "주인님"으로 부른다.
 // 펫 렌더러의 ownerDisplayName()과 같은 규칙이다(창이 달라 함수를 공유하지 못한다).
@@ -249,6 +280,7 @@ window.trayAPI.onWillHide(() => {
   stopSystemMonitor();
   stopModeCountdown();
   pauseGame();
+  pauseSlingshot();
 });
 
 // ---------- 표시 언어 ----------
@@ -257,6 +289,7 @@ applyStaticI18n();
 
 // 언어가 바뀌면 정적 문구는 i18n이 알아서 갈아끼우고, JS로 그린 부분만 여기서 되살린다.
 onLocaleChange(() => {
+  if (SCREEN_TITLE_KEYS[activeScreen]) screenTitle.textContent = t(SCREEN_TITLE_KEYS[activeScreen]);
   if (!screens.menu.classList.contains("hidden")) resizeMenuIfActive();
   if (!screens.settings.classList.contains("hidden")) showSettings();
   if (!screens.pet.classList.contains("hidden")) showPet();

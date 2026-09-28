@@ -2,7 +2,7 @@ const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("trayAPI", {
   getEconomy: () => ipcRenderer.invoke("economy:get"),
-  startGame: () => ipcRenderer.invoke("game:start"),
+  startGame: (game) => ipcRenderer.invoke("game:start", game),
   reportGameScore: (id, score) => ipcRenderer.invoke("game:score", id, score),
   buyItem: (id) => ipcRenderer.invoke("economy:buy", id),
   equipItem: (kind, id) => ipcRenderer.invoke("economy:equip", kind, id),

@@ -226,6 +226,9 @@ function startDevReload() {
         "../renderer/tray/tray-system.js",
         "../renderer/tray/tray-settings.js",
         "../renderer/tray/tray-game.js",
+        "../renderer/tray/minigame-rules.js",
+        "../renderer/tray/tray-dungeon.js",
+        "../renderer/tray/tray-slingshot.js",
         "../renderer/tray/tray-shop.js",
         "../renderer/tray/tray.js",
         "../renderer/tray/tray.css",
@@ -899,7 +902,7 @@ function broadcastEconomy(state) {
 }
 // 재화 변경은 트레이에서만 요청할 수 있고 가격·보유 여부는 메인이 결정한다.
 for (const [channel, handler] of Object.entries({
-  "game:start": () => economy.startRound(),
+  "game:start": (game) => economy.startRound(game),
   "game:score": (id, score) => {
     const state = economy.reportScore(id, score);
     broadcastEconomy(state);

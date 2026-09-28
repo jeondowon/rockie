@@ -2041,6 +2041,125 @@ html[lang="en"]
   margin-top: 4px;
 }
 
+/* ---------- 미니게임 선택 · 던전 · 슬링샷 ---------- */
+.arcade-wrap {
+  padding: 20px 14px;
+  display: grid;
+  gap: 14px;
+}
+
+.arcade-note, .mini-help {
+  font-size: 10px;
+  line-height: 1.8;
+  color: #6a6452;
+  white-space: pre-line;
+}
+
+.arcade-card {
+  display: grid;
+  grid-template-columns: 64px 1fr 12px;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 10px;
+  min-height: 96px;
+  background: #faf8f1;
+  border: 2px solid #403c31;
+  box-shadow: 3px 3px 0 #bdb6a4;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.arcade-card strong { display: block; font-size: 13px; margin-bottom: 7px; }
+.arcade-card small { display: block; font-size: 9px; line-height: 1.7; color: #6a6452; white-space: pre; }
+#arcade-view .sys-desc { white-space: pre; }
+.arcade-art { position: relative; display: block; width: 64px; height: 64px; overflow: hidden; }
+/* 원본 캐릭터의 투명 여백을 유지한 채 썸네일 안에 배치한다. */
+.arcade-art img { position: absolute; width: 64px; height: 64px; left: -14px; top: 15px; image-rendering: pixelated; }
+.merge-art { background-image: url("../../../assets/img/minigames/merge.svg"); }
+.dungeon-art { background-image: url("../../../assets/img/minigames/dungeon.svg"); }
+.sling-art { background-image: url("../../../assets/img/minigames/slingshot.svg"); }
+.merge-art .merge-grown { width: 96px; height: 96px; left: -15px; top: -27px; }
+.merge-art .merge-left, .merge-art .merge-right { width: 48px; height: 48px; top: 24px; }
+.merge-art .merge-left { left: -10px; }
+.merge-art .merge-right { left: 26px; }
+.arcade-card:hover { background: #eae4d6; }
+.arcade-card:active, .mini-button:active:not(:disabled) { transform: translate(1px, 1px); box-shadow: none; }
+.arcade-card:focus-visible, .mini-button:focus-visible, .dungeon-card:focus-visible, #sling-board:focus-visible {
+  outline: 2px dashed #916522;
+  outline-offset: 3px;
+}
+
+.mini-wrap { width: 326px; margin: 0 auto; padding: 14px 0; display: flex; flex-direction: column; gap: 10px; }
+.mini-hud { display: flex; justify-content: space-between; align-items: center; font-size: 11px; min-height: 22px; }
+.mini-hud > span { font-size: 10px; color: #76644d; }
+.mini-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; }
+.mini-actions > span { font-size: 10px; color: #916522; margin-left: auto; }
+.mini-button {
+  padding: 9px 10px;
+  border: 2px solid #403c31;
+  background: #faf8f1;
+  box-shadow: 2px 2px 0 #bdb6a4;
+  font: inherit;
+  font-size: 10px;
+  color: inherit;
+  cursor: pointer;
+}
+.mini-button.primary { background: #dce3cc; }
+.mini-button:hover:not(:disabled) { background: #e3dccb; }
+.mini-button:disabled { opacity: 0.5; cursor: default; }
+.mini-message { min-height: 36px; font-size: 10px; line-height: 1.8; text-align: center; }
+.mini-help { font-size: 9px; }
+.mini-error { color: #a23f35; font-size: 10px; line-height: 1.6; }
+.mini-error:empty { display: none; }
+.mini-result { padding: 22px 12px; text-align: center; background: #faf8f1; border: 2px solid #403c31; }
+.mini-result strong { display: block; font-size: 17px; }
+.mini-result p { margin: 12px 0; font-size: 10px; line-height: 1.8; }
+.dungeon-scene {
+  position: relative;
+  height: 142px;
+  overflow: hidden;
+  border: 3px solid #514c3e;
+  background: repeating-linear-gradient(0deg, transparent 0 30px, #d0c8b8 30px 32px), #ded7c8;
+}
+.dungeon-scene::after { content: ""; position: absolute; bottom: 0; width: 100%; height: 24px; background: #bbb29d; border-top: 3px solid #a69b85; }
+.dungeon-door { position: absolute; width: 62px; height: 92px; right: 37px; bottom: 22px; background: #615b4e; border: 8px solid #a59a85; border-bottom: 0; }
+#dungeon-pet { position: absolute; width: 148px; height: 148px; left: 5px; bottom: -5px; image-rendering: pixelated; z-index: 1; }
+#dungeon-health { position: absolute; top: 10px; left: 12px; font-size: 11px; color: #864c40; }
+#dungeon-health.low-health { color: #ae342e; }
+.dungeon-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+.dungeon-card {
+  min-width: 0;
+  min-height: 136px;
+  padding: 12px 3px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  border: 2px solid #766754;
+  background: #faf8f1;
+  box-shadow: 2px 2px 0 #bdb6a4;
+  font: inherit;
+  font-size: 10px;
+  color: inherit;
+  cursor: pointer;
+}
+.dungeon-card.heal { background: #e3e9d9; border-color: #6c7c59; }
+.dungeon-card.treasure { background: #f0e3c9; }
+.dungeon-card.lethal { border-color: #a23f35; }
+.dungeon-card.lethal small { color: #a23f35; }
+.dungeon-card:hover:not(:disabled) { transform: translateY(-3px); }
+.dungeon-card:disabled { opacity: 0.45; cursor: default; }
+.dungeon-card-icon { font-size: 26px; line-height: 1; }
+.dungeon-card strong { font-size: 10px; }
+.dungeon-card small { font-size: 8px; }
+.sling-board-wrap { position: relative; width: 326px; height: 366px; }
+#sling-board { display: block; box-sizing: content-box; width: 320px; height: 360px; border: 3px solid #403c31; touch-action: none; }
+.sling-overlay { position: absolute; inset: 0; display: flex; justify-content: center; align-items: center; background: rgba(40, 48, 33, 0.38); }
+.sling-overlay .mini-result { width: 276px; box-shadow: 4px 4px 0 #514c3e; }
+#sling-stars { color: #a47732; font-size: 28px; letter-spacing: 5px; }
+
 /* ---------- GAME (돌 합치기) ---------- */
 #game-view {
   background: #f2ede1;

@@ -20,7 +20,7 @@ const CATALOG = [
 
 // 게임 판은 메모리에만 둔다. 새 판/앱 재실행에는 잔여 점수가 이월되지 않는다.
 function createEconomy(store) {
-  let round = null;
+  const rounds = new Map();
 
   function getState() {
     return {
@@ -42,12 +42,16 @@ function createEconomy(store) {
     return getState();
   }
 
-  function startRound() {
-    round = { id: randomUUID(), paid: 0 };
+  function startRound(game = "merge") {
+    if (!["merge", "dungeon", "slingshot"].includes(game))
+      throw new Error("invalid-game");
+    const round = { id: randomUUID(), paid: 0 };
+    rounds.set(game, round);
     return round.id;
   }
 
   function reportScore(id, score) {
+    const round = [...rounds.values()].find((entry) => entry.id === id);
     if (!round || round.id !== id || !Number.isSafeInteger(score) || score < 0)
       throw new Error("invalid-score");
     const earned = Math.floor(score / POINTS_PER_SHARD);

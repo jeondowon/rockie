@@ -25,7 +25,7 @@
       <!-- 뒤로가기 바 (메뉴 외 화면에서만 표시) -->
       <button id="back-bar" class="back-bar hidden">
         <span class="back-arrow">◀</span>
-        <span data-i18n="common.backToMenu">메뉴로</span>
+        <span id="back-label" data-i18n="common.backToMenu">메뉴로</span>
         <span id="screen-title" class="back-title"></span>
       </button>
 
@@ -322,6 +322,96 @@
         </div>
 
         <!-- ############ GAME (돌 합치기) ############ -->
+        <div id="arcade-view" class="screen hidden">
+          <div class="sys-head">
+            <div class="sys-title" data-i18n="menu.game">미니게임</div>
+            <div class="sys-desc" data-i18n="arcade.intro"></div>
+          </div>
+          <div class="arcade-wrap">
+            <button class="arcade-card" data-game-screen="game">
+              <span class="arcade-art merge-art" aria-hidden="true">
+                <img class="merge-grown" src="../../../assets/img/basalt.png" alt="" draggable="false" />
+                <img class="merge-left" src="../../../assets/img/rockie.png" alt="" draggable="false" />
+                <img class="merge-right" src="../../../assets/img/rockie.png" alt="" draggable="false" />
+              </span>
+              <span><strong data-i18n="arcade.merge"></strong><small data-i18n="arcade.mergeDesc"></small></span>
+              <span aria-hidden="true">→</span>
+            </button>
+            <button class="arcade-card" data-game-screen="dungeon">
+              <span class="arcade-art dungeon-art" aria-hidden="true">
+                <img src="../../../assets/img/rockie.png" alt="" draggable="false" />
+              </span>
+              <span><strong data-i18n="arcade.dungeon"></strong><small data-i18n="arcade.dungeonDesc"></small></span>
+              <span aria-hidden="true">→</span>
+            </button>
+            <button class="arcade-card" data-game-screen="slingshot">
+              <span class="arcade-art sling-art" aria-hidden="true">
+                <img src="../../../assets/img/rockie.png" alt="" draggable="false" />
+              </span>
+              <span><strong data-i18n="arcade.slingshot"></strong><small data-i18n="arcade.slingshotDesc"></small></span>
+              <span aria-hidden="true">→</span>
+            </button>
+            <p class="arcade-note" data-i18n="arcade.session"></p>
+          </div>
+        </div>
+
+        <div id="dungeon-view" class="screen hidden">
+          <div class="mini-wrap dungeon-wrap">
+            <div class="mini-hud"><strong id="dungeon-floor"></strong><span id="dungeon-loot"></span></div>
+            <div class="dungeon-scene">
+              <div class="dungeon-door" aria-hidden="true"></div>
+              <img id="dungeon-pet" src="../../../assets/gif/level0/rockie_smile.gif" alt="" draggable="false" />
+              <div id="dungeon-health" role="meter" aria-valuemin="0" aria-valuemax="10"></div>
+            </div>
+            <p id="dungeon-message" class="mini-message" role="status"></p>
+            <div id="dungeon-cards" class="dungeon-cards"></div>
+            <div id="dungeon-result" class="mini-result hidden">
+              <strong id="dungeon-result-title"></strong><p id="dungeon-result-detail"></p>
+            </div>
+            <div class="mini-actions">
+              <button id="dungeon-retreat" class="mini-button" data-i18n="dungeon.retreat"></button>
+              <button id="dungeon-next" class="mini-button primary hidden" data-i18n="dungeon.next"></button>
+              <button id="dungeon-restart" class="mini-button" data-i18n="game.restart"></button>
+              <button id="dungeon-retry" class="mini-button primary hidden" data-i18n="arcade.retrySave"></button>
+            </div>
+            <p id="dungeon-error" class="mini-error" role="alert"></p>
+            <p class="mini-help" data-i18n="dungeon.help"></p>
+          </div>
+        </div>
+
+        <div id="slingshot-view" class="screen hidden">
+          <div class="mini-wrap sling-wrap">
+            <div class="mini-hud">
+              <div class="game-stats">
+                <strong id="sling-course"></strong>
+                <div class="game-shards" id="sling-earned">
+                  <span aria-hidden="true">◆</span>
+                  <span id="sling-shard-count">0</span>
+                </div>
+              </div>
+              <span id="sling-shots"></span>
+            </div>
+            <div class="sling-board-wrap">
+              <canvas id="sling-board" width="320" height="360" tabindex="0" aria-describedby="sling-help"></canvas>
+              <div id="sling-result" class="sling-overlay hidden">
+                <div class="mini-result"><strong id="sling-stars"></strong><p id="sling-result-detail"></p>
+                  <button id="sling-next" class="mini-button primary"></button>
+                </div>
+              </div>
+              <div id="sling-paused" class="sling-overlay hidden">
+                <button id="sling-resume" class="mini-button primary" data-i18n="game.resume"></button>
+              </div>
+            </div>
+            <div class="mini-actions">
+              <button id="sling-pause" class="mini-button"></button>
+              <button id="sling-retry" class="mini-button" data-i18n="sling.retry"></button>
+            </div>
+            <p id="sling-error" class="mini-error" role="alert"></p>
+            <button id="sling-retry-save" class="mini-button hidden" data-i18n="arcade.retrySave"></button>
+            <p id="sling-help" class="mini-help" data-i18n="sling.help"></p>
+          </div>
+        </div>
+
         <div id="game-view" class="screen hidden">
           <div class="game-wrap">
             <div class="game-hud">
@@ -923,6 +1013,9 @@
     <script src="tray-settings.js"></script>
     <script src="tray-shop.js"></script>
     <script src="tray-game.js"></script>
+    <script src="minigame-rules.js"></script>
+    <script src="tray-dungeon.js"></script>
+    <script src="tray-slingshot.js"></script>
     <script src="tray.js"></script>
   </body>
 </html>
