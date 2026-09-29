@@ -18,7 +18,9 @@ function renderDungeon() {
   health.setAttribute("aria-label", t("dungeon.health"));
   health.setAttribute("aria-valuenow", state.health);
   health.classList.toggle("low-health", state.health <= 3);
-  document.getElementById("dungeon-pet").src = spriteGifUrl(shopSprite.level, shopSprite.prefix, "smile");
+  document.getElementById("dungeon-pet").src = spriteGifUrl(
+    shopSprite.level, shopSprite.prefix, state.status === "lost" ? "sad" : "smile",
+  );
   const message = document.getElementById("dungeon-message");
   message.textContent = ended ? t(`dungeon.${state.status}Message`) : dungeonLastCard
     ? t(dungeonLastCard.heal ? "dungeon.healed" : "dungeon.fought", {
